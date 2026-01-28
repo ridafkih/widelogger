@@ -1,0 +1,32 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "globalPassThroughEnv": ["CI", "NODE_ENV"],
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "types": {
+      "dependsOn": ["^types"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "start": {
+      "cache": false
+    },
+    "migrate": {
+      "cache": false
+    },
+    "lint": {
+      "inputs": ["src/**", ".oxlintrc.json"],
+      "cache": true
+    },
+    "format": {
+      "inputs": ["src/**"],
+      "cache": true
+    }
+  }
+}
