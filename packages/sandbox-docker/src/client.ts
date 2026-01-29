@@ -6,6 +6,8 @@ import type {
   ExitResult,
   LogChunk,
   NetworkCreateOptions,
+  ExecOptions,
+  ExecResult,
 } from "@lab/sdk";
 
 export interface DockerClientOptions {
@@ -283,6 +285,62 @@ export class DockerClient implements SandboxProvider {
     } catch (err) {
       if (!isNotFoundError(err)) throw err;
     }
+  }
+
+  async exec(containerId: string, options: ExecOptions): Promise<ExecResult> {
+    const container = this.docker.getContainer(containerId);
+
+    const exec = await container.exec({
+      Cmd: options.command,
+      WorkingDir: options.workdir,
+      Env: options.env ? Object.entries(options.env).map(([k, v]) => `${k}=${v}`) : undefined,
+      Tty: options.tty ?? false,
+      AttachStdout: true,
+      AttachStderr: true,
+    });
+
+    const stream = await exec.start({ hijack: true, stdin: false });
+
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+
+    await new Promise<void>((resolve, reject) => {
+      let buffer = Buffer.alloc(0);
+
+      stream.on("data", (chunk: Buffer) => {
+        buffer = Buffer.concat([buffer, chunk]);
+
+        // Docker stream demuxing: 8-byte header per frame
+        // Byte 0: stream type (1=stdout, 2=stderr)
+        // Bytes 4-7: frame size (big-endian uint32)
+        while (buffer.length >= 8) {
+          const streamType = buffer[0];
+          const size = buffer.readUInt32BE(4);
+
+          if (buffer.length < 8 + size) break;
+
+          const data = buffer.subarray(8, 8 + size);
+          buffer = buffer.subarray(8 + size);
+
+          if (streamType === 1) {
+            stdout.push(data);
+          } else if (streamType === 2) {
+            stderr.push(data);
+          }
+        }
+      });
+
+      stream.on("end", resolve);
+      stream.on("error", reject);
+    });
+
+    const inspectResult = await exec.inspect();
+
+    return {
+      exitCode: inspectResult.ExitCode ?? 0,
+      stdout: Buffer.concat(stdout).toString("utf-8"),
+      stderr: Buffer.concat(stderr).toString("utf-8"),
+    };
   }
 }
 

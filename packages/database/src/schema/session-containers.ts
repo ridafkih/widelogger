@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { sessions } from "./sessions.ts";
-import { containers } from "./containers.ts";
+import { sessions } from "./sessions";
+import { containers } from "./containers";
 
 export const sessionContainers = pgTable("session_containers", {
   id: uuid("id").primaryKey().defaultRandom(),

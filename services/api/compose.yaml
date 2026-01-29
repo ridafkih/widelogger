@@ -22,5 +22,26 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  opencode:
+    image: ghcr.io/anomalyco/opencode
+    container_name: lab-opencode
+    ports:
+      - "3002:3000"
+    environment:
+      MCP_SERVERS: '{"lab-containers":{"type":"http","url":"http://mcp:3000/mcp"}}'
+    depends_on:
+      - postgres
+      - mcp
+
+  mcp:
+    build:
+      context: ../..
+      dockerfile: services/mcp/Dockerfile
+    container_name: lab-mcp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      MCP_PORT: "3000"
+
 volumes:
   postgres_data:

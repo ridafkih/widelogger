@@ -10,4 +10,6 @@ export type {
   SandboxProvider,
   PortAllocator,
   PortAllocatorOptions,
+  ExecOptions,
+  ExecResult,
 } from "./types";

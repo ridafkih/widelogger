@@ -1,5 +1,5 @@
 import { integer, pgTable, uuid } from "drizzle-orm/pg-core";
-import { containers } from "./containers.ts";
+import { containers } from "./containers";
 
 export const containerPorts = pgTable("container_ports", {
   id: uuid("id").primaryKey().defaultRandom(),

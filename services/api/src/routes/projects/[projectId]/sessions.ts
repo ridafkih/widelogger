@@ -23,7 +23,10 @@ const POST: RouteHandler = async (_request, params) => {
   const { projectId } = params;
 
   // Get container definitions for this project
-  const containerDefs = await db.select().from(containers).where(eq(containers.projectId, projectId));
+  const containerDefs = await db
+    .select()
+    .from(containers)
+    .where(eq(containers.projectId, projectId));
 
   if (containerDefs.length === 0) {
     return Response.json({ error: "Project has no container definitions" }, { status: 400 });

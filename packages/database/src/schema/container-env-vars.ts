@@ -1,5 +1,5 @@
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
-import { containers } from "./containers.ts";
+import { containers } from "./containers";
 
 export const containerEnvVars = pgTable("container_env_vars", {
   id: uuid("id").primaryKey().defaultRandom(),

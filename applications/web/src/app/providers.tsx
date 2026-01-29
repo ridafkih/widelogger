@@ -8,10 +8,14 @@ interface ProvidersProps {
 }
 
 export function Providers({ children }: ProvidersProps) {
+  if (!process.env.NEXT_PUBLIC_WS_URL) {
+    throw Error("A NEXT_PUBLIC_WS_URL must be set");
+  }
+
   return (
     <MultiplayerProvider
       config={{
-        url: process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3001/ws",
+        url: process.env.NEXT_PUBLIC_WS_URL,
       }}
     >
       {children}

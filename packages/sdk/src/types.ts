@@ -85,6 +85,8 @@ export interface SandboxProvider {
   networkExists(name: string): Promise<boolean>;
   connectToNetwork(containerId: string, networkName: string): Promise<void>;
   disconnectFromNetwork(containerId: string, networkName: string): Promise<void>;
+
+  exec(containerId: string, options: ExecOptions): Promise<ExecResult>;
 }
 
 export interface PortAllocator {
@@ -97,4 +99,17 @@ export interface PortAllocator {
 export interface PortAllocatorOptions {
   minPort?: number;
   maxPort?: number;
+}
+
+export interface ExecOptions {
+  command: string[];
+  workdir?: string;
+  env?: Record<string, string>;
+  tty?: boolean;
+}
+
+export interface ExecResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
 }

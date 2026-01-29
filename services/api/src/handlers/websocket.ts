@@ -45,6 +45,9 @@ const handlers: SchemaHandlers<Schema, Auth> = {
   sessionStream: {
     getSnapshot: async () => ({ active: false }),
   },
+  sessionAgentTools: {
+    getSnapshot: async () => [],
+  },
 };
 
 const options: HandlerOptions<Schema, Auth> = {

@@ -29,6 +29,15 @@ const LogEntrySchema = z.object({
   message: z.string(),
 });
 
+const AgentToolSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(["pending", "running", "completed", "failed"]),
+  args: z.record(z.unknown()).optional(),
+  result: z.string().optional(),
+  error: z.string().optional(),
+});
+
 export const schema = defineSchema({
   channels: {
     projects: defineChannel({
@@ -157,6 +166,16 @@ export const schema = defineSchema({
       event: z.object({
         type: z.enum(["token", "complete", "error"]),
         content: z.string().optional(),
+      }),
+    }),
+
+    sessionAgentTools: defineChannel({
+      path: "session/{uuid}/agent/tools",
+      snapshot: z.array(AgentToolSchema),
+      default: [],
+      delta: z.object({
+        type: z.enum(["add", "update", "remove"]),
+        tool: AgentToolSchema,
       }),
     }),
   },
