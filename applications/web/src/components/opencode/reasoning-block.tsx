@@ -34,12 +34,7 @@ export function ReasoningBlock({ content, isStreaming = false }: ReasoningBlockP
           <ChevronRight className="size-3 shrink-0" />
         )}
       </button>
-      <div
-        className={cn(
-          "overflow-hidden duration-200",
-          isExpanded ? "max-h-125 opacity-100 overflow-y-auto" : "max-h-0 opacity-0",
-        )}
-      >
+      <div className={cn(isExpanded ? "max-h-125 overflow-y-auto" : "hidden")}>
         <div className="px-4 py-3 text-sm text-muted-foreground overflow-x-auto">
           <Streamdown
             plugins={{ code }}

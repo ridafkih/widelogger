@@ -75,12 +75,7 @@ export function ToolStatusBlock({ part }: ToolStatusBlockProps) {
       </button>
 
       {hasDetails && (
-        <div
-          className={cn(
-            "overflow-hidden duration-200",
-            isExpanded ? "max-h-125 opacity-100 overflow-y-auto" : "max-h-0 opacity-0",
-          )}
-        >
+        <div className={cn(isExpanded ? "max-h-125 overflow-y-auto" : "hidden")}>
           <div className="px-4 py-3 space-y-3 min-w-0">
             {state.input && Object.keys(state.input).length > 0 && (
               <div className="min-w-0">
