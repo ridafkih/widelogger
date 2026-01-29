@@ -1,21 +1,13 @@
 import type { ReactNode } from "react";
 import { cn } from "@lab/ui/utils/cn";
 import { Copy } from "@lab/ui/components/copy";
-import { File, FilePlus, FileX } from "lucide-react";
+import {
+  type FileChangeType,
+  fileChangeTypeIcons,
+  fileChangeTypeColors,
+} from "@/lib/file-change";
 
-export type FileChangeType = "modified" | "created" | "deleted";
-
-const changeTypeIcons = {
-  modified: File,
-  created: FilePlus,
-  deleted: FileX,
-};
-
-const changeTypeColors = {
-  modified: "text-warning",
-  created: "text-success",
-  deleted: "text-destructive",
-};
+export type { FileChangeType };
 
 interface DismissibleFileHeaderProps {
   children: ReactNode;
@@ -46,7 +38,7 @@ export function DismissibleFileHeaderDismiss({ onDismiss }: DismissibleFileHeade
     <button
       type="button"
       onClick={onDismiss}
-      className="px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+      className="px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-offset-px focus-visible:outline-ring"
     >
       Dismiss
     </button>
@@ -54,8 +46,8 @@ export function DismissibleFileHeaderDismiss({ onDismiss }: DismissibleFileHeade
 }
 
 export function DismissibleFileHeaderIcon({ changeType }: DismissibleFileHeaderIconProps) {
-  const Icon = changeTypeIcons[changeType];
-  return <Icon className={cn("size-3 shrink-0", changeTypeColors[changeType])} />;
+  const Icon = fileChangeTypeIcons[changeType];
+  return <Icon className={cn("size-3 shrink-0", fileChangeTypeColors[changeType])} />;
 }
 
 export function DismissibleFileHeaderLabel({ children }: DismissibleFileHeaderLabelProps) {

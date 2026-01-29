@@ -3,7 +3,8 @@
 import { cn } from "@lab/ui/utils/cn";
 import { Copy } from "@lab/ui/components/copy";
 import { Avatar } from "@lab/ui/components/avatar";
-import { GitBranch, Check, ExternalLink } from "lucide-react";
+import { Checkbox } from "@lab/ui/components/checkbox";
+import { GitBranch, ExternalLink } from "lucide-react";
 import type { ReviewableFile } from "@/types/review";
 import { SidebarSection } from "./sidebar-section";
 import { AvatarGroup, AvatarGroupStack, AvatarGroupCount } from "./avatar-group";
@@ -176,24 +177,11 @@ export function SessionSidebar({
           ) : (
             <div className="flex flex-col gap-1">
               {tasks.map((task) => (
-                <div key={task.id} className="flex items-center gap-1.5">
-                  <span
-                    className={cn(
-                      "size-3 border flex items-center justify-center",
-                      task.completed
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-muted-foreground",
-                    )}
-                  >
-                    {task.completed && <Check className="size-2" />}
-                  </span>
-                  <Copy
-                    size="xs"
-                    className={cn(task.completed && "line-through text-muted-foreground")}
-                  >
+                <Checkbox key={task.id} checked={task.completed}>
+                  <span className={cn(task.completed && "line-through text-muted-foreground")}>
                     {task.title}
-                  </Copy>
-                </div>
+                  </span>
+                </Checkbox>
               ))}
             </div>
           )}

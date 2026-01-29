@@ -1,21 +1,14 @@
 import type { ReactNode } from "react";
 import { cn } from "@lab/ui/utils/cn";
 import { Copy } from "@lab/ui/components/copy";
-import { Check, File, FilePlus, FileX } from "lucide-react";
+import { Checkbox } from "@lab/ui/components/checkbox";
+import {
+  type FileChangeType,
+  fileChangeTypeIcons,
+  fileChangeTypeColors,
+} from "@/lib/file-change";
 
-export type FileChangeType = "modified" | "created" | "deleted";
-
-const changeTypeIcons = {
-  modified: File,
-  created: FilePlus,
-  deleted: FileX,
-};
-
-const changeTypeColors = {
-  modified: "text-warning",
-  created: "text-success",
-  deleted: "text-destructive",
-};
+export type { FileChangeType };
 
 interface FileStatusItemProps {
   children: ReactNode;
@@ -41,23 +34,12 @@ export function FileStatusItem({ children }: FileStatusItemProps) {
 }
 
 export function FileStatusItemCheckbox({ checked, onChange }: FileStatusItemCheckboxProps) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      className={cn(
-        "size-3 shrink-0 border flex items-center justify-center",
-        checked ? "border-foreground bg-foreground text-background" : "border-muted-foreground",
-      )}
-    >
-      {checked && <Check className="size-2" />}
-    </button>
-  );
+  return <Checkbox checked={checked} onChange={onChange} />;
 }
 
 export function FileStatusItemIcon({ changeType }: FileStatusItemIconProps) {
-  const Icon = changeTypeIcons[changeType];
-  return <Icon className={cn("size-3 shrink-0", changeTypeColors[changeType])} />;
+  const Icon = fileChangeTypeIcons[changeType];
+  return <Icon className={cn("size-3 shrink-0", fileChangeTypeColors[changeType])} />;
 }
 
 export function FileStatusItemLabel({ children, dismissed, muted }: FileStatusItemLabelProps) {
