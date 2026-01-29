@@ -158,10 +158,12 @@
       "name": "@lab/api",
       "version": "0.1.0",
       "dependencies": {
+        "@lab/database": "workspace:*",
         "@lab/multiplayer-channels": "workspace:*",
         "@lab/multiplayer-server": "workspace:*",
         "@lab/multiplayer-shared": "workspace:*",
         "@lab/sandbox-docker": "workspace:*",
+        "drizzle-orm": "^0.38.0",
         "zod": "^3.24.2",
       },
       "devDependencies": {

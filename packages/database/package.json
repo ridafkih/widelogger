@@ -26,6 +26,14 @@
     "./schema/container-permissions": {
       "types": "./src/schema/container-permissions.ts",
       "default": "./src/schema/container-permissions.ts"
+    },
+    "./schema/sessions": {
+      "types": "./src/schema/sessions.ts",
+      "default": "./src/schema/sessions.ts"
+    },
+    "./schema/session-containers": {
+      "types": "./src/schema/session-containers.ts",
+      "default": "./src/schema/session-containers.ts"
     }
   },
   "scripts": {

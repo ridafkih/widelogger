@@ -1,19 +1,22 @@
+import { db } from "@lab/database/client";
+import { projects } from "@lab/database/schema/projects";
+
 import type { RouteHandler } from "../utils/route-handler";
 
 const GET: RouteHandler = async () => {
-  const projects = [
-    { id: "1", name: "Project Alpha" },
-    { id: "2", name: "Project Beta" },
-  ];
-  return Response.json(projects);
+  const allProjects = await db.select().from(projects);
+  return Response.json(allProjects);
 };
 
 const POST: RouteHandler = async (request) => {
   const body = await request.json();
-  const project = {
-    id: crypto.randomUUID(),
-    name: body.name,
-  };
+  const [project] = await db
+    .insert(projects)
+    .values({
+      name: body.name,
+      systemPrompt: body.systemPrompt,
+    })
+    .returning();
   return Response.json(project, { status: 201 });
 };
 
