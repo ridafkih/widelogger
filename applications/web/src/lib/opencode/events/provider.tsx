@@ -54,7 +54,13 @@ export function OpenCodeEventsProvider({ children }: OpenCodeEventsProviderProps
           prev === "disconnected" || prev === "reconnecting" ? "reconnecting" : "connecting",
         );
 
-        const { stream } = await client.event.subscribe();
+        const { stream } = await client.event.subscribe({
+          signal: abortController.signal,
+          sseDefaultRetryDelay: INITIAL_RECONNECT_DELAY,
+          sseMaxRetryDelay: MAX_RECONNECT_DELAY,
+          sseMaxRetryAttempts: 5,
+          onSseError: () => setConnectionStatus("reconnecting"),
+        });
 
         setConnectionStatus("connected");
         reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
@@ -63,6 +69,8 @@ export function OpenCodeEventsProvider({ children }: OpenCodeEventsProviderProps
           if (abortController.signal.aborted) {
             break;
           }
+
+          reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
 
           for (const handler of handlersRef.current) {
             handler(event);

@@ -21,7 +21,10 @@ export function usePermissions({
   pendingPermissions,
 }: UsePermissionsOptions): UsePermissionsResult {
   const activePermission = useMemo(() => {
-    return pendingPermissions.find((pendingPermission) => pendingPermission.sessionId === sessionId) ?? null;
+    return (
+      pendingPermissions.find((pendingPermission) => pendingPermission.sessionId === sessionId) ??
+      null
+    );
   }, [pendingPermissions, sessionId]);
 
   const respondToPermission = useCallback(

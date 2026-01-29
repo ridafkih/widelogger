@@ -69,10 +69,7 @@ export const streamdownComponents = {
 
   a: ({ className, children, href, ...props }: LinkProps) => (
     <a
-      className={cn(
-        "text-primary underline underline-offset-2 hover:text-primary/80",
-        className,
-      )}
+      className={cn("text-primary underline underline-offset-2 hover:text-primary/80", className)}
       href={href}
       target={href?.startsWith("http") ? "_blank" : undefined}
       rel={href?.startsWith("http") ? "noopener noreferrer" : undefined}
