@@ -60,9 +60,9 @@ export function DropdownTrigger({
 }: DropdownTriggerProps) {
   const { open, setOpen, setActiveIndex } = useDropdown();
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
       setOpen(true);
       setActiveIndex(0);
     }
@@ -101,16 +101,16 @@ export function DropdownMenu({ children, className }: DropdownMenuProps) {
     }
   }, [open, activeIndex]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent) => {
     const itemCount = itemsRef.current.length;
 
-    switch (e.key) {
+    switch (event.key) {
       case "ArrowDown":
-        e.preventDefault();
+        event.preventDefault();
         setActiveIndex((activeIndex + 1) % itemCount);
         break;
       case "ArrowUp":
-        e.preventDefault();
+        event.preventDefault();
         setActiveIndex((activeIndex - 1 + itemCount) % itemCount);
         break;
       case "Escape":
@@ -153,8 +153,8 @@ export function DropdownItem({ className, icon, children, ...props }: DropdownIt
         "disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
-      onClick={(e) => {
-        props.onClick?.(e);
+      onClick={(event) => {
+        props.onClick?.(event);
         setOpen(false);
       }}
       {...props}

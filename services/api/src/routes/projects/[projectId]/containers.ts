@@ -1,5 +1,6 @@
 import { db } from "@lab/database/client";
 import { containers } from "@lab/database/schema/containers";
+import { containerPorts } from "@lab/database/schema/container-ports";
 import { eq } from "drizzle-orm";
 
 import type { RouteHandler } from "../../../utils/route-handler";
@@ -22,6 +23,16 @@ const POST: RouteHandler = async (request, params) => {
       hostname: body.hostname,
     })
     .returning();
+
+  if (body.ports && Array.isArray(body.ports)) {
+    await db.insert(containerPorts).values(
+      body.ports.map((port: number) => ({
+        containerId: container.id,
+        port,
+      })),
+    );
+  }
+
   return Response.json(container, { status: 201 });
 };
 

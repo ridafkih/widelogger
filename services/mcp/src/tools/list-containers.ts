@@ -8,12 +8,12 @@ export function listContainers(server: McpServer, { docker }: ToolContext) {
     async () => {
       const containers = await docker.raw.listContainers({ all: false });
 
-      const result = containers.map((c) => ({
-        id: c.Id.slice(0, 12),
-        names: c.Names,
-        image: c.Image,
-        state: c.State,
-        status: c.Status,
+      const result = containers.map((container) => ({
+        id: container.Id.slice(0, 12),
+        names: container.Names,
+        image: container.Image,
+        state: container.State,
+        status: container.Status,
       }));
 
       return {

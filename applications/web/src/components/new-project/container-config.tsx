@@ -59,7 +59,9 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
   const saveEditingPort = () => {
     if (editingPortIndex === null || !editingPortValue.trim()) return;
     updateContainer({
-      ports: container.ports.map((p, i) => (i === editingPortIndex ? editingPortValue.trim() : p)),
+      ports: container.ports.map((port, index) =>
+        index === editingPortIndex ? editingPortValue.trim() : port,
+      ),
     });
     setEditingPortIndex(null);
     setEditingPortValue("");
@@ -95,8 +97,8 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
   const saveEditingEnv = () => {
     if (editingEnvIndex === null || !editingEnvKey.trim()) return;
     updateContainer({
-      envVars: container.envVars.map((v, i) =>
-        i === editingEnvIndex ? { key: editingEnvKey.trim(), value: editingEnvValue } : v,
+      envVars: container.envVars.map((envVar, index) =>
+        index === editingEnvIndex ? { key: editingEnvKey.trim(), value: editingEnvValue } : envVar,
       ),
     });
     setEditingEnvIndex(null);
@@ -140,7 +142,7 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
           </InputGroupIcon>
           <InputGroupInput
             value={container.image}
-            onChange={(e) => updateContainer({ image: e.currentTarget.value })}
+            onChange={(event) => updateContainer({ image: event.currentTarget.value })}
             placeholder="ghcr.io/org/image:tag"
           />
         </InputGroup>
@@ -149,15 +151,15 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
       <FormField label="Exposed Ports" hint="Ports to expose from the container">
         <form
           className="flex flex-col gap-1"
-          onSubmit={(e) => {
-            e.preventDefault();
+          onSubmit={(event) => {
+            event.preventDefault();
             addPort();
           }}
         >
           <Input
             ref={portInputRef}
             value={portDraft}
-            onChange={(e) => setPortDraft(e.currentTarget.value)}
+            onChange={(event) => setPortDraft(event.currentTarget.value)}
             placeholder="8080"
           />
           <Button type="submit" variant="outline" icon={<Plus className="size-3" />}>
@@ -179,10 +181,10 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
                     {editingPortIndex === index ? (
                       <Input
                         value={editingPortValue}
-                        onChange={(e) => setEditingPortValue(e.currentTarget.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveEditingPort();
-                          if (e.key === "Escape") cancelEditingPort();
+                        onChange={(event) => setEditingPortValue(event.currentTarget.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveEditingPort();
+                          if (event.key === "Escape") cancelEditingPort();
                         }}
                         autoFocus
                       />
@@ -257,8 +259,8 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
       <FormField label="Environment Variables">
         <form
           className="flex flex-col gap-1"
-          onSubmit={(e) => {
-            e.preventDefault();
+          onSubmit={(event) => {
+            event.preventDefault();
             addEnvVar();
           }}
         >
@@ -266,13 +268,13 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
             <Input
               ref={envKeyInputRef}
               value={envKeyDraft}
-              onChange={(e) => setEnvKeyDraft(e.currentTarget.value)}
+              onChange={(event) => setEnvKeyDraft(event.currentTarget.value)}
               placeholder="KEY"
               mono
             />
             <Input
               value={envValueDraft}
-              onChange={(e) => setEnvValueDraft(e.currentTarget.value)}
+              onChange={(event) => setEnvValueDraft(event.currentTarget.value)}
               placeholder="VALUE"
             />
           </div>
@@ -296,10 +298,10 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
                     {editingEnvIndex === index ? (
                       <Input
                         value={editingEnvKey}
-                        onChange={(e) => setEditingEnvKey(e.currentTarget.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveEditingEnv();
-                          if (e.key === "Escape") cancelEditingEnv();
+                        onChange={(event) => setEditingEnvKey(event.currentTarget.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveEditingEnv();
+                          if (event.key === "Escape") cancelEditingEnv();
                         }}
                         mono
                         autoFocus
@@ -312,10 +314,10 @@ export function ContainerConfig({ container, onUpdate, onBack }: ContainerConfig
                     {editingEnvIndex === index ? (
                       <Input
                         value={editingEnvValue}
-                        onChange={(e) => setEditingEnvValue(e.currentTarget.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveEditingEnv();
-                          if (e.key === "Escape") cancelEditingEnv();
+                        onChange={(event) => setEditingEnvValue(event.currentTarget.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveEditingEnv();
+                          if (event.key === "Escape") cancelEditingEnv();
                         }}
                       />
                     ) : revealedEnvIndices.has(index) ? (

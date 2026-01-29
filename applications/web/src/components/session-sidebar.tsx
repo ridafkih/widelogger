@@ -58,6 +58,7 @@ type ContainerInfo = {
   id: string;
   name: string;
   status: ContainerStatus;
+  urls: { port: number; url: string }[];
 };
 
 type SessionSidebarProps = {
@@ -82,7 +83,7 @@ export function SessionSidebar({
   onDismissFile,
 }: SessionSidebarProps) {
   return (
-    <aside className="max-w-64 border-l border-border h-full flex flex-col">
+    <aside className="min-w-64 max-w-64 border-l border-border h-full flex flex-col">
       <div className="h-8 border-b border-border" />
       <div className="flex-1 overflow-y-auto">
         <SidebarSection title="Prompt Engineers">
@@ -166,13 +167,30 @@ export function SessionSidebar({
         </SidebarSection>
 
         <SidebarSection title="Containers">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             {containers.map((container) => (
-              <ContainerStatusItem key={container.id}>
-                <ContainerStatusItemIcon />
-                <ContainerStatusItemName>{container.name}</ContainerStatusItemName>
-                <ContainerStatusItemDot status={container.status} />
-              </ContainerStatusItem>
+              <div key={container.id} className="flex flex-col gap-1">
+                <ContainerStatusItem>
+                  <ContainerStatusItemIcon />
+                  <ContainerStatusItemName>{container.name}</ContainerStatusItemName>
+                  <ContainerStatusItemDot status={container.status} />
+                </ContainerStatusItem>
+                {container.urls.length > 0 && (
+                  <div className="flex flex-col gap-0.5 pl-5">
+                    {container.urls.map((urlInfo) => (
+                      <a
+                        key={urlInfo.port}
+                        href={urlInfo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-accent hover:underline truncate"
+                      >
+                        :{urlInfo.port}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </SidebarSection>

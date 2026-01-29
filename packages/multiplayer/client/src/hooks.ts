@@ -44,11 +44,11 @@ export function createHooks<
   type ClientMessage = z.infer<TClientMessages>;
 
   function useConnection(): ConnectionManager {
-    const ctx = useContext(MultiplayerContext);
-    if (!ctx) {
+    const context = useContext(MultiplayerContext);
+    if (!context) {
       throw new Error("useConnection must be used within MultiplayerProvider");
     }
-    return ctx.connection;
+    return context.connection;
   }
 
   function useMultiplayer() {
@@ -170,21 +170,12 @@ export function createHooks<
   };
 }
 
-interface DeltaObject {
-  type?: string;
-  project?: unknown;
-  session?: unknown;
-  file?: unknown;
-  message?: unknown;
-  [key: string]: unknown;
-}
-
 interface ItemWithId {
   id: unknown;
   [key: string]: unknown;
 }
 
-function isDeltaObject(value: unknown): value is DeltaObject {
+function isDeltaObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -192,8 +183,13 @@ function isItemWithId(value: unknown): value is ItemWithId {
   return typeof value === "object" && value !== null && "id" in value;
 }
 
-function getItem(d: DeltaObject): unknown {
-  return d.project ?? d.session ?? d.file ?? d.message;
+function getItem(delta: Record<string, unknown>): unknown {
+  for (const [key, value] of Object.entries(delta)) {
+    if (key !== "type" && isItemWithId(value)) {
+      return value;
+    }
+  }
+  return undefined;
 }
 
 function applyDelta(current: unknown, delta: unknown, channel: ChannelConfig): unknown {
@@ -214,15 +210,17 @@ function applyDelta(current: unknown, delta: unknown, channel: ChannelConfig): u
     if (delta.type === "remove") {
       const item = getItem(delta);
       if (isItemWithId(item)) {
-        return current.filter((c: unknown) => !isItemWithId(c) || c.id !== item.id);
+        return current.filter(
+          (element: unknown) => !isItemWithId(element) || element.id !== item.id,
+        );
       }
     }
 
     if (delta.type === "update") {
       const item = getItem(delta);
       if (isItemWithId(item)) {
-        return current.map((c: unknown) =>
-          isItemWithId(c) && c.id === item.id ? { ...c, ...item } : c,
+        return current.map((element: unknown) =>
+          isItemWithId(element) && element.id === item.id ? { ...element, ...item } : element,
         );
       }
     }

@@ -35,7 +35,7 @@ export function ReviewPanel({ files, onDismiss }: ReviewPanelProps) {
   const [selection, setSelection] = useState<LineSelection | null>(null);
   const prevSelectionRef = useRef<LineSelection | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pendingFiles = useMemo(() => files.filter((f) => f.status === "pending"), [files]);
+  const pendingFiles = useMemo(() => files.filter((file) => file.status === "pending"), [files]);
 
   useEffect(() => {
     if (selection) {

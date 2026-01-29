@@ -19,6 +19,7 @@ export default function SessionPage() {
   const links = useChannel("sessionLinks", { uuid: sessionId });
   const promptEngineers = useChannel("sessionPromptEngineers", { uuid: sessionId });
   const logSources = useChannel("sessionLogs", { uuid: sessionId });
+  const sessionContainers = useChannel("sessionContainers", { uuid: sessionId });
 
   const [localReviewFiles, setLocalReviewFiles] = useState<ReviewableFile[]>([]);
   const reviewFiles = changedFiles.length > 0 ? changedFiles : localReviewFiles;
@@ -33,7 +34,7 @@ export default function SessionPage() {
 
   const handleDismissFile = (path: string) => {
     setLocalReviewFiles((files) =>
-      files.map((f) => (f.path === path ? { ...f, status: "dismissed" as const } : f)),
+      files.map((file) => (file.path === path ? { ...file, status: "dismissed" as const } : file)),
     );
   };
 
@@ -48,10 +49,10 @@ export default function SessionPage() {
   return (
     <div className="flex h-full">
       <SessionView
-        messages={messages.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
+        messages={messages.map(({ id, role, content }) => ({
+          id,
+          role,
+          content,
         }))}
         reviewFiles={reviewFiles}
         onDismissFile={handleDismissFile}
@@ -61,7 +62,12 @@ export default function SessionPage() {
         branches={branches}
         tasks={[]}
         links={links}
-        containers={[]}
+        containers={sessionContainers.map(({ id, name, status, urls }) => ({
+          id,
+          name,
+          status,
+          urls,
+        }))}
         logSources={logSources.map((source) => ({
           id: source.id,
           name: source.name,

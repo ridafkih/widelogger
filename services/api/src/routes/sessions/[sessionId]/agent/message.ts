@@ -30,7 +30,6 @@ const POST: RouteHandler = async (request, params) => {
     return Response.json({ error: "Agent is currently processing a message" }, { status: 409 });
   }
 
-  // Send message asynchronously - don't await completion
   session.sendMessage(parsed.data.message).catch((error) => {
     console.error(`Error processing message for session ${sessionId}:`, error);
   });

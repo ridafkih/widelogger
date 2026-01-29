@@ -44,6 +44,10 @@ export class CaddyProxyManager implements ProxyManager {
     this.caddy = new CaddyClient(options.adminUrl);
   }
 
+  private get matchDomain(): string {
+    return this.baseDomain.split(":")[0];
+  }
+
   async initialize(): Promise<void> {
     const exists = await this.docker.containerExists(this.caddyContainerName);
     if (!exists) {
@@ -86,12 +90,11 @@ export class CaddyProxyManager implements ProxyManager {
       for (const containerPortStr of Object.keys(container.ports)) {
         const containerPort = parseInt(containerPortStr, 10);
         const subdomain = `${clusterId}--${containerPort}`;
-        const hostname = `${subdomain}.${this.baseDomain}`;
         const routeId = `${clusterId}-${containerPort}`;
 
         await this.caddy.addRoute({
           "@id": routeId,
-          match: [{ host: [hostname] }],
+          match: [{ host: [`${subdomain}.${this.matchDomain}`] }],
           handle: [
             {
               handler: "reverse_proxy",
@@ -102,7 +105,7 @@ export class CaddyProxyManager implements ProxyManager {
 
         registeredRoutes.push({
           containerPort,
-          url: `http://${hostname}`,
+          url: `http://${subdomain}.${this.baseDomain}`,
         });
       }
     }

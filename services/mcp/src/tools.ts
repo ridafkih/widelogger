@@ -2,14 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DockerClient } from "@lab/sandbox-docker";
 import type { ToolContext } from "./tools/types";
 
-export type ToolRegistrar = (ctx: ToolContext) => void;
+export type ToolRegistrar = (context: ToolContext) => void;
 
 export function makeRegisterTool(server: McpServer, docker: DockerClient) {
-  const ctx: ToolContext = { docker };
+  const context: ToolContext = { docker };
 
   return {
-    registerTool(registrar: (server: McpServer, ctx: ToolContext) => void) {
-      registrar(server, ctx);
+    registerTool(registrar: (server: McpServer, context: ToolContext) => void) {
+      registrar(server, context);
     },
   };
 }

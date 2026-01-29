@@ -59,10 +59,10 @@ export interface ChannelContext<TAuth, TParams> {
 type AnyParams = Record<string, string>;
 
 export type ChannelHandlers<TChannel extends ChannelConfig, TAuth> = {
-  authorize?: (ctx: ChannelContext<TAuth, AnyParams>) => boolean | Promise<boolean>;
+  authorize?: (context: ChannelContext<TAuth, AnyParams>) => boolean | Promise<boolean>;
 
   getSnapshot: (
-    ctx: ChannelContext<TAuth, AnyParams>,
+    context: ChannelContext<TAuth, AnyParams>,
   ) => SnapshotOf<TChannel> | Promise<SnapshotOf<TChannel>>;
 };
 
@@ -77,7 +77,7 @@ export interface MessageContext<TAuth> {
 
 export interface HandlerOptions<S extends Schema, TAuth> {
   authenticate: (token: string | null) => TAuth | Promise<TAuth>;
-  onMessage?: (ctx: MessageContext<TAuth>, message: ClientMessageOf<S>) => void | Promise<void>;
+  onMessage?: (context: MessageContext<TAuth>, message: ClientMessageOf<S>) => void | Promise<void>;
 }
 
 export function createWebSocketHandler<S extends Schema, TAuth>(
@@ -118,14 +118,14 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
       return;
     }
 
-    const ctx: ChannelContext<TAuth, Record<string, string>> = {
+    const context: ChannelContext<TAuth, Record<string, string>> = {
       auth: ws.data.auth,
       params: match.params,
       ws,
     };
 
     if (handler.authorize) {
-      const authorized = await handler.authorize(ctx);
+      const authorized = await handler.authorize(context);
       if (!authorized) {
         sendMessage(ws, { type: "error", channel, error: "Unauthorized" });
         return;
@@ -136,7 +136,7 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
     ws.subscribe(channel);
 
     try {
-      const snapshot = await handler.getSnapshot(ctx);
+      const snapshot = await handler.getSnapshot(context);
       sendMessage(ws, { type: "snapshot", channel, data: snapshot });
     } catch (err) {
       sendMessage(ws, {
@@ -158,15 +158,15 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
     const parseResult = schema.clientMessages.safeParse(data);
     if (!parseResult.success) return;
 
-    const ctx: MessageContext<TAuth> = {
+    const context: MessageContext<TAuth> = {
       auth: ws.data.auth,
       ws,
     };
 
     try {
-      await options.onMessage(ctx, parseResult.data);
-    } catch {
-      // Message handling errors are silent
+      await options.onMessage(context, parseResult.data);
+    } catch (error) {
+      console.error("Error handling message:", error);
     }
   }
 
@@ -201,8 +201,8 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
             sendMessage(ws, { type: "pong" });
             break;
         }
-      } catch {
-        // Ignore malformed messages
+      } catch (error) {
+        console.warn("Malformed WebSocket message:", error);
       }
     },
 

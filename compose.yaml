@@ -56,9 +56,13 @@ services:
       API_PORT: "3001"
       DATABASE_URL: "postgresql://lab:lab@postgres:5432/lab"
       OPENCODE_URL: "http://opencode:3000"
+      CADDY_ADMIN_URL: "http://caddy:2019"
+      CADDY_CONTAINER_NAME: "lab-caddy-proxy"
+      PROXY_BASE_DOMAIN: "localhost:8080"
     depends_on:
       - postgres
       - opencode
+      - caddy
 
 volumes:
   postgres_data:

@@ -160,7 +160,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
                   <ProjectSessionsPanel
                     key={project.id}
                     project={project}
-                    sessions={sessions.filter((s) => s.projectId === project.id)}
+                    sessions={sessions.filter((session) => session.projectId === project.id)}
                     activeSessionId={sessionId}
                   />
                 ))}

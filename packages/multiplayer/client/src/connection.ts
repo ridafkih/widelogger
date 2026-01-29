@@ -87,7 +87,8 @@ export class ConnectionManager {
       this.ws.onclose = this.handleClose.bind(this);
       this.ws.onerror = this.handleError.bind(this);
       this.ws.onmessage = this.handleMessage.bind(this);
-    } catch {
+    } catch (error) {
+      console.error("WebSocket connection error:", error);
       this.handleClose();
     }
   }
@@ -213,8 +214,8 @@ export class ConnectionManager {
           }
         }
       }
-    } catch {
-      // Ignore malformed messages
+    } catch (error) {
+      console.warn("Malformed WebSocket message:", error);
     }
   }
 

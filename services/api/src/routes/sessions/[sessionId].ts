@@ -44,13 +44,11 @@ const DELETE: RouteHandler = async (_request, params) => {
     return new Response("Not found", { status: 404 });
   }
 
-  // Get all containers for this session
   const containers = await db
     .select()
     .from(sessionContainers)
     .where(eq(sessionContainers.sessionId, sessionId));
 
-  // Stop and remove all Docker containers
   await Promise.all(
     containers.map(async (container) => {
       await docker.stopContainer(container.dockerId);
@@ -58,7 +56,6 @@ const DELETE: RouteHandler = async (_request, params) => {
     }),
   );
 
-  // Delete session (cascades to session_containers)
   await db.delete(sessions).where(eq(sessions.id, sessionId));
 
   return new Response(null, { status: 204 });

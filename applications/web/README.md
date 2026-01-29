@@ -56,7 +56,7 @@ const [files, setFiles] = useState<ReviewableFile[]>([
 
 function handleDismiss(path: string) {
   setFiles((files) =>
-    files.map((f) => (f.path === path ? { ...f, status: "dismissed" } : f))
+    files.map((file) => (file.path === path ? { ...file, status: "dismissed" } : file))
   );
 }
 

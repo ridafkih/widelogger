@@ -31,7 +31,7 @@ export default function GitSettingsPage() {
           <FormField label="Username" hint="The name that will appear in git commits">
             <Input
               value={username}
-              onChange={(e) => setUsername(e.currentTarget.value)}
+              onChange={(event) => setUsername(event.currentTarget.value)}
               placeholder="John Doe"
             />
           </FormField>
@@ -40,7 +40,7 @@ export default function GitSettingsPage() {
             <Input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
+              onChange={(event) => setEmail(event.currentTarget.value)}
               placeholder="john@acme.com"
             />
           </FormField>

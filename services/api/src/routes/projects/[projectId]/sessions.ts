@@ -7,10 +7,18 @@ import { sessionContainers } from "@lab/database/schema/session-containers";
 import { eq } from "drizzle-orm";
 import { DockerClient } from "@lab/sandbox-docker";
 import { publisher } from "../../../index";
+import { proxyManager, isProxyInitialized, ensureProxyInitialized } from "../../../proxy";
 
 import type { RouteHandler } from "../../../utils/route-handler";
 
 const docker = new DockerClient();
+
+interface ContainerResult {
+  id: string;
+  name: string;
+  status: "running" | "stopped" | "error";
+  urls: { port: number; url: string }[];
+}
 
 const GET: RouteHandler = async (_request, params) => {
   const projectSessions = await db
@@ -23,87 +31,126 @@ const GET: RouteHandler = async (_request, params) => {
 const POST: RouteHandler = async (_request, params) => {
   const { projectId } = params;
 
-  // Get container definitions for this project
-  const containerDefs = await db
+  const containerDefinitioninitions = await db
     .select()
     .from(containers)
     .where(eq(containers.projectId, projectId));
 
-  if (containerDefs.length === 0) {
+  if (containerDefinitioninitions.length === 0) {
     return Response.json({ error: "Project has no container definitions" }, { status: 400 });
   }
 
-  // Create session record
   const [session] = await db.insert(sessions).values({ projectId }).returning();
 
-  const spawnedContainers = [];
+  const networkName = `lab-${session.id}`;
+  const dockerIds: string[] = [];
+  const spawnedContainers: ContainerResult[] = [];
+  const clusterContainers: {
+    containerId: string;
+    hostname: string;
+    ports: Record<number, number>;
+  }[] = [];
 
   try {
-    for (const containerDef of containerDefs) {
-      // Get ports and env vars for this container
+    await docker.createNetwork(networkName, { labels: { "lab.session": session.id } });
+
+    for (const containerDefinition of containerDefinitioninitions) {
       const ports = await db
         .select()
         .from(containerPorts)
-        .where(eq(containerPorts.containerId, containerDef.id));
+        .where(eq(containerPorts.containerId, containerDefinition.id));
 
       const envVars = await db
         .select()
         .from(containerEnvVars)
-        .where(eq(containerEnvVars.containerId, containerDef.id));
+        .where(eq(containerEnvVars.containerId, containerDefinition.id));
 
-      // Pull image if needed
-      const imageExists = await docker.imageExists(containerDef.image);
+      const imageExists = await docker.imageExists(containerDefinition.image);
       if (!imageExists) {
-        await docker.pullImage(containerDef.image);
+        await docker.pullImage(containerDefinition.image);
       }
 
-      // Build env object
       const env: Record<string, string> = {};
       for (const envVar of envVars) {
         env[envVar.key] = envVar.value;
       }
 
-      // Create and start the container
+      const hostname = containerDefinition.hostname ?? containerDefinition.id;
+
+      const containerName = `lab-${session.id}-${containerDefinition.id}`;
       const dockerId = await docker.createContainer({
-        name: `lab-${session.id}-${containerDef.id}`,
-        image: containerDef.image,
-        hostname: containerDef.hostname ?? undefined,
+        name: containerName,
+        image: containerDefinition.image,
+        hostname,
+        networkMode: networkName,
         env: Object.keys(env).length > 0 ? env : undefined,
-        ports: ports.map((p) => ({ container: p.port, host: undefined })),
+        ports: ports.map(({ port }) => ({ container: port, host: undefined })),
         labels: {
           "com.docker.compose.project": `lab-${session.id}`,
-          "com.docker.compose.service": containerDef.hostname ?? containerDef.id,
+          "com.docker.compose.service": hostname,
           "lab.session": session.id,
           "lab.project": projectId,
-          "lab.container": containerDef.id,
+          "lab.container": containerDefinition.id,
         },
       });
 
+      dockerIds.push(dockerId);
       await docker.startContainer(dockerId);
 
-      // Record the spawned container
       const [sessionContainer] = await db
         .insert(sessionContainers)
         .values({
           sessionId: session.id,
-          containerId: containerDef.id,
+          containerId: containerDefinition.id,
           dockerId,
         })
         .returning();
 
-      const info = await docker.inspectContainer(dockerId);
+      const displayName =
+        containerDefinition.hostname ??
+        containerDefinition.image.split("/").pop()?.split(":")[0] ??
+        "container";
+
+      const portMap: Record<number, number> = {};
+      for (const { port } of ports) {
+        portMap[port] = port;
+      }
+
+      if (Object.keys(portMap).length > 0) {
+        clusterContainers.push({
+          containerId: containerDefinition.id,
+          hostname,
+          ports: portMap,
+        });
+      }
+
       spawnedContainers.push({
-        ...sessionContainer,
-        info,
+        id: sessionContainer.id,
+        name: displayName,
+        status: "running",
+        urls: [],
       });
+    }
+
+    await ensureProxyInitialized();
+    if (isProxyInitialized() && clusterContainers.length > 0) {
+      const routes = await proxyManager.registerCluster(session.id, networkName, clusterContainers);
+
+      if (spawnedContainers[0] && routes.length > 0) {
+        spawnedContainers[0].urls = routes.map((route) => ({
+          port: route.containerPort,
+          url: route.url,
+        }));
+      }
     }
   } catch (error) {
     await Promise.all(
-      spawnedContainers.map(async (container) => {
-        await docker.stopContainer(container.dockerId);
-        await docker.removeContainer(container.dockerId);
+      dockerIds.map(async (dockerId) => {
+        await docker.stopContainer(dockerId);
+        await docker.removeContainer(dockerId);
       }),
     );
+    await docker.removeNetwork(networkName);
     await db.delete(sessions).where(eq(sessions.id, session.id));
     throw error;
   }
@@ -117,9 +164,12 @@ const POST: RouteHandler = async (_request, params) => {
     },
   });
 
+  publisher.publishSnapshot("sessionContainers", { uuid: session.id }, spawnedContainers);
+
   return Response.json(
     {
-      ...session,
+      id: session.id,
+      projectId: session.projectId,
       containers: spawnedContainers,
     },
     { status: 201 },

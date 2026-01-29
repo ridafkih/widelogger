@@ -40,7 +40,7 @@ export function ContainerList({
       <FormField label="Project Name">
         <Input
           value={name}
-          onChange={(e) => onNameChange(e.currentTarget.value)}
+          onChange={(event) => onNameChange(event.currentTarget.value)}
           placeholder="My Project"
         />
       </FormField>
@@ -51,7 +51,7 @@ export function ContainerList({
       >
         <Textarea
           value={systemPrompt}
-          onChange={(e) => onSystemPromptChange(e.currentTarget.value)}
+          onChange={(event) => onSystemPromptChange(event.currentTarget.value)}
           placeholder="You are a helpful coding assistant..."
           rows={4}
         />

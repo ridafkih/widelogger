@@ -50,8 +50,8 @@ export default function ProvidersPage() {
   };
 
   const removeProvider = (id: string) => {
-    const index = providers.findIndex((p) => p.id === id);
-    setProviders(providers.filter((p) => p.id !== id));
+    const index = providers.findIndex((provider) => provider.id === id);
+    setProviders(providers.filter((provider) => provider.id !== id));
     setRevealedIndices((prev) => {
       const next = new Set(prev);
       next.delete(index);
@@ -71,10 +71,13 @@ export default function ProvidersPage() {
     });
   };
 
-  const getProviderName = (id: AIProvider) => AI_PROVIDERS.find((p) => p.id === id)?.name ?? id;
+  const getProviderName = (id: AIProvider) =>
+    AI_PROVIDERS.find((provider) => provider.id === id)?.name ?? id;
 
-  const configuredProviderIds = new Set(providers.map((p) => p.provider));
-  const availableProviders = AI_PROVIDERS.filter((p) => !configuredProviderIds.has(p.id));
+  const configuredProviderIds = new Set(providers.map((provider) => provider.provider));
+  const availableProviders = AI_PROVIDERS.filter(
+    (provider) => !configuredProviderIds.has(provider.id),
+  );
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -111,9 +114,9 @@ export default function ProvidersPage() {
                 </DropdownMenu>
               </Dropdown>
               <Input
-                className="flex-[2]"
+                className="flex-2"
                 value={apiKeyDraft}
-                onChange={(e) => setApiKeyDraft(e.currentTarget.value)}
+                onChange={(event) => setApiKeyDraft(event.currentTarget.value)}
                 placeholder="sk-..."
                 type="password"
               />

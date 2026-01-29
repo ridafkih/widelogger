@@ -38,8 +38,8 @@ export function ContainerCard({ container, onClick, onDelete }: ContainerCardPro
         <IconButton
           icon={<Trash2 />}
           label="Delete"
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             onDelete();
           }}
         />

@@ -87,6 +87,19 @@ export const schema = defineSchema({
       }),
     }),
 
+    sessionContainers: defineChannel({
+      path: "session/{uuid}/containers",
+      snapshot: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          status: z.enum(["running", "stopped", "error"]),
+          urls: z.array(z.object({ port: z.number(), url: z.string() })),
+        }),
+      ),
+      default: [],
+    }),
+
     sessionMessages: defineChannel({
       path: "session/{uuid}/messages",
       snapshot: z.array(MessageSchema),

@@ -28,11 +28,13 @@ export default function NewProjectPage() {
   };
 
   const updateContainer = (updated: Container) => {
-    setContainers(containers.map((c) => (c.id === updated.id ? updated : c)));
+    setContainers(
+      containers.map((container) => (container.id === updated.id ? updated : container)),
+    );
   };
 
   const deleteContainer = (id: string) => {
-    setContainers(containers.filter((c) => c.id !== id));
+    setContainers(containers.filter((container) => container.id !== id));
   };
 
   const handleCreateProject = async () => {
@@ -40,7 +42,10 @@ export default function NewProjectPage() {
 
     await Promise.all(
       containers.map((container) =>
-        client.containers.create(project.id, { image: container.image }),
+        client.containers.create(project.id, {
+          image: container.image,
+          ports: container.ports.map((port) => parseInt(port, 10)).filter((port) => !isNaN(port)),
+        }),
       ),
     );
 
@@ -48,7 +53,9 @@ export default function NewProjectPage() {
   };
 
   const selectedContainer =
-    view.type === "config" ? containers.find((c) => c.id === view.containerId) : null;
+    view.type === "config"
+      ? containers.find((container) => container.id === view.containerId)
+      : null;
 
   return (
     <div className="flex-1 overflow-y-auto">

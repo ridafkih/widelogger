@@ -132,7 +132,8 @@ export class AgentSession extends EventEmitter {
         let event: OpenCodeStreamEvent;
         try {
           event = JSON.parse(data);
-        } catch {
+        } catch (error) {
+          console.warn("Failed to parse SSE event:", error);
           continue;
         }
 

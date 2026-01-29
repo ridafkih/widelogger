@@ -23,6 +23,7 @@ export interface Container {
 export interface CreateContainerInput {
   image: string;
   hostname?: string;
+  ports?: number[];
 }
 
 export interface Session {

@@ -51,7 +51,7 @@ interface LogsSectionEntryProps {
 
 export function LogsSection({ sources }: LogsSectionProps) {
   const [selectedSourceId, setSelectedSourceId] = useState(sources[0]?.id ?? "");
-  const selectedSource = sources.find((s) => s.id === selectedSourceId);
+  const selectedSource = sources.find((source) => source.id === selectedSourceId);
 
   return (
     <LogsSectionRoot>
