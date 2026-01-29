@@ -11,12 +11,12 @@ RUN turbo prune @lab/mcp --docker
 
 FROM base AS build
 COPY --from=prune /app/out/json/ .
-RUN bun install --frozen-lockfile
+RUN bun install --ignore-scripts
 COPY --from=prune /app/out/full/ .
 
 FROM base AS runtime
 COPY --from=prune /app/out/json/ .
-RUN bun install --production
+RUN bun install --ignore-scripts
 COPY --from=build /app/services/mcp/src ./services/mcp/src
 COPY --from=build /app/packages/sdk/src ./packages/sdk/src
 COPY --from=build /app/packages/sandbox-docker/src ./packages/sandbox-docker/src

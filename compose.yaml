@@ -27,15 +27,15 @@ services:
     container_name: lab-opencode
     ports:
       - "3002:3000"
-    environment:
-      MCP_SERVERS: '{"lab-containers":{"type":"http","url":"http://mcp:3000/mcp"}}'
+    volumes:
+      - ./opencode.json:/root/.config/opencode/opencode.json:ro
     depends_on:
       - postgres
       - mcp
 
   mcp:
     build:
-      context: ../..
+      context: .
       dockerfile: services/mcp/Dockerfile
     container_name: lab-mcp
     volumes:
