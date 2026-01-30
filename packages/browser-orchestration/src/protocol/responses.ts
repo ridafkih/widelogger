@@ -35,9 +35,7 @@ export type ErrorResponse = z.infer<typeof ErrorResponse>;
 
 export const FrameResponse = z.object({
   type: z.literal("frame"),
-  sessionId: z.string().uuid(),
   data: z.string(),
-  timestamp: z.number(),
 });
 export type FrameResponse = z.infer<typeof FrameResponse>;
 
@@ -54,6 +52,11 @@ export const PongResponse = z.object({
   type: z.literal("pong"),
 });
 export type PongResponse = z.infer<typeof PongResponse>;
+
+export const UrlResponse = z.object({
+  url: z.string().nullable(),
+});
+export type UrlResponse = z.infer<typeof UrlResponse>;
 
 export const DaemonResponse = z.discriminatedUnion("type", [
   StartedResponse,

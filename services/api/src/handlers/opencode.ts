@@ -138,7 +138,7 @@ export async function handleOpenCodeProxy(request: Request, url: URL): Promise<R
     headers: forwardHeaders,
     body,
     ...(body ? { duplex: "half" } : {}),
-  } as RequestInit);
+  });
 
   if (isSseResponse(path, proxyResponse)) {
     return buildSseResponse(proxyResponse);

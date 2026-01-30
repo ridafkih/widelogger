@@ -6,7 +6,6 @@ import { eq } from "drizzle-orm";
 
 import type { RouteHandler } from "../../../utils/route-handler";
 import { publisher } from "../../../publisher";
-import { initializeSessionContainers } from "../../../session-initializer";
 
 const GET: RouteHandler = async (_request, params) => {
   const projectSessions = await db
@@ -16,7 +15,7 @@ const GET: RouteHandler = async (_request, params) => {
   return Response.json(projectSessions);
 };
 
-const POST: RouteHandler = async (_request, params) => {
+const POST: RouteHandler = async (_request, params, context) => {
   const { projectId } = params;
 
   const containerDefinitions = await db
@@ -66,7 +65,7 @@ const POST: RouteHandler = async (_request, params) => {
 
   publisher.publishSnapshot("sessionContainers", { uuid: session.id }, containerRows);
 
-  initializeSessionContainers(session.id, projectId).catch((error) => {
+  context.initializeSessionContainers(session.id, projectId).catch((error) => {
     console.error(`Background session initialization failed for ${session.id}:`, error);
   });
 

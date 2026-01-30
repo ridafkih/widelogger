@@ -5,7 +5,6 @@ import { eq } from "drizzle-orm";
 import { DockerClient } from "@lab/sandbox-docker";
 import { proxyManager, isProxyInitialized } from "../../proxy";
 import { publisher } from "../../publisher";
-import { forceStopBrowser } from "../../browser/handlers";
 
 import type { RouteHandler } from "../../utils/route-handler";
 
@@ -64,7 +63,7 @@ const PATCH: RouteHandler = async (request, params) => {
   return Response.json(updated);
 };
 
-const DELETE: RouteHandler = async (_request, params) => {
+const DELETE: RouteHandler = async (_request, params, context) => {
   const { sessionId } = params;
 
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId));
@@ -89,7 +88,7 @@ const DELETE: RouteHandler = async (_request, params) => {
 
   const networkName = `lab-${sessionId}`;
 
-  await forceStopBrowser(sessionId);
+  await context.browserService.forceStopBrowser(sessionId);
 
   if (isProxyInitialized()) {
     try {

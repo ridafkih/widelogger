@@ -5,7 +5,6 @@
     "packages": [
       "applications/*",
       "packages/*",
-      "packages/multiplayer/*",
       "services/*"
     ]
   },

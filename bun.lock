@@ -17,7 +17,7 @@
         "@lab/client": "workspace:*",
         "@lab/multiplayer-channels": "workspace:*",
         "@lab/multiplayer-client": "workspace:*",
-        "@lab/multiplayer-shared": "workspace:*",
+        "@lab/multiplayer-sdk": "workspace:*",
         "@lab/ui": "workspace:*",
         "@opencode-ai/sdk": "^1.1.41",
         "@pierre/diffs": "^1.0.9",
@@ -105,18 +105,18 @@
       "name": "@lab/multiplayer-channels",
       "version": "0.1.0",
       "dependencies": {
-        "@lab/multiplayer-shared": "workspace:*",
+        "@lab/multiplayer-sdk": "workspace:*",
         "zod": "^3.24.2",
       },
       "devDependencies": {
         "typescript": "^5",
       },
     },
-    "packages/multiplayer/client": {
+    "packages/multiplayer-client": {
       "name": "@lab/multiplayer-client",
       "version": "0.1.0",
       "dependencies": {
-        "@lab/multiplayer-shared": "workspace:*",
+        "@lab/multiplayer-sdk": "workspace:*",
         "jotai": "^2.12.3",
         "jotai-family": "^1.0.1",
         "zod": "^3.24.2",
@@ -131,11 +131,23 @@
         "react": "^19",
       },
     },
-    "packages/multiplayer/server": {
+    "packages/multiplayer-sdk": {
+      "name": "@lab/multiplayer-sdk",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "^3.25.46",
+      },
+      "devDependencies": {
+        "oxfmt": "0.27.0",
+        "oxlint": "1.42.0",
+        "typescript": "^5",
+      },
+    },
+    "packages/multiplayer-server": {
       "name": "@lab/multiplayer-server",
       "version": "0.1.0",
       "dependencies": {
-        "@lab/multiplayer-shared": "workspace:*",
+        "@lab/multiplayer-sdk": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "^1.2.15",
@@ -146,18 +158,6 @@
       },
       "peerDependencies": {
         "bun-types": "*",
-      },
-    },
-    "packages/multiplayer/shared": {
-      "name": "@lab/multiplayer-shared",
-      "version": "0.1.0",
-      "dependencies": {
-        "zod": "^3.25.46",
-      },
-      "devDependencies": {
-        "oxfmt": "0.27.0",
-        "oxlint": "1.42.0",
-        "typescript": "^5",
       },
     },
     "packages/sandbox-docker": {
@@ -210,8 +210,8 @@
         "@lab/browser-orchestration": "workspace:*",
         "@lab/database": "workspace:*",
         "@lab/multiplayer-channels": "workspace:*",
+        "@lab/multiplayer-sdk": "workspace:*",
         "@lab/multiplayer-server": "workspace:*",
-        "@lab/multiplayer-shared": "workspace:*",
         "@lab/sandbox-docker": "workspace:*",
         "@opencode-ai/sdk": "^1.1.41",
         "drizzle-orm": "^0.38.0",
@@ -455,11 +455,11 @@
 
     "@lab/multiplayer-channels": ["@lab/multiplayer-channels@workspace:packages/multiplayer-channels"],
 
-    "@lab/multiplayer-client": ["@lab/multiplayer-client@workspace:packages/multiplayer/client"],
+    "@lab/multiplayer-client": ["@lab/multiplayer-client@workspace:packages/multiplayer-client"],
 
-    "@lab/multiplayer-server": ["@lab/multiplayer-server@workspace:packages/multiplayer/server"],
+    "@lab/multiplayer-sdk": ["@lab/multiplayer-sdk@workspace:packages/multiplayer-sdk"],
 
-    "@lab/multiplayer-shared": ["@lab/multiplayer-shared@workspace:packages/multiplayer/shared"],
+    "@lab/multiplayer-server": ["@lab/multiplayer-server@workspace:packages/multiplayer-server"],
 
     "@lab/sandbox-docker": ["@lab/sandbox-docker@workspace:packages/sandbox-docker"],
 
