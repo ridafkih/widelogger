@@ -19,6 +19,7 @@ const context: RouteContext = { daemonManager };
 
 Bun.serve({
   port: config.apiPort,
+  idleTimeout: 30,
   async fetch(request) {
     const match = router.match(request);
 

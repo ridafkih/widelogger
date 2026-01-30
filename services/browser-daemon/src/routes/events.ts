@@ -19,7 +19,7 @@ export const GET: RouteHandler = (_request, _params, context) => {
 
       state.pingInterval = setInterval(() => {
         send(JSON.stringify({ type: "ping", timestamp: Date.now() }));
-      }, 15000);
+      }, 5000);
 
       send(JSON.stringify({ type: "connected", timestamp: Date.now() }));
     },
