@@ -36,49 +36,65 @@ export interface DaemonManager {
   start(sessionId: string): Promise<StartResult>;
   stop(sessionId: string): StopResult;
   getSession(sessionId: string): DaemonSession | null;
+  getOrRecoverSession(sessionId: string): DaemonSession | null;
   getAllSessions(): DaemonSession[];
   isRunning(sessionId: string): boolean;
   isReady(sessionId: string): boolean;
 }
 
 export function createDaemonManager(config: DaemonManagerConfig): DaemonManager {
-  const activeSessions = new Map<string, { port: number; ready: boolean }>();
+  const activeSessions = new Map<string, number>(); // sessionId -> port
   const daemonProcesses = new Map<string, Subprocess>();
   let nextStreamPort = config.baseStreamPort + 1;
+
+  const allocatePort = (): number => nextStreamPort++;
+
+  const recoverSession = (sessionId: string): DaemonSession | null => {
+    try {
+      const streamPortPath = getStreamPortFile(sessionId);
+      if (!existsSync(streamPortPath)) {
+        console.debug(`[DaemonManager] Cannot recover ${sessionId}: no stream port file`);
+        return null;
+      }
+
+      const port = parseInt(readFileSync(streamPortPath, "utf-8").trim(), 10);
+      if (isNaN(port)) {
+        console.debug(`[DaemonManager] Cannot recover ${sessionId}: invalid port in file`);
+        return null;
+      }
+
+      if (!agentIsDaemonRunning(sessionId)) {
+        console.debug(`[DaemonManager] Cannot recover ${sessionId}: daemon not running`);
+        cleanupSocket(sessionId);
+        return null;
+      }
+
+      activeSessions.set(sessionId, port);
+      if (port >= nextStreamPort) {
+        nextStreamPort = port + 1;
+      }
+
+      console.log(`[DaemonManager] Recovered: ${sessionId} on port ${port}`);
+      return { sessionId, port, ready: agentIsDaemonRunning(sessionId) };
+    } catch (error) {
+      console.warn(`[DaemonManager] Failed to recover ${sessionId}:`, error);
+      return null;
+    }
+  };
 
   const initializeFromExistingDaemons = (): void => {
     const socketDir = getSocketDir();
     if (!existsSync(socketDir)) return;
 
     const files = readdirSync(socketDir);
-    const streamFiles = files.filter((f) => f.endsWith(".stream"));
+    const streamFiles = files.filter((file) => file.endsWith(".stream"));
 
     for (const streamFile of streamFiles) {
       const sessionId = streamFile.replace(".stream", "");
       if (sessionId === "default") continue;
-
-      try {
-        const streamPortPath = getStreamPortFile(sessionId);
-        if (!existsSync(streamPortPath)) continue;
-
-        const port = parseInt(readFileSync(streamPortPath, "utf-8").trim(), 10);
-        if (isNaN(port)) continue;
-
-        if (agentIsDaemonRunning(sessionId)) {
-          activeSessions.set(sessionId, { port, ready: true });
-          if (port >= nextStreamPort) {
-            nextStreamPort = port + 1;
-          }
-        } else {
-          cleanupSocket(sessionId);
-        }
-      } catch {
-        // Ignore errors reading files
-      }
+      recoverSession(sessionId);
     }
   };
-
-  const allocatePort = (): number => nextStreamPort++;
 
   const killDaemonProcess = (sessionId: string): boolean => {
     const subprocess = daemonProcesses.get(sessionId);
@@ -110,34 +126,18 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
     }
   };
 
-  const pollUntilReady = async (sessionId: string, port: number): Promise<void> => {
-    for (let i = 0; i < 50; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      if (agentIsDaemonRunning(sessionId)) {
-        const session = activeSessions.get(sessionId);
-        if (session) {
-          session.ready = true;
-          console.log(`[DaemonManager] Ready: ${sessionId} on port ${port}`);
-        }
-        return;
-      }
-    }
-    console.error(`[DaemonManager] Timeout waiting for ${sessionId} to become ready`);
-    activeSessions.delete(sessionId);
-  };
-
   // Initialize on creation
   initializeFromExistingDaemons();
 
   return {
     async start(sessionId: string): Promise<StartResult> {
-      const existing = activeSessions.get(sessionId);
-      if (existing) {
-        return { type: "already_running", sessionId, port: existing.port, ready: existing.ready };
+      const existingPort = activeSessions.get(sessionId);
+      if (existingPort !== undefined) {
+        return { type: "already_running", sessionId, port: existingPort, ready: agentIsDaemonRunning(sessionId) };
       }
 
       const port = allocatePort();
-      activeSessions.set(sessionId, { port, ready: false });
+      activeSessions.set(sessionId, port);
 
       const daemonPath = require.resolve("agent-browser/dist/daemon.js");
 
@@ -170,8 +170,6 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
         activeSessions.delete(sessionId);
       });
 
-      pollUntilReady(sessionId, port);
-
       console.log(`[DaemonManager] Starting: ${sessionId} on port ${port}`);
       return { type: "started", sessionId, port, ready: false };
     },
@@ -190,16 +188,20 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
     },
 
     getSession(sessionId: string): DaemonSession | null {
-      const session = activeSessions.get(sessionId);
-      if (!session) return null;
-      return { sessionId, port: session.port, ready: session.ready };
+      const port = activeSessions.get(sessionId);
+      if (port === undefined) return null;
+      return { sessionId, port, ready: agentIsDaemonRunning(sessionId) };
+    },
+
+    getOrRecoverSession(sessionId: string): DaemonSession | null {
+      return this.getSession(sessionId) ?? recoverSession(sessionId);
     },
 
     getAllSessions(): DaemonSession[] {
-      return [...activeSessions.entries()].map(([sessionId, { port, ready }]) => ({
+      return [...activeSessions.entries()].map(([sessionId, port]) => ({
         sessionId,
         port,
-        ready,
+        ready: agentIsDaemonRunning(sessionId),
       }));
     },
 
@@ -208,7 +210,7 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
     },
 
     isReady(sessionId: string): boolean {
-      return activeSessions.get(sessionId)?.ready ?? false;
+      return activeSessions.has(sessionId) && agentIsDaemonRunning(sessionId);
     },
   };
 }

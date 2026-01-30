@@ -49,6 +49,13 @@ export const createBrowserService = async (
   ) => {
     if (frameReceivers.has(sessionId)) return;
 
+    const status = await daemonController.getStatus(sessionId);
+    if (!status?.running) {
+      console.warn(`[FrameReceiver] Daemon not running for ${sessionId}, resetting state`);
+      await stateStore.setCurrentState(sessionId, "stopped", { streamPort: null });
+      return;
+    }
+
     await daemonController.launch(sessionId);
 
     const receiver = createFrameReceiver(
