@@ -2,7 +2,7 @@ import { sessionNotFound, validationFailed } from "../types/errors";
 import {
   type BrowserSessionState,
   type DesiredState,
-  type ActualState,
+  type CurrentState,
   BrowserSessionState as BrowserSessionStateSchema,
 } from "../types/schema";
 
@@ -17,9 +17,9 @@ export interface StateStore {
   getState(sessionId: string): Promise<BrowserSessionState | null>;
   setState(state: BrowserSessionState): Promise<void>;
   setDesiredState(sessionId: string, desiredState: DesiredState): Promise<BrowserSessionState>;
-  setActualState(
+  setCurrentState(
     sessionId: string,
-    actualState: ActualState,
+    currentState: CurrentState,
     options?: StateStoreOptions,
   ): Promise<BrowserSessionState>;
   transitionState(
@@ -59,7 +59,7 @@ export const createInMemoryStateStore = (): StateStore => {
       : {
           sessionId,
           desiredState,
-          actualState: "stopped",
+          currentState: "stopped",
           streamPort: null,
           lastUrl: null,
           errorMessage: null,
@@ -73,9 +73,9 @@ export const createInMemoryStateStore = (): StateStore => {
     return state;
   };
 
-  const setActualState = async (
+  const setCurrentState = async (
     sessionId: string,
-    actualState: ActualState,
+    currentState: CurrentState,
     options: StateStoreOptions = {},
   ): Promise<BrowserSessionState> => {
     const existing = sessions.get(sessionId);
@@ -86,7 +86,7 @@ export const createInMemoryStateStore = (): StateStore => {
     const now = new Date();
     const state: BrowserSessionState = {
       ...existing,
-      actualState,
+      currentState,
       updatedAt: now,
       ...(options.streamPort !== undefined && { streamPort: options.streamPort }),
       ...(options.errorMessage !== undefined && { errorMessage: options.errorMessage }),
@@ -155,7 +155,7 @@ export const createInMemoryStateStore = (): StateStore => {
     getState,
     setState,
     setDesiredState,
-    setActualState,
+    setCurrentState,
     transitionState,
     getAllSessions,
     deleteSession,

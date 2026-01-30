@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type ActualState, type DesiredState } from "./schema";
+import { type CurrentState, type DesiredState } from "./schema";
 
 export const Action = z.enum([
   "StartDaemon",
@@ -10,7 +10,7 @@ export const Action = z.enum([
 ]);
 export type Action = z.infer<typeof Action>;
 
-const VALID_TRANSITIONS: Record<ActualState, ActualState[]> = {
+const VALID_TRANSITIONS: Record<CurrentState, CurrentState[]> = {
   pending: ["starting", "stopped"],
   stopped: ["starting"],
   starting: ["running", "error", "stopped"],
@@ -19,7 +19,7 @@ const VALID_TRANSITIONS: Record<ActualState, ActualState[]> = {
   error: ["starting", "stopped"],
 };
 
-export const isValidTransition = (from: ActualState, to: ActualState): boolean => {
+export const isValidTransition = (from: CurrentState, to: CurrentState): boolean => {
   if (from === to) return true;
   const validTargets = VALID_TRANSITIONS[from];
   return validTargets.includes(to);
@@ -27,7 +27,7 @@ export const isValidTransition = (from: ActualState, to: ActualState): boolean =
 
 export const computeRequiredAction = (
   desired: DesiredState,
-  actual: ActualState,
+  actual: CurrentState,
 ): Action => {
   if (desired === "running") {
     switch (actual) {
@@ -63,9 +63,9 @@ export const computeRequiredAction = (
 };
 
 export const computeNextState = (
-  current: ActualState,
+  current: CurrentState,
   action: Action,
-): ActualState | null => {
+): CurrentState | null => {
   switch (action) {
     case "StartDaemon":
       if (current === "stopped" || current === "error") return "starting";

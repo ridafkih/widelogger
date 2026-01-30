@@ -60,7 +60,7 @@ type ContainerInfo = {
 
 type BrowserStreamState = {
   desiredState: "running" | "stopped";
-  actualState: "pending" | "starting" | "running" | "stopping" | "stopped" | "error";
+  currentState: "pending" | "starting" | "running" | "stopping" | "stopped" | "error";
   streamPort?: number;
   errorMessage?: string;
 };
@@ -84,13 +84,12 @@ type SessionViewProps = {
   links?: Link[];
   containers?: ContainerInfo[];
   labSessionId: string;
-  wsBaseUrl?: string;
   browserStreamState?: BrowserStreamState;
 };
 
 const defaultBrowserStreamState: BrowserStreamState = {
   desiredState: "stopped",
-  actualState: "stopped",
+  currentState: "stopped",
 };
 
 export function SessionView({
@@ -112,7 +111,6 @@ export function SessionView({
   links = [],
   containers = [],
   labSessionId,
-  wsBaseUrl,
   browserStreamState = defaultBrowserStreamState,
 }: SessionViewProps) {
   const [inputValue, setInputValue] = useState("");
@@ -340,20 +338,13 @@ export function SessionView({
           })()}
         </TabsContent>
         <TabsContent value="stream" className="flex-1 flex flex-col min-h-0">
-          {wsBaseUrl ? (
-            <div className="flex-1 flex items-center justify-center p-4">
-              <BrowserStream
-                sessionId={labSessionId}
-                wsBaseUrl={wsBaseUrl}
-                className="w-full max-w-4xl"
-                browserStreamState={browserStreamState}
-              />
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <Copy muted>Stream not configured</Copy>
-            </div>
-          )}
+          <div className="flex-1 flex items-center justify-center p-4">
+            <BrowserStream
+              sessionId={labSessionId}
+              className="w-full max-w-4xl"
+              browserStreamState={browserStreamState}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </>

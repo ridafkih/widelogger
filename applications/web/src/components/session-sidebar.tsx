@@ -56,14 +56,13 @@ type ContainerInfo = {
 
 type BrowserStreamState = {
   desiredState: "running" | "stopped";
-  actualState: "pending" | "starting" | "running" | "stopping" | "stopped" | "error";
+  currentState: "pending" | "starting" | "running" | "stopping" | "stopped" | "error";
   streamPort?: number;
   errorMessage?: string;
 };
 
 type SessionSidebarProps = {
   sessionId: string;
-  wsBaseUrl: string;
   browserStreamState?: BrowserStreamState;
   branches: Branch[];
   tasks: Task[];
@@ -76,12 +75,11 @@ type SessionSidebarProps = {
 
 const defaultBrowserStreamState: BrowserStreamState = {
   desiredState: "stopped",
-  actualState: "stopped",
+  currentState: "stopped",
 };
 
 export function SessionSidebar({
   sessionId,
-  wsBaseUrl,
   browserStreamState = defaultBrowserStreamState,
   branches,
   tasks,
@@ -219,11 +217,7 @@ export function SessionSidebar({
           <Copy size="xs" muted className="px-2 py-1.5 block">
             Stream
           </Copy>
-          <BrowserStream
-            sessionId={sessionId}
-            wsBaseUrl={wsBaseUrl}
-            browserStreamState={browserStreamState}
-          />
+          <BrowserStream sessionId={sessionId} browserStreamState={browserStreamState} />
         </div>
 
         <LogsSection sources={logSources} />

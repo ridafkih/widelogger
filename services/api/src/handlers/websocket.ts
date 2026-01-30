@@ -13,7 +13,12 @@ import { containerPorts } from "@lab/database/schema/container-ports";
 import { eq } from "drizzle-orm";
 import { publisher } from "../publisher";
 import { opencode } from "../opencode";
-import { getBrowserSnapshot, subscribeBrowser, unsubscribeBrowser } from "../browser/handlers";
+import {
+  getBrowserSnapshot,
+  subscribeBrowser,
+  unsubscribeBrowser,
+  getCachedFrame,
+} from "../browser/handlers";
 
 const PROXY_BASE_DOMAIN = process.env.PROXY_BASE_DOMAIN;
 
@@ -180,7 +185,17 @@ const handlers: SchemaHandlers<Schema, Auth> = {
     },
   },
   sessionBrowserFrames: {
-    getSnapshot: async () => ({ lastFrame: null, timestamp: null }),
+    getSnapshot: async ({ params }) => {
+      const frame = await getCachedFrame(params.uuid);
+      if (!frame) return { lastFrame: null, timestamp: null };
+      try {
+        const parsed = JSON.parse(frame).data;
+        return { lastFrame: parsed, timestamp: Date.now() };
+      } catch (error) {
+        console.error("[sessionBrowserFrames] Failed to parse cached frame:", error);
+        return { lastFrame: null, timestamp: null };
+      }
+    },
   },
   sessionBrowserInput: {
     getSnapshot: async () => ({}),

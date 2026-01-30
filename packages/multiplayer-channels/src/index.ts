@@ -173,7 +173,7 @@ export const schema = defineSchema({
       path: "session/{uuid}/browser-state",
       snapshot: z.object({
         desiredState: z.enum(["running", "stopped"]),
-        actualState: z.enum([
+        currentState: z.enum([
           "pending",
           "stopped",
           "starting",
@@ -184,10 +184,10 @@ export const schema = defineSchema({
         streamPort: z.number().optional(),
         errorMessage: z.string().optional(),
       }),
-      default: { desiredState: "stopped", actualState: "stopped" },
+      default: { desiredState: "stopped", currentState: "stopped" },
       delta: z.object({
         desiredState: z.enum(["running", "stopped"]).optional(),
-        actualState: z
+        currentState: z
           .enum(["pending", "stopped", "starting", "running", "stopping", "error"])
           .optional(),
         streamPort: z.number().optional(),

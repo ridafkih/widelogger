@@ -10,7 +10,7 @@ export const browserSessions = pgTable("browser_sessions", {
   })
     .notNull()
     .default("stopped"),
-  actualState: text("actual_state", {
+  currentState: text("current_state", {
     enum: ["pending", "starting", "running", "stopping", "stopped", "error"],
   })
     .notNull()
@@ -28,4 +28,4 @@ export type BrowserSession = typeof browserSessions.$inferSelect;
 export type NewBrowserSession = typeof browserSessions.$inferInsert;
 
 export type DesiredState = "running" | "stopped";
-export type ActualState = "pending" | "starting" | "running" | "stopping" | "stopped" | "error";
+export type CurrentState = "pending" | "starting" | "running" | "stopping" | "stopped" | "error";

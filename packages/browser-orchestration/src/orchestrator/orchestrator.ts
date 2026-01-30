@@ -44,7 +44,21 @@ export const createOrchestrator = (
 
   const notifyError = (error: unknown) => errorHandlers.forEach((h) => h(error));
 
-  const reconciler = createReconciler(stateStore, daemonController, portAllocator, {
+  const notifyingStateStore: StateStore = {
+    ...stateStore,
+    async setCurrentState(sessionId, currentState, options) {
+      const state = await stateStore.setCurrentState(sessionId, currentState, options);
+      notifyStateChange(sessionId, state);
+      return state;
+    },
+    async setDesiredState(sessionId, desiredState) {
+      const state = await stateStore.setDesiredState(sessionId, desiredState);
+      notifyStateChange(sessionId, state);
+      return state;
+    },
+  };
+
+  const reconciler = createReconciler(notifyingStateStore, daemonController, portAllocator, {
     maxRetries: config.maxRetries,
   });
 
@@ -59,13 +73,13 @@ export const createOrchestrator = (
     const subscriberCount = sessions.getSubscriberCount(sessionId);
 
     if (!dbState) {
-      return { sessionId, desiredState: "stopped", actualState: "stopped", subscriberCount };
+      return { sessionId, desiredState: "stopped", currentState: "stopped", subscriberCount };
     }
 
     return {
       sessionId: dbState.sessionId,
       desiredState: dbState.desiredState,
-      actualState: dbState.actualState,
+      currentState: dbState.currentState,
       streamPort: dbState.streamPort ?? undefined,
       errorMessage: dbState.errorMessage ?? undefined,
       subscriberCount,
@@ -78,8 +92,7 @@ export const createOrchestrator = (
       const count = sessions.incrementSubscribers(sessionId);
 
       if (count === 1) {
-        const dbState = await stateStore.setDesiredState(sessionId, "running");
-        notifyStateChange(sessionId, dbState);
+        await notifyingStateStore.setDesiredState(sessionId, "running");
       }
 
       return getSnapshot(sessionId);
@@ -94,8 +107,7 @@ export const createOrchestrator = (
           async () => {
             if (sessions.getSubscriberCount(sessionId) === 0) {
               sessions.resetSession(sessionId);
-              const dbState = await stateStore.setDesiredState(sessionId, "stopped");
-              notifyStateChange(sessionId, dbState);
+              await notifyingStateStore.setDesiredState(sessionId, "stopped");
             }
           },
           config.cleanupDelayMs,

@@ -1,0 +1,1 @@
+ALTER TABLE "browser_sessions" RENAME COLUMN "actual_state" TO "current_state";

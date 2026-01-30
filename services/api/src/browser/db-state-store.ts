@@ -6,7 +6,7 @@ import {
   type StateStoreOptions,
   type BrowserSessionState,
   type DesiredState,
-  type ActualState,
+  type CurrentState,
   BrowserSessionState as BrowserSessionStateSchema,
   sessionNotFound,
   validationFailed,
@@ -15,7 +15,7 @@ import {
 const mapDbToState = (session: typeof browserSessions.$inferSelect): BrowserSessionState => ({
   sessionId: session.sessionId,
   desiredState: session.desiredState as DesiredState,
-  actualState: session.actualState as ActualState,
+  currentState: session.currentState as CurrentState,
   streamPort: session.streamPort,
   lastUrl: session.lastUrl,
   errorMessage: session.errorMessage,
@@ -47,7 +47,7 @@ export const createDbStateStore = (): StateStore => {
       .values({
         sessionId: state.sessionId,
         desiredState: state.desiredState,
-        actualState: state.actualState,
+        currentState: state.currentState,
         streamPort: state.streamPort,
         lastUrl: state.lastUrl,
         errorMessage: state.errorMessage,
@@ -58,7 +58,7 @@ export const createDbStateStore = (): StateStore => {
         target: browserSessions.sessionId,
         set: {
           desiredState: state.desiredState,
-          actualState: state.actualState,
+          currentState: state.currentState,
           streamPort: state.streamPort,
           lastUrl: state.lastUrl,
           errorMessage: state.errorMessage,
@@ -78,7 +78,7 @@ export const createDbStateStore = (): StateStore => {
       .values({
         sessionId,
         desiredState,
-        actualState: "stopped",
+        currentState: "stopped",
       })
       .onConflictDoUpdate({
         target: browserSessions.sessionId,
@@ -96,13 +96,13 @@ export const createDbStateStore = (): StateStore => {
     return mapDbToState(session);
   };
 
-  const setActualState = async (
+  const setCurrentState = async (
     sessionId: string,
-    actualState: ActualState,
+    currentState: CurrentState,
     options: StateStoreOptions = {},
   ): Promise<BrowserSessionState> => {
     const updateData: Record<string, unknown> = {
-      actualState,
+      currentState,
       updatedAt: new Date(),
     };
 
@@ -194,7 +194,7 @@ export const createDbStateStore = (): StateStore => {
     getState,
     setState,
     setDesiredState,
-    setActualState,
+    setCurrentState,
     transitionState,
     getAllSessions,
     deleteSession,

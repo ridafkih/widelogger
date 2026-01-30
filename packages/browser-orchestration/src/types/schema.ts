@@ -3,7 +3,7 @@ import { z } from "zod";
 export const DesiredState = z.enum(["running", "stopped"]);
 export type DesiredState = z.infer<typeof DesiredState>;
 
-export const ActualState = z.enum([
+export const CurrentState = z.enum([
   "pending",
   "stopped",
   "starting",
@@ -11,12 +11,12 @@ export const ActualState = z.enum([
   "stopping",
   "error",
 ]);
-export type ActualState = z.infer<typeof ActualState>;
+export type CurrentState = z.infer<typeof CurrentState>;
 
 export const BrowserSessionState = z.object({
   sessionId: z.string().uuid(),
   desiredState: DesiredState,
-  actualState: ActualState,
+  currentState: CurrentState,
   streamPort: z.number().int().positive().nullable(),
   lastUrl: z.string().nullable(),
   errorMessage: z.string().nullable(),
@@ -37,7 +37,7 @@ export type DaemonStatus = z.infer<typeof DaemonStatus>;
 export const SessionSnapshot = z.object({
   sessionId: z.string().uuid(),
   desiredState: DesiredState,
-  actualState: ActualState,
+  currentState: CurrentState,
   streamPort: z.number().int().positive().optional(),
   errorMessage: z.string().optional(),
   subscriberCount: z.number().int().nonnegative(),

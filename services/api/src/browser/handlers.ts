@@ -7,6 +7,7 @@ import {
 } from "@lab/browser-orchestration";
 import { createDbStateStore } from "./db-state-store";
 import { createHttpDaemonController } from "./daemon-controller";
+import { createFrameReceiver, type FrameReceiver } from "./frame-receiver";
 
 const BROWSER_API_URL = process.env.BROWSER_API_URL;
 if (!BROWSER_API_URL) {
@@ -19,6 +20,44 @@ const MAX_RETRIES = parseInt(process.env.MAX_DAEMON_RETRIES ?? "3", 10);
 
 const stateStore = createDbStateStore();
 const daemonController = createHttpDaemonController({ baseUrl: BROWSER_API_URL });
+
+const frameReceivers = new Map<string, FrameReceiver>();
+
+const connectFrameReceiver = (sessionId: string, port: number, orchestrator: Orchestrator) => {
+  if (frameReceivers.has(sessionId)) return;
+
+  const receiver = createFrameReceiver(
+    sessionId,
+    port,
+    (frame, timestamp) => {
+      orchestrator.setCachedFrame(sessionId, frame);
+      try {
+        const parsed = JSON.parse(frame);
+        publisher.publishEvent(
+          "sessionBrowserFrames",
+          { uuid: sessionId },
+          {
+            type: "frame" as const,
+            data: parsed.data,
+            timestamp,
+          },
+        );
+      } catch (error) {
+        console.error("[FrameReceiver] Failed to parse frame:", error);
+      }
+    },
+    () => frameReceivers.delete(sessionId),
+  );
+
+  frameReceivers.set(sessionId, receiver);
+};
+
+const disconnectFrameReceiver = (sessionId: string) => {
+  const receiver = frameReceivers.get(sessionId);
+  if (!receiver) return;
+  receiver.close();
+  frameReceivers.delete(sessionId);
+};
 
 const initializePortAllocator = async () => {
   const sessions = await stateStore.getAllSessions();
@@ -43,11 +82,17 @@ const createBrowserOrchestrator = async (): Promise<Orchestrator> => {
       { uuid: sessionId },
       {
         desiredState: state.desiredState,
-        actualState: state.actualState,
+        currentState: state.currentState,
         streamPort: state.streamPort ?? undefined,
         errorMessage: state.errorMessage ?? undefined,
       },
     );
+
+    if (state.currentState === "running" && state.streamPort) {
+      connectFrameReceiver(sessionId, state.streamPort, orchestrator);
+    } else {
+      disconnectFrameReceiver(sessionId);
+    }
   });
 
   orchestrator.onError((error: unknown) => {
@@ -69,7 +114,7 @@ export const getBrowserSnapshot = async (sessionId: string) => {
   const snapshot = await orchestrator.getSnapshot(sessionId);
   return {
     desiredState: snapshot.desiredState,
-    actualState: snapshot.actualState,
+    currentState: snapshot.currentState,
     streamPort: snapshot.streamPort,
     errorMessage: snapshot.errorMessage,
   };
@@ -90,19 +135,9 @@ export const forceStopBrowser = async (sessionId: string) => {
   await orchestrator.forceStop(sessionId);
 };
 
-export const launchBrowser = async (sessionId: string) => {
-  const orchestrator = await getOrchestrator();
-  await orchestrator.launchBrowser(sessionId);
-};
-
 export const getCachedFrame = async (sessionId: string) => {
   const orchestrator = await getOrchestrator();
   return orchestrator.getCachedFrame(sessionId);
-};
-
-export const setCachedFrame = async (sessionId: string, frame: string) => {
-  const orchestrator = await getOrchestrator();
-  orchestrator.setCachedFrame(sessionId, frame);
 };
 
 export const startReconciler = async () => {
