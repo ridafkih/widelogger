@@ -42,6 +42,7 @@ import {
 } from "@/components/review";
 import { modelGroups, defaultModel } from "@/placeholder/models";
 import { Trash2 } from "lucide-react";
+import { useMultiplayer } from "@/lib/multiplayer";
 
 function SessionItem({ session }: { session: Session }) {
   const { selected, select } = useSplitPane();
@@ -402,9 +403,9 @@ function ConversationView({
 }
 
 function SessionInfoView({ session, onDelete }: { session: Session; onDelete: () => void }) {
-  const { data: sessionDetails } = useSession(session.id);
-  const containers = sessionDetails?.containers ?? [];
-  const links = containers.flatMap((container) => container.urls ?? []);
+  const { useChannel } = useMultiplayer();
+  const containers = useChannel("sessionContainers", { uuid: session.id });
+  const links = containers.flatMap((container) => container.urls.map(({ url }) => url));
 
   return (
     <SessionInfoPane.Root>
@@ -421,16 +422,13 @@ function SessionInfoView({ session, onDelete }: { session: Session; onDelete: ()
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Containers</SessionInfoPane.SectionHeader>
         {containers.length > 0 ? (
-          containers.map((container) => {
-            const imageName = container.info?.image?.split("/").pop()?.split(":")[0] ?? "container";
-            return (
-              <SessionInfoPane.ContainerItem
-                key={container.id}
-                name={imageName}
-                status={container.status}
-              />
-            );
-          })
+          containers.map((container) => (
+            <SessionInfoPane.ContainerItem
+              key={container.id}
+              name={container.name}
+              status={container.status}
+            />
+          ))
         ) : (
           <SessionInfoPane.Empty>No containers</SessionInfoPane.Empty>
         )}

@@ -97,12 +97,13 @@ function SessionInfoPaneContainerItem({
   status,
 }: {
   name: string;
-  status: "running" | "stopped" | "starting";
+  status: "running" | "stopped" | "starting" | "error";
 }) {
   const statusColor = {
     running: "success",
     stopped: "error",
     starting: "warning",
+    error: "error",
   } as const;
 
   return (
