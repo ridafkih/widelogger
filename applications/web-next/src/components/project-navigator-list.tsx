@@ -4,8 +4,6 @@ import { createContext, use, useState, type ReactNode } from "react";
 import { ChevronRight, Box, Plus } from "lucide-react";
 import { tv } from "tailwind-variants";
 import { IconButton } from "./icon-button";
-import { Avatar } from "./avatar";
-import { StatusIcon, type SessionStatus } from "./status-icon";
 
 const ProjectNavigatorContext = createContext<{
   expanded: boolean;
@@ -15,17 +13,17 @@ const ProjectNavigatorContext = createContext<{
 function useProjectNavigator() {
   const context = use(ProjectNavigatorContext);
   if (!context) {
-    throw new Error("ProjectNavigator components must be used within ProjectNavigatorList");
+    throw new Error("ProjectNavigator components must be used within ProjectNavigator.List");
   }
   return context;
 }
 
-type ProjectNavigatorListProps = {
+type ListProps = {
   children: ReactNode;
   defaultExpanded?: boolean;
 };
 
-function ProjectNavigatorList({ children, defaultExpanded = true }: ProjectNavigatorListProps) {
+function ProjectNavigatorList({ children, defaultExpanded = true }: ListProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -46,21 +44,19 @@ const chevron = tv({
   },
 });
 
-type ProjectNavigatorListHeaderProps = {
-  name: string;
-  count: number;
+type HeaderProps = {
+  children: ReactNode;
   onAdd?: () => void;
 };
 
-function ProjectNavigatorListHeader({ name, count, onAdd }: ProjectNavigatorListHeaderProps) {
+function ProjectNavigatorHeader({ children, onAdd }: HeaderProps) {
   const { expanded, toggle } = useProjectNavigator();
 
   return (
     <div onClick={toggle} className="group flex items-center gap-2 px-3 py-1.5 bg-bg-muted">
       <ChevronRight size={14} className={chevron({ expanded })} />
       <Box size={14} className="text-text-secondary shrink-0" />
-      <span className="truncate">{name}</span>
-      <span className="text-text-muted">{count}</span>
+      {children}
       <IconButton
         onClick={(event) => {
           event.stopPropagation();
@@ -72,6 +68,14 @@ function ProjectNavigatorListHeader({ name, count, onAdd }: ProjectNavigatorList
       </IconButton>
     </div>
   );
+}
+
+function ProjectNavigatorHeaderName({ children }: { children: ReactNode }) {
+  return <span className="truncate">{children}</span>;
+}
+
+function ProjectNavigatorHeaderCount({ children }: { children: ReactNode }) {
+  return <span className="text-text-muted">{children}</span>;
 }
 
 const listItem = tv({
@@ -87,44 +91,40 @@ const listItem = tv({
   },
 });
 
-type ProjectNavigatorListItemProps = {
-  status: SessionStatus;
-  hash: string;
-  title: string;
-  lastMessage: string;
-  avatarUrl?: string;
+type ItemProps = {
+  children: ReactNode;
   selected?: boolean;
   onClick?: () => void;
 };
 
-function ProjectNavigatorListItem({
-  status,
-  hash,
-  title,
-  lastMessage,
-  avatarUrl,
-  selected,
-  onClick,
-}: ProjectNavigatorListItemProps) {
+function ProjectNavigatorItem({ children, selected, onClick }: ItemProps) {
   const { expanded } = useProjectNavigator();
 
   if (!expanded) return null;
 
   return (
     <div onClick={onClick} className={listItem({ selected })}>
-      <StatusIcon status={status} />
-      <span className="text-text-muted text-xs">{hash}</span>
-      <span className="text-text truncate">{title}</span>
-      <span className="text-text-muted truncate max-w-[50%] ml-auto">{lastMessage}</span>
-      <Avatar src={avatarUrl} />
+      {children}
     </div>
   );
 }
 
+function ProjectNavigatorItemTitle({ children }: { children: ReactNode }) {
+  return <span className="text-text truncate">{children}</span>;
+}
+
+function ProjectNavigatorItemDescription({ children }: { children: ReactNode }) {
+  return <span className="text-text-muted truncate max-w-[50%] ml-auto">{children}</span>;
+}
+
 const ProjectNavigator = {
   List: ProjectNavigatorList,
-  Header: ProjectNavigatorListHeader,
-  Item: ProjectNavigatorListItem,
+  Header: ProjectNavigatorHeader,
+  HeaderName: ProjectNavigatorHeaderName,
+  HeaderCount: ProjectNavigatorHeaderCount,
+  Item: ProjectNavigatorItem,
+  ItemTitle: ProjectNavigatorItemTitle,
+  ItemDescription: ProjectNavigatorItemDescription,
 };
 
-export { ProjectNavigator };
+export { ProjectNavigator, useProjectNavigator };

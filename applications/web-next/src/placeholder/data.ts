@@ -29,12 +29,19 @@ export const mockProjects: Project[] = [
         title: "Add auth flow",
         lastMessage: "Implementing OAuth provider...",
       },
-      { id: "d4e5f6", status: "complete", title: "Fix navbar bug", lastMessage: "Done" },
+      {
+        id: "d4e5f6",
+        status: "complete",
+        title: "Fix navbar bug",
+        lastMessage:
+          "Fixed click handler not closing dropdown on outside click by adding useClickOutside hook",
+      },
       {
         id: "x7y8z9",
         status: "complete",
         title: "Add dark mode",
-        lastMessage: "Theme toggle working",
+        lastMessage:
+          "Added CSS variables for theme colors and a toggle component that persists preference to localStorage",
       },
       {
         id: "m1n2o3",
@@ -64,7 +71,8 @@ export const mockProjects: Project[] = [
         id: "s7t8u9",
         status: "complete",
         title: "Fix memory leak",
-        lastMessage: "Deployed to prod",
+        lastMessage:
+          "Identified unbounded cache growth in connection pool, added TTL and max size limits",
       },
     ],
   },
@@ -78,12 +86,17 @@ export const mockProjects: Project[] = [
         title: "Push notifications",
         lastMessage: "Setting up Firebase...",
       },
-      { id: "y4z5a6", status: "complete", title: "Biometric auth", lastMessage: "Face ID working" },
+      {
+        id: "y4z5a6",
+        status: "complete",
+        title: "Biometric auth",
+        lastMessage: "Integrated LocalAuthentication framework with fallback to passcode entry",
+      },
       {
         id: "b7c8d9",
         status: "complete",
         title: "Offline mode",
-        lastMessage: "SQLite sync complete",
+        lastMessage: "Implemented offline-first architecture with SQLite and background sync queue",
       },
       {
         id: "e0f1g2",
@@ -103,7 +116,13 @@ export const mockProjects: Project[] = [
     id: "4",
     name: "data-pipeline",
     sessions: [
-      { id: "k6l7m8", status: "complete", title: "ETL optimization", lastMessage: "3x faster now" },
+      {
+        id: "k6l7m8",
+        status: "complete",
+        title: "ETL optimization",
+        lastMessage:
+          "Parallelized transformation steps and added batch processing, reduced runtime from 45min to 12min",
+      },
       {
         id: "n9o0p1",
         status: "running",
@@ -173,7 +192,12 @@ export const mockProjects: Project[] = [
         title: "API reference",
         lastMessage: "Generating from OpenAPI...",
       },
-      { id: "u2v3w4", status: "complete", title: "Quick start guide", lastMessage: "Published" },
+      {
+        id: "u2v3w4",
+        status: "complete",
+        title: "Quick start guide",
+        lastMessage: "Created step-by-step tutorial with code samples for common use cases",
+      },
       {
         id: "x5y6z7",
         status: "complete",

@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import { Nav } from "@/components/nav";
+import { Chat } from "@/components/chat";
 import { Orchestration, useOrchestration } from "@/components/orchestration";
 import { ProjectNavigator } from "@/components/project-navigator-list";
+import { Avatar } from "@/components/avatar";
+import { StatusIcon } from "@/components/status-icon";
+import { Hash } from "@/components/hash";
 import { TextAreaGroup } from "@/components/textarea-group";
 import { SplitPane, useSplitPane } from "@/components/split-pane";
 import { navItems, mockProjects } from "@/placeholder/data";
+import { mockMessages } from "@/placeholder/messages";
 import { modelGroups, defaultModel } from "@/placeholder/models";
 
 function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
@@ -17,21 +22,24 @@ function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
       <div className="flex flex-col gap-px bg-border py-pb">
         {mockProjects.map((project) => (
           <ProjectNavigator.List key={project.id}>
-            <ProjectNavigator.Header
-              name={project.name}
-              count={project.sessions.length}
-              onAdd={() => console.log("Add session to", project.name)}
-            />
+            <ProjectNavigator.Header onAdd={() => console.log("Add session to", project.name)}>
+              <ProjectNavigator.HeaderName>{project.name}</ProjectNavigator.HeaderName>
+              <ProjectNavigator.HeaderCount>{project.sessions.length}</ProjectNavigator.HeaderCount>
+            </ProjectNavigator.Header>
             {project.sessions.map((session) => (
               <ProjectNavigator.Item
                 key={session.id}
-                status={session.status}
-                hash={session.id}
-                title={session.title}
-                lastMessage={session.lastMessage}
                 selected={selected === session.id}
                 onClick={() => select(session.id)}
-              />
+              >
+                <StatusIcon status={session.status} />
+                <Hash>{session.id}</Hash>
+                <ProjectNavigator.ItemTitle>{session.title}</ProjectNavigator.ItemTitle>
+                <ProjectNavigator.ItemDescription>
+                  {session.lastMessage}
+                </ProjectNavigator.ItemDescription>
+                <Avatar />
+              </ProjectNavigator.Item>
             ))}
           </ProjectNavigator.List>
         ))}
@@ -41,7 +49,9 @@ function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
   );
 }
 
-function ConversationPreview({ sessionId }: { sessionId: string | null }) {
+function ConversationView({ sessionId }: { sessionId: string | null }) {
+  const [model, setModel] = useState(defaultModel);
+
   if (!sessionId) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted">
@@ -50,17 +60,35 @@ function ConversationPreview({ sessionId }: { sessionId: string | null }) {
     );
   }
 
-  const session = mockProjects
-    .flatMap((project) => project.sessions)
-    .find((session) => session.id === sessionId);
+  const project = mockProjects.find((project) =>
+    project.sessions.some((session) => session.id === sessionId),
+  );
+
+  if (!project) return null;
+
+  const session = project.sessions.find((session) => session.id === sessionId);
 
   if (!session) return null;
 
+  const messages = mockMessages[sessionId] || [];
+
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-medium">{session.title}</h2>
-      <p className="text-text-muted mt-1">{session.lastMessage}</p>
-    </div>
+    <Chat.Provider key={sessionId} initialMessages={messages}>
+      <Chat.Frame>
+        <Chat.Header>
+          <StatusIcon status={session.status} />
+          <Chat.HeaderBreadcrumb>
+            <Chat.HeaderProject>{project.name}</Chat.HeaderProject>
+            <Chat.HeaderDivider />
+            <Chat.HeaderTitle>{session.title}</Chat.HeaderTitle>
+          </Chat.HeaderBreadcrumb>
+        </Chat.Header>
+        <Chat.Messages />
+        <Chat.Input>
+          <TextAreaGroup.ModelSelector value={model} groups={modelGroups} onChange={setModel} />
+        </Chat.Input>
+      </Chat.Frame>
+    </Chat.Provider>
   );
 }
 
@@ -120,7 +148,7 @@ export default function Page() {
             </ProjectNavigatorView>
           </SplitPane.Primary>
           <SplitPane.Secondary>
-            {(selected) => <ConversationPreview sessionId={selected} />}
+            {(selected) => <ConversationView sessionId={selected} />}
           </SplitPane.Secondary>
         </SplitPane.Root>
       </div>
