@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, type ReactNode, type InputHTMLAttributes } from "react";
+import {
+  useState,
+  type ReactNode,
+  type InputHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
 import { tv } from "tailwind-variants";
 import { Eye, EyeOff, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -120,6 +125,14 @@ function FormInputCheckbox({ checked = false, onChange, label }: FormInputCheckb
   );
 }
 
+function FormInputTextarea({
+  className,
+  rows = 3,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { rows?: number }) {
+  return <textarea rows={rows} className={cn(input(), "resize-none", className)} {...props} />;
+}
+
 function FormInputHelper({ children }: { children: ReactNode }) {
   return <p className="text-xs text-text-muted">{children}</p>;
 }
@@ -128,9 +141,63 @@ function FormInputError({ children }: { children: ReactNode }) {
   return <p className="text-xs text-red-500">{children}</p>;
 }
 
+const inputGroup = tv({
+  slots: {
+    root: "flex items-center border border-border bg-bg focus-within:border-text-muted",
+    input:
+      "flex-1 min-w-0 px-2 py-1 text-xs bg-transparent text-text placeholder:text-text-muted focus:outline-none",
+    separator: "text-xs text-text-muted select-none",
+    action: "px-1.5 text-text-muted hover:text-text shrink-0",
+  },
+});
+
+function InputGroupRoot({ children, className }: { children: ReactNode; className?: string }) {
+  const styles = inputGroup();
+  return <div className={cn(styles.root(), className)}>{children}</div>;
+}
+
+function InputGroupInput({
+  className,
+  type = "text",
+  ...props
+}: InputHTMLAttributes<HTMLInputElement>) {
+  const styles = inputGroup();
+  return <input type={type} className={cn(styles.input(), className)} {...props} />;
+}
+
+function InputGroupSeparator({ children }: { children: ReactNode }) {
+  const styles = inputGroup();
+  return <span className={styles.separator()}>{children}</span>;
+}
+
+function InputGroupAction({
+  children,
+  onClick,
+  className,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  className?: string;
+}) {
+  const styles = inputGroup();
+  return (
+    <button type="button" onClick={onClick} className={cn(styles.action(), className)}>
+      {children}
+    </button>
+  );
+}
+
+const InputGroup = {
+  Root: InputGroupRoot,
+  Input: InputGroupInput,
+  Separator: InputGroupSeparator,
+  Action: InputGroupAction,
+};
+
 const FormInput = {
   Label: FormInputLabel,
   Text: FormInputText,
+  Textarea: FormInputTextarea,
   Password: FormInputPassword,
   Select: FormInputSelect,
   Checkbox: FormInputCheckbox,
@@ -138,4 +205,4 @@ const FormInput = {
   Error: FormInputError,
 };
 
-export { FormInput };
+export { FormInput, InputGroup };

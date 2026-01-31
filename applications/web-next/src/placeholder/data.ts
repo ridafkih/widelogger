@@ -8,7 +8,6 @@ type NavItem = {
 
 export const navItems: NavItem[] = [
   { label: "Projects", href: "/projects", view: "projects" },
-  { label: "Team", href: "/team" },
   { label: "Settings", href: "/settings", view: "settings" },
 ];
 
@@ -19,9 +18,18 @@ type Session = {
   lastMessage: string;
 };
 
+type Container = {
+  id: string;
+  image: string;
+  ports: number[];
+  env: Record<string, string>;
+};
+
 type Project = {
   id: string;
   name: string;
+  systemPrompt?: string;
+  containers: Container[];
   sessions: Session[];
 };
 
@@ -156,6 +164,21 @@ export const mockProjects: Project[] = [
   {
     id: "1",
     name: "opencode-web",
+    systemPrompt: "A Next.js web application for the OpenCode platform.",
+    containers: [
+      {
+        id: "c1",
+        image: "node:20-alpine",
+        ports: [3000],
+        env: { NODE_ENV: "development" },
+      },
+      {
+        id: "c2",
+        image: "postgres:16",
+        ports: [5432],
+        env: { POSTGRES_DB: "opencode", POSTGRES_USER: "admin" },
+      },
+    ],
     sessions: [
       {
         id: "a1b2c3",
@@ -188,6 +211,21 @@ export const mockProjects: Project[] = [
   {
     id: "2",
     name: "api-service",
+    systemPrompt: "RESTful API service with rate limiting and caching.",
+    containers: [
+      {
+        id: "c3",
+        image: "golang:1.22-alpine",
+        ports: [8080],
+        env: { GIN_MODE: "debug" },
+      },
+      {
+        id: "c4",
+        image: "redis:7-alpine",
+        ports: [6379],
+        env: {},
+      },
+    ],
     sessions: [
       {
         id: "g7h8i9",
@@ -213,6 +251,7 @@ export const mockProjects: Project[] = [
   {
     id: "3",
     name: "mobile-app",
+    containers: [],
     sessions: [
       {
         id: "v1w2x3",
@@ -249,6 +288,14 @@ export const mockProjects: Project[] = [
   {
     id: "4",
     name: "data-pipeline",
+    containers: [
+      {
+        id: "c5",
+        image: "python:3.12-slim",
+        ports: [],
+        env: { PYTHONUNBUFFERED: "1" },
+      },
+    ],
     sessions: [
       {
         id: "k6l7m8",
@@ -269,6 +316,7 @@ export const mockProjects: Project[] = [
   {
     id: "5",
     name: "design-system",
+    containers: [],
     sessions: [
       {
         id: "t5u6v7",
@@ -301,6 +349,7 @@ export const mockProjects: Project[] = [
   {
     id: "6",
     name: "infra-terraform",
+    containers: [],
     sessions: [
       {
         id: "l3m4n5",
@@ -319,6 +368,7 @@ export const mockProjects: Project[] = [
   {
     id: "7",
     name: "docs-site",
+    containers: [],
     sessions: [
       {
         id: "r9s0t1",
@@ -344,6 +394,7 @@ export const mockProjects: Project[] = [
   {
     id: "8",
     name: "analytics-dashboard",
+    containers: [],
     sessions: [
       {
         id: "d1e2f3",
