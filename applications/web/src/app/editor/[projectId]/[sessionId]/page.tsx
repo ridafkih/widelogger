@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { SessionView } from "@/components/session-view";
 import { SessionSidebar } from "@/components/session-sidebar";
@@ -30,6 +30,22 @@ export default function SessionPage() {
 
   const [localReviewFiles, setLocalReviewFiles] = useState<ReviewableFile[]>([]);
   const reviewFiles = changedFiles.length > 0 ? changedFiles : localReviewFiles;
+
+  // Track if we've already processed the initial message
+  const initialMessageSentRef = useRef(false);
+
+  // Check for initial message from orchestration page
+  useEffect(() => {
+    if (state.status !== "active" || initialMessageSentRef.current || isSending) return;
+
+    const key = `initial-message-${sessionId}`;
+    const initialMessage = sessionStorage.getItem(key);
+    if (initialMessage) {
+      sessionStorage.removeItem(key);
+      initialMessageSentRef.current = true;
+      sendMessage(initialMessage);
+    }
+  }, [sessionId, state.status, isSending, sendMessage]);
 
   const handleSendMessage = async (
     content: string,

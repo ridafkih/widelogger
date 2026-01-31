@@ -2,7 +2,7 @@ FROM ghcr.io/anomalyco/opencode
 
 USER root
 
-RUN apk add --no-cache nodejs npm gcompat && \
+RUN apk add --no-cache nodejs npm gcompat git && \
   npm install -g agent-browser@latest
 
 # Patch daemon.js to prevent spawning local daemons
