@@ -110,7 +110,7 @@ function ChatTabs({
 }
 
 function ChatTabList({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-px px-3 border-b border-border">{children}</div>;
+  return <div className="flex items-center gap-px px-0 border-b border-border">{children}</div>;
 }
 
 const tab = tv({
@@ -128,13 +128,15 @@ function ChatTabItem({ value, children }: { value: ChatTab; children: ReactNode 
   const isActive = state.active === value;
 
   return (
-    <button
-      type="button"
-      onClick={() => actions.setActive(value)}
-      className={tab({ active: isActive })}
-    >
-      {children}
-    </button>
+    <div className="px-1">
+      <button
+        type="button"
+        onClick={() => actions.setActive(value)}
+        className={tab({ active: isActive })}
+      >
+        {children}
+      </button>
+    </div>
   );
 }
 

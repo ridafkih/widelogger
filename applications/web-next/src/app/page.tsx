@@ -12,6 +12,7 @@ import { Hash } from "@/components/hash";
 import { TextAreaGroup } from "@/components/textarea-group";
 import { SplitPane, useSplitPane } from "@/components/split-pane";
 import { SessionInfoPane } from "@/components/session-info-pane";
+import { UrlBar } from "@/components/url-bar";
 import {
   navItems,
   mockProjects,
@@ -231,6 +232,44 @@ function ChatTabContent({ sessionId }: { sessionId: string }) {
   );
 }
 
+function FrameTabContent() {
+  const [isLoading, setIsLoading] = useState(false);
+  const frameUrl = "http://agent-playground:5173";
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1000);
+  };
+
+  return (
+    <div className="flex flex-1 flex-col min-h-0">
+      <UrlBar url={frameUrl} isLoading={isLoading} onRefresh={handleRefresh} />
+      <div className="flex-1 flex items-center justify-center text-text-muted">
+        Frame content coming soon
+      </div>
+    </div>
+  );
+}
+
+function StreamTabContent() {
+  const [isLoading, setIsLoading] = useState(false);
+  const streamUrl = "http://agent-playground:5173/stream";
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1000);
+  };
+
+  return (
+    <div className="flex flex-1 flex-col min-h-0">
+      <UrlBar url={streamUrl} isLoading={isLoading} onRefresh={handleRefresh} />
+      <div className="flex-1 flex items-center justify-center text-text-muted">
+        Stream content coming soon
+      </div>
+    </div>
+  );
+}
+
 function ConversationView({ sessionId }: { sessionId: string | null }) {
   const sessionData = useSessionData(sessionId);
 
@@ -269,14 +308,10 @@ function ConversationView({ sessionId }: { sessionId: string | null }) {
             <ReviewTabContent sessionId={sessionId!} />
           </Chat.TabContent>
           <Chat.TabContent value="frame">
-            <div className="flex-1 flex items-center justify-center text-text-muted">
-              Frame coming soon
-            </div>
+            <FrameTabContent />
           </Chat.TabContent>
           <Chat.TabContent value="stream">
-            <div className="flex-1 flex items-center justify-center text-text-muted">
-              Stream coming soon
-            </div>
+            <StreamTabContent />
           </Chat.TabContent>
         </Chat.Tabs>
       </Chat.Frame>
