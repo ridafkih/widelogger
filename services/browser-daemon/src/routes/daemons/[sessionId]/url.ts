@@ -1,4 +1,4 @@
-import { UrlResponse } from "@lab/browser-protocol";
+import type { UrlResponse } from "@lab/browser-protocol";
 import type { RouteHandler } from "../../../utils/route-handler";
 import { notFoundResponse } from "../../../shared/http";
 
@@ -11,6 +11,6 @@ export const GET: RouteHandler = (_request, params, { daemonManager }) => {
   }
 
   const url = daemonManager.getCurrentUrl(sessionId);
-  const response: typeof UrlResponse._type = { url };
+  const response: UrlResponse = { url };
   return Response.json(response);
 };

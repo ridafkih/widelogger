@@ -69,11 +69,11 @@ services:
       dockerfile: services/api/Dockerfile
     container_name: lab-api
     ports:
-      - "3001:3001"
+      - "4000:4000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      API_PORT: "3001"
+      API_PORT: "4000"
       DATABASE_URL: "postgresql://lab:lab@postgres:5432/lab"
       OPENCODE_URL: "http://opencode:3000"
       CADDY_ADMIN_URL: "http://caddy:2019"

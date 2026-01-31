@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v3";
 import { defineChannel, defineSchema } from "./schema";
 
 const ReviewableFileSchema = z.object({
@@ -258,4 +258,4 @@ export const schema = defineSchema({
 });
 
 export type AppSchema = typeof schema;
-export type ClientMessage = z.infer<typeof schema.clientMessages>;
+export type ClientMessage = z.output<typeof schema.clientMessages>;

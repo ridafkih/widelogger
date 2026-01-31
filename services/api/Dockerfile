@@ -26,6 +26,6 @@ COPY --from=build /app/packages/multiplayer-sdk/src ./packages/multiplayer-sdk/s
 COPY --from=build /app/packages/browser-protocol/src ./packages/browser-protocol/src
 
 ENV NODE_ENV=production
-EXPOSE 3001
+EXPOSE 4000
 
 CMD ["bun", "run", "--cwd", "services/api", "start"]

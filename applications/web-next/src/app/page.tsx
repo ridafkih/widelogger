@@ -15,6 +15,7 @@ import { Hash } from "@/components/hash";
 import { TextAreaGroup } from "@/components/textarea-group";
 import { SplitPane, useSplitPane } from "@/components/split-pane";
 import { SessionInfoPane } from "@/components/session-info-pane";
+import { BrowserStream } from "@/components/browser-stream";
 import { UrlBar } from "@/components/url-bar";
 import {
   navItems,
@@ -450,7 +451,7 @@ function SessionInfoView({ session, onDelete }: { session: Session; onDelete: ()
       </SessionInfoPane.Section>
 
       <SessionInfoPane.Stream>
-        <SessionInfoPane.StreamPlaceholder />
+        <BrowserStream sessionId={session.id} />
       </SessionInfoPane.Stream>
 
       <SessionInfoPane.Section>

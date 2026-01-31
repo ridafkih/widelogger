@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import type { z } from "zod/v3";
 
 export interface ChannelConfig<
   TPath extends string = string,
@@ -23,13 +23,11 @@ export interface Schema<
 
 export type SnapshotOf<T extends ChannelConfig> = z.infer<T["snapshot"]>;
 
-export type DeltaOf<T extends ChannelConfig> = T["delta"] extends z.ZodType
-  ? z.infer<T["delta"]>
-  : never;
+export type DeltaOf<T extends ChannelConfig> =
+  NonNullable<T["delta"]> extends z.ZodType ? z.infer<NonNullable<T["delta"]>> : never;
 
-export type EventOf<T extends ChannelConfig> = T["event"] extends z.ZodType
-  ? z.infer<T["event"]>
-  : never;
+export type EventOf<T extends ChannelConfig> =
+  NonNullable<T["event"]> extends z.ZodType ? z.infer<NonNullable<T["event"]>> : never;
 
 export type ClientMessageOf<S extends Schema> = z.infer<S["clientMessages"]>;
 

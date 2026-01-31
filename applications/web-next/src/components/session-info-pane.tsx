@@ -37,17 +37,6 @@ const row = tv({
   },
 });
 
-const statusDot = tv({
-  base: "w-1.5 h-1.5 rounded-full",
-  variants: {
-    status: {
-      running: "bg-green-500",
-      stopped: "bg-red-500",
-      starting: "bg-yellow-500",
-    },
-  },
-});
-
 function SessionInfoPaneRoot({ children }: { children?: ReactNode }) {
   return (
     <div className="flex flex-col gap-px bg-border h-full overflow-y-auto overflow-x-hidden min-w-0">
@@ -110,11 +99,16 @@ function SessionInfoPaneContainerItem({
   name: string;
   status: "running" | "stopped" | "starting";
 }) {
+  const statusColor = {
+    running: "success",
+    stopped: "error",
+    starting: "warning",
+  } as const;
+
   return (
     <div className={row({ interactive: true })}>
-      <Box size={12} className={text({ color: "muted" })} />
+      <Box size={12} className={text({ color: statusColor[status] })} />
       <span className="flex-1 truncate">{name}</span>
-      <span className={statusDot({ status })} />
     </div>
   );
 }

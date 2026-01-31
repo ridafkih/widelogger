@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useContext, useMemo } from "react";
+import { useEffect, useCallback, useContext, useMemo, useRef } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import type {
   ChannelConfig,
@@ -7,12 +7,24 @@ import type {
   ChannelName,
   PathOf,
   HasParams,
+  EventOf,
+  ClientMessageOf,
 } from "@lab/multiplayer-sdk";
 import { resolvePath, hasParams } from "@lab/multiplayer-sdk";
 import type { ConnectionManager } from "./connection";
 import { connectionStateAtom, channelStateFamily, type ChannelState } from "./atoms";
 import { MultiplayerContext } from "./provider";
-import type { z } from "zod";
+
+function parseSnapshot<C extends ChannelConfig>(channel: C, data: unknown): SnapshotOf<C> {
+  return channel.snapshot.parse(data);
+}
+
+function parseEvent<C extends ChannelConfig>(channel: C, data: unknown): EventOf<C> {
+  if (!channel.event) {
+    throw new Error("Channel does not have events");
+  }
+  return channel.event.parse(data);
+}
 
 type ChannelParams<S extends Schema, K extends ChannelName<S>> =
   HasParams<PathOf<S["channels"][K]>> extends true ? { uuid: string } : undefined;
@@ -28,7 +40,7 @@ function toStringRecord(obj: Record<string, unknown>): Record<string, string> {
 }
 
 export function createHooks<S extends Schema>(schema: S) {
-  type ClientMessage = z.infer<S["clientMessages"]>;
+  type ClientMessage = ClientMessageOf<S>;
 
   function useConnection(): ConnectionManager {
     const context = useContext(MultiplayerContext);
@@ -43,7 +55,7 @@ export function createHooks<S extends Schema>(schema: S) {
 
     const send = useCallback(
       (sessionId: string, message: ClientMessage) => {
-        connection.sendMessage({ sessionId, ...message });
+        connection.sendMessage(Object.assign({ sessionId }, message));
       },
       [connection],
     );
@@ -95,16 +107,10 @@ export function createHooks<S extends Schema>(schema: S) {
       }, [resolvedPath, setState]);
 
       if (state.status === "connected") {
-        return channel.snapshot.parse(state.data);
+        return parseSnapshot(channel, state.data);
       }
       return channel.default;
     }
-
-    type EventOf<C> = C extends { event: infer E }
-      ? E extends z.ZodType
-        ? z.infer<E>
-        : never
-      : never;
 
     function useChannelEvent<K extends ChannelName<S>>(
       channelName: K,
@@ -121,7 +127,8 @@ export function createHooks<S extends Schema>(schema: S) {
         throw new Error(`Channel "${channelName}" does not have events`);
       }
 
-      const eventSchema = channel.event;
+      const callbackRef = useRef(callback);
+      callbackRef.current = callback;
 
       const resolvedPath = useMemo(() => {
         if (hasParams(channel.path)) {
@@ -133,15 +140,15 @@ export function createHooks<S extends Schema>(schema: S) {
       useEffect(() => {
         const unsubscribe = connection.subscribe(resolvedPath, (message) => {
           if (message.type === "event") {
-            const parsed = eventSchema.parse(message.data);
-            callback(parsed);
+            const parsed = parseEvent(channel, message.data);
+            callbackRef.current(parsed);
           }
         });
 
         return () => {
           unsubscribe();
         };
-      }, [resolvedPath, callback, eventSchema]);
+      }, [resolvedPath]);
     }
 
     return {

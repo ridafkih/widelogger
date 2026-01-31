@@ -9,6 +9,15 @@ import type {
 } from "@lab/multiplayer-sdk";
 import { parsePath } from "@lab/multiplayer-sdk";
 
+function safeParseClientMessage<S extends Schema>(
+  schema: S,
+  data: unknown,
+): { success: true; data: ClientMessageOf<S> } | { success: false } {
+  const result = schema.clientMessages.safeParse(data);
+  if (!result.success) return { success: false };
+  return { success: true, data: result.data };
+}
+
 function hasType(value: object): value is { type: unknown } {
   return "type" in value;
 }
@@ -183,7 +192,7 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
   async function handleMessage(ws: WS, data: unknown): Promise<void> {
     if (!options.onMessage) return;
 
-    const parseResult = schema.clientMessages.safeParse(data);
+    const parseResult = safeParseClientMessage(schema, data);
     if (!parseResult.success) return;
 
     const context: MessageContext<TAuth> = {
