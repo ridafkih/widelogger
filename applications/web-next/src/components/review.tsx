@@ -491,11 +491,16 @@ function ReviewPreviewView({ children }: { children?: ReactNode }) {
 
 function ReviewPreviewHeader({ children }: { children?: ReactNode }) {
   const { state, actions } = useReview();
-  if (!state.browser.selectedPath) return null;
+  const hasSelection = !!state.browser.selectedPath;
 
   return (
-    <div className={fileHeader({ className: "col-start-1 row-start-1" })}>
-      <span className="flex-1 truncate text-xs text-text-muted ">{state.browser.selectedPath}</span>
+    <div
+      className={fileHeader({ className: "col-start-1 row-start-1" })}
+      style={{ visibility: hasSelection ? "visible" : "hidden" }}
+    >
+      <span className="flex-1 truncate text-xs text-text-muted ">
+        {state.browser.selectedPath ?? "\u00A0"}
+      </span>
       {children}
       <button
         type="button"
@@ -655,9 +660,7 @@ function TreeNodes({ nodes, depth }: { nodes: FileNode[]; depth: number }) {
                   {isLoading ? (
                     <Loader2 className="size-3 animate-spin" />
                   ) : (
-                    <ChevronRight
-                      className={cn("size-3", isExpanded && "rotate-90")}
-                    />
+                    <ChevronRight className={cn("size-3", isExpanded && "rotate-90")} />
                   )}
                 </span>
               )}

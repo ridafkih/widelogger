@@ -22,8 +22,14 @@ import {
   mockFileTreeContents,
   mockFileContents,
 } from "@/placeholder/data";
-import { useProjects, useSessions, useSession } from "@/lib/hooks";
-import type { Project } from "@lab/client";
+import {
+  useProjects,
+  useSessions,
+  useSession,
+  useCreateSession,
+  useDeleteSession,
+} from "@/lib/hooks";
+import type { Project, Session } from "@lab/client";
 import { mockPartsMessages } from "@/placeholder/parts";
 import {
   Review,
@@ -33,29 +39,43 @@ import {
   type FileNode,
 } from "@/components/review";
 import { modelGroups, defaultModel } from "@/placeholder/models";
+import { Trash2 } from "lucide-react";
+
+function SessionItem({ session }: { session: Session }) {
+  const { selected, select } = useSplitPane();
+
+  if (session.status === "creating") {
+    return <ProjectNavigator.ItemSkeleton />;
+  }
+
+  return (
+    <ProjectNavigator.Item selected={selected === session.id} onClick={() => select(session.id)}>
+      <StatusIcon status={session.status as "running" | "idle" | "complete"} />
+      <Hash>{session.id.slice(0, 6)}</Hash>
+      <ProjectNavigator.ItemTitle>Session</ProjectNavigator.ItemTitle>
+      <ProjectNavigator.ItemDescription>{session.status}</ProjectNavigator.ItemDescription>
+      <Avatar />
+    </ProjectNavigator.Item>
+  );
+}
 
 function ProjectSessionsList({ project }: { project: Project }) {
-  const { selected, select } = useSplitPane();
+  const { select } = useSplitPane();
   const { data: sessions } = useSessions(project.id);
+  const createSession = useCreateSession();
+
+  const handleAddSession = () => {
+    createSession(project.id, select);
+  };
 
   return (
     <ProjectNavigator.List>
-      <ProjectNavigator.Header onAdd={() => console.log("Add session to", project.name)}>
+      <ProjectNavigator.Header onAdd={handleAddSession}>
         <ProjectNavigator.HeaderName>{project.name}</ProjectNavigator.HeaderName>
         <ProjectNavigator.HeaderCount>{sessions?.length ?? 0}</ProjectNavigator.HeaderCount>
       </ProjectNavigator.Header>
       {sessions?.map((session) => (
-        <ProjectNavigator.Item
-          key={session.id}
-          selected={selected === session.id}
-          onClick={() => select(session.id)}
-        >
-          <StatusIcon status={session.status as "running" | "idle" | "complete"} />
-          <Hash>{session.id.slice(0, 6)}</Hash>
-          <ProjectNavigator.ItemTitle>Session</ProjectNavigator.ItemTitle>
-          <ProjectNavigator.ItemDescription>{session.status}</ProjectNavigator.ItemDescription>
-          <Avatar />
-        </ProjectNavigator.Item>
+        <SessionItem key={session.id} session={session} />
       ))}
     </ProjectNavigator.List>
   );
@@ -307,6 +327,7 @@ function StreamTabContent() {
 
 function ConversationView({ sessionId }: { sessionId: string | null }) {
   const { isLoading, data: sessionData } = useSessionData(sessionId);
+  const isCreating = sessionId?.startsWith("temp-");
 
   if (!sessionId) {
     return (
@@ -316,7 +337,7 @@ function ConversationView({ sessionId }: { sessionId: string | null }) {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isCreating) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted">Loading...</div>
     );
@@ -368,7 +389,7 @@ function ConversationView({ sessionId }: { sessionId: string | null }) {
   );
 }
 
-function SessionInfoView() {
+function SessionInfoView({ session, onDelete }: { session: Session; onDelete: () => void }) {
   return (
     <SessionInfoPane.Root>
       <SessionInfoPane.Section>
@@ -406,6 +427,13 @@ function SessionInfoView() {
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Logs</SessionInfoPane.SectionHeader>
         <SessionInfoPane.Empty>No logs</SessionInfoPane.Empty>
+      </SessionInfoPane.Section>
+
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Controls</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.ActionButton icon={Trash2} variant="danger" onClick={onDelete}>
+          Delete
+        </SessionInfoPane.ActionButton>
       </SessionInfoPane.Section>
     </SessionInfoPane.Root>
   );
@@ -466,6 +494,14 @@ function SettingsView() {
 
 function AppViewContent({ selected }: { selected: string | null }) {
   const { view } = useAppView();
+  const { select } = useSplitPane();
+  const { data: sessionData } = useSessionData(selected);
+  const deleteSession = useDeleteSession();
+
+  const handleDelete = () => {
+    if (!sessionData) return;
+    deleteSession(sessionData.session, () => select(null));
+  };
 
   if (view === "settings") {
     return <SettingsView />;
@@ -477,7 +513,11 @@ function AppViewContent({ selected }: { selected: string | null }) {
         <ConversationView sessionId={selected} />
       </div>
       <div className="min-w-64 shrink-0">
-        <SessionInfoView />
+        {sessionData ? (
+          <SessionInfoView session={sessionData.session} onDelete={handleDelete} />
+        ) : (
+          <SessionInfoPane.Root />
+        )}
       </div>
     </div>
   );

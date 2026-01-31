@@ -1,5 +1,6 @@
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { api } from "./api";
+import type { Session } from "@lab/client";
 
 export function useProjects() {
   return useSWR("projects", () => api.projects.list());
@@ -20,8 +21,70 @@ export function useSessions(projectId: string | null) {
 }
 
 export function useSession(sessionId: string | null) {
-  return useSWR(sessionId ? `session-${sessionId}` : null, () => {
+  const isTemp = sessionId?.startsWith("temp-");
+  return useSWR(sessionId && !isTemp ? `session-${sessionId}` : null, () => {
     if (!sessionId) return null;
     return api.sessions.get(sessionId);
   });
+}
+
+export function useCreateSession() {
+  const { mutate } = useSWRConfig();
+
+  return async (projectId: string, onCreated: (sessionId: string) => void) => {
+    const tempId = `temp-${Date.now()}`;
+    const tempSession: Session = {
+      id: tempId,
+      projectId,
+      opencodeSessionId: null,
+      status: "creating",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const cacheKey = `sessions-${projectId}`;
+
+    mutate(cacheKey, (current: Session[] = []) => [...current, tempSession], false);
+    onCreated(tempId);
+
+    try {
+      const realSession = await api.sessions.create(projectId);
+
+      mutate(
+        cacheKey,
+        (current: Session[] = []) =>
+          current.map((session) => (session.id === tempId ? realSession : session)),
+        false,
+      );
+
+      onCreated(realSession.id);
+    } catch {
+      mutate(
+        cacheKey,
+        (current: Session[] = []) => current.filter((session) => session.id !== tempId),
+        false,
+      );
+    }
+  };
+}
+
+export function useDeleteSession() {
+  const { mutate } = useSWRConfig();
+
+  return async (session: Session, onDeleted: () => void) => {
+    const cacheKey = `sessions-${session.projectId}`;
+
+    mutate(
+      cacheKey,
+      (current: Session[] = []) => current.filter((existing) => existing.id !== session.id),
+      false,
+    );
+    onDeleted();
+
+    try {
+      await api.sessions.delete(session.id);
+    } catch {
+      mutate(cacheKey);
+    }
+  };
 }

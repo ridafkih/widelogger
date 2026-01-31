@@ -26,11 +26,19 @@ export interface CreateContainerInput {
   ports?: number[];
 }
 
+export interface SessionContainer {
+  id: string;
+  name: string;
+  status: "starting" | "running" | "stopped";
+  urls: string[];
+}
+
 export interface Session {
   id: string;
   projectId: string;
   opencodeSessionId: string | null;
   status: string;
+  containers?: SessionContainer[];
   createdAt: string;
   updatedAt: string;
 }

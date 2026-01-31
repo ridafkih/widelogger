@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ExternalLink, Box, GitBranch, FileText, CheckSquare } from "lucide-react";
+import { ExternalLink, Box, GitBranch, FileText, CheckSquare, type LucideIcon } from "lucide-react";
 import { tv } from "tailwind-variants";
 import { cn } from "@/lib/cn";
 
@@ -48,7 +48,7 @@ const statusDot = tv({
   },
 });
 
-function SessionInfoPaneRoot({ children }: { children: ReactNode }) {
+function SessionInfoPaneRoot({ children }: { children?: ReactNode }) {
   return (
     <div className="flex flex-col gap-px bg-border h-full overflow-y-auto">
       {children}
@@ -184,6 +184,38 @@ function SessionInfoPaneLogItem({
   return <div className={text({ color: levelColor[level], font: "mono" })}>{message}</div>;
 }
 
+const actionButton = tv({
+  base: "flex items-center justify-center gap-1.5 px-2 py-1 text-xs border w-full",
+  variants: {
+    variant: {
+      default: "border-border bg-bg-muted text-text hover:bg-bg-hover",
+      danger: "border-red-500/30 text-red-500 hover:bg-red-500/10",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
+function SessionInfoPaneActionButton({
+  icon: Icon,
+  children,
+  onClick,
+  variant = "default",
+}: {
+  icon: LucideIcon;
+  children: ReactNode;
+  onClick?: () => void;
+  variant?: "default" | "danger";
+}) {
+  return (
+    <button type="button" onClick={onClick} className={actionButton({ variant })}>
+      <Icon size={12} />
+      {children}
+    </button>
+  );
+}
+
 const SessionInfoPane = {
   Root: SessionInfoPaneRoot,
   Section: SessionInfoPaneSection,
@@ -197,6 +229,7 @@ const SessionInfoPane = {
   Stream: SessionInfoPaneStream,
   StreamPlaceholder: SessionInfoPaneStreamPlaceholder,
   LogItem: SessionInfoPaneLogItem,
+  ActionButton: SessionInfoPaneActionButton,
 };
 
 export { SessionInfoPane };
