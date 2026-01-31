@@ -1,16 +1,24 @@
 "use client";
 
-import { BrowserCanvas } from "./browser-canvas";
+import { BrowserCanvas, useBrowserStream } from "./browser-canvas";
+import type { ReactNode } from "react";
 
-type BrowserStreamProps = {
+type BrowserStreamProviderProps = {
   sessionId: string;
+  children: ReactNode;
 };
 
-export function BrowserStream({ sessionId }: BrowserStreamProps) {
+export function BrowserStreamProvider({ sessionId, children }: BrowserStreamProviderProps) {
+  return <BrowserCanvas.Root sessionId={sessionId}>{children}</BrowserCanvas.Root>;
+}
+
+export function BrowserStreamView({ className }: { className?: string }) {
   return (
-    <BrowserCanvas.Root sessionId={sessionId}>
+    <>
       <BrowserCanvas.Placeholder />
-      <BrowserCanvas.View />
-    </BrowserCanvas.Root>
+      <BrowserCanvas.View className={className} />
+    </>
   );
 }
+
+export { useBrowserStream };

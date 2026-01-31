@@ -7,65 +7,26 @@ import {
   useCallback,
   createContext,
   use,
-  type RefObject,
   type ReactNode,
 } from "react";
 import { useMultiplayer } from "@/lib/multiplayer";
 import { useMultiplayerEnabled } from "@/app/providers";
 import { cn } from "@/lib/cn";
 
-function useCanvasStream(canvasRef: RefObject<HTMLCanvasElement | null>) {
-  const [hasFrame, setHasFrame] = useState(false);
-  const hasFrameRef = useRef(false);
-
-  const drawFrame = useCallback(
-    (base64: string) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      fetch(`data:image/jpeg;base64,${base64}`)
-        .then((res) => res.blob())
-        .then((blob) => createImageBitmap(blob))
-        .then((bitmap) => {
-          if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-          }
-          ctx.drawImage(bitmap, 0, 0);
-          bitmap.close();
-          if (!hasFrameRef.current) {
-            hasFrameRef.current = true;
-            setHasFrame(true);
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to draw frame:", error);
-        });
-    },
-    [canvasRef],
-  );
-
-  return { hasFrame, drawFrame };
-}
-
 type BrowserCurrentState = "pending" | "stopped" | "starting" | "running" | "stopping" | "error";
 
-interface BrowserCanvasState {
-  hasFrame: boolean;
+interface BrowserStreamState {
+  bitmap: ImageBitmap | null;
   currentState: BrowserCurrentState;
   errorMessage?: string;
-  canvasRef: RefObject<HTMLCanvasElement | null>;
 }
 
-const BrowserCanvasContext = createContext<BrowserCanvasState | null>(null);
+const BrowserStreamContext = createContext<BrowserStreamState | null>(null);
 
-function useBrowserCanvas() {
-  const context = use(BrowserCanvasContext);
+function useBrowserStream() {
+  const context = use(BrowserStreamContext);
   if (!context) {
-    throw new Error("useBrowserCanvas must be used within BrowserCanvas.Root");
+    throw new Error("useBrowserStream must be used within BrowserCanvas.Root");
   }
   return context;
 }
@@ -77,47 +38,65 @@ interface RootProps {
 
 function BrowserCanvasRoot({ sessionId, children }: RootProps) {
   const isEnabled = useMultiplayerEnabled();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { hasFrame, drawFrame } = useCanvasStream(canvasRef);
+  const [bitmap, setBitmap] = useState<ImageBitmap | null>(null);
   const { useChannel, useChannelEvent } = useMultiplayer();
 
-  // Subscribe to browser state - this triggers the browser to start
   const browserState = useChannel("sessionBrowserState", { uuid: sessionId });
   const frameSnapshot = useChannel("sessionBrowserFrames", { uuid: sessionId });
 
+  const processFrame = useCallback((base64: string) => {
+    fetch(`data:image/jpeg;base64,${base64}`)
+      .then((res) => res.blob())
+      .then((blob) => createImageBitmap(blob))
+      .then((newBitmap) => {
+        setBitmap((prev) => {
+          prev?.close();
+          return newBitmap;
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to process frame:", error);
+      });
+  }, []);
+
   useEffect(() => {
     if (isEnabled && frameSnapshot.lastFrame) {
-      drawFrame(frameSnapshot.lastFrame);
+      processFrame(frameSnapshot.lastFrame);
     }
-  }, [isEnabled, frameSnapshot.lastFrame, drawFrame]);
+  }, [isEnabled, frameSnapshot.lastFrame, processFrame]);
 
   const handleFrameEvent = useCallback(
     (event: { type: "frame"; data: string; timestamp: number }) => {
-      drawFrame(event.data);
+      processFrame(event.data);
     },
-    [drawFrame],
+    [processFrame],
   );
 
   useChannelEvent("sessionBrowserFrames", handleFrameEvent, { uuid: sessionId });
 
+  useEffect(() => {
+    return () => {
+      bitmap?.close();
+    };
+  }, [bitmap]);
+
   return (
-    <BrowserCanvasContext
+    <BrowserStreamContext
       value={{
-        hasFrame: isEnabled && hasFrame,
+        bitmap: isEnabled ? bitmap : null,
         currentState: browserState.currentState,
         errorMessage: browserState.errorMessage ?? undefined,
-        canvasRef,
       }}
     >
       {children}
-    </BrowserCanvasContext>
+    </BrowserStreamContext>
   );
 }
 
 function BrowserCanvasPlaceholder({ children }: { children?: ReactNode }) {
-  const { hasFrame } = useBrowserCanvas();
+  const { bitmap } = useBrowserStream();
 
-  if (hasFrame) return null;
+  if (bitmap) return null;
 
   if (children) return children;
 
@@ -135,12 +114,27 @@ function BrowserCanvasPlaceholder({ children }: { children?: ReactNode }) {
 }
 
 function BrowserCanvasView({ className }: { className?: string }) {
-  const { hasFrame, canvasRef } = useBrowserCanvas();
+  const { bitmap } = useBrowserStream();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !bitmap) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+    }
+    ctx.drawImage(bitmap, 0, 0);
+  }, [bitmap]);
 
   return (
     <div
       className={cn("relative overflow-hidden", className ?? "aspect-video bg-black")}
-      style={{ display: hasFrame ? undefined : "none" }}
+      style={{ display: bitmap ? undefined : "none" }}
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-contain" />
     </div>
@@ -152,3 +146,5 @@ export const BrowserCanvas = {
   Placeholder: BrowserCanvasPlaceholder,
   View: BrowserCanvasView,
 };
+
+export { useBrowserStream };

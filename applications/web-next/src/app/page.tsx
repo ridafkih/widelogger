@@ -15,7 +15,7 @@ import { Hash } from "@/components/hash";
 import { TextAreaGroup } from "@/components/textarea-group";
 import { SplitPane, useSplitPane } from "@/components/split-pane";
 import { SessionInfoPane } from "@/components/session-info-pane";
-import { BrowserStream } from "@/components/browser-stream";
+import { BrowserStreamProvider, BrowserStreamView } from "@/components/browser-stream";
 import { UrlBar } from "@/components/url-bar";
 import {
   navItems,
@@ -296,15 +296,28 @@ function ChatTabContent({ messages }: { messages: MessageState[] }) {
   );
 }
 
-function FrameTabContent() {
+function FrameTabContent({ sessionId }: { sessionId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [key, setKey] = useState(0);
-  const frameUrl = "http://agent-playground:5173";
+  const { useChannel } = useMultiplayer();
+  const containers = useChannel("sessionContainers", { uuid: sessionId });
+  const links = containers.flatMap((container) => container.urls.map(({ url }) => url));
+  const frameUrl = links[0];
 
   const handleRefresh = () => {
     setIsLoading(true);
     setKey((key) => key + 1);
   };
+
+  if (!frameUrl) {
+    return (
+      <div className="flex flex-1 flex-col min-h-0">
+        <div className="flex-1 flex items-center justify-center p-4 bg-bg-muted">
+          <div className="text-text-muted text-sm">No container URL available</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
@@ -321,20 +334,11 @@ function FrameTabContent() {
 }
 
 function StreamTabContent() {
-  const [isLoading, setIsLoading] = useState(false);
-  const streamUrl = "http://agent-playground:5173/stream";
-
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
-  };
-
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      <UrlBar url={streamUrl} isLoading={isLoading} onRefresh={handleRefresh} />
       <div className="flex-1 flex items-center justify-center p-4 bg-bg-muted">
-        <div className="w-full max-w-2xl aspect-video bg-bg border border-border flex items-center justify-center text-text-muted text-sm">
-          Stream
+        <div className="w-full max-w-4xl">
+          <BrowserStreamView />
         </div>
       </div>
     </div>
@@ -392,7 +396,7 @@ function ConversationView({
             <ReviewTabContent sessionId={sessionId!} />
           </Chat.TabContent>
           <Chat.TabContent value="frame">
-            <FrameTabContent />
+            <FrameTabContent sessionId={sessionId} />
           </Chat.TabContent>
           <Chat.TabContent value="stream">
             <StreamTabContent />
@@ -450,7 +454,7 @@ function SessionInfoView({ session, onDelete }: { session: Session; onDelete: ()
       </SessionInfoPane.Section>
 
       <SessionInfoPane.Stream>
-        <BrowserStream sessionId={session.id} />
+        <BrowserStreamView />
       </SessionInfoPane.Stream>
 
       <SessionInfoPane.Section>
@@ -536,17 +540,27 @@ function AppViewContent({ selected }: { selected: string | null }) {
     return <SettingsView />;
   }
 
-  return (
-    <div className="flex h-full">
-      <div className="flex-1 min-w-0 border-r border-border">
-        <ConversationView sessionId={selected} sessionData={sessionData ?? null} />
+  if (!sessionData) {
+    return (
+      <div className="flex h-full">
+        <div className="flex-1 min-w-0 border-r border-border">
+          <ConversationView sessionId={selected} sessionData={null} />
+        </div>
       </div>
-      {sessionData && (
+    );
+  }
+
+  return (
+    <BrowserStreamProvider sessionId={sessionData.session.id}>
+      <div className="flex h-full">
+        <div className="flex-1 min-w-0 border-r border-border">
+          <ConversationView sessionId={selected} sessionData={sessionData} />
+        </div>
         <div className="min-w-64 shrink-0">
           <SessionInfoView session={sessionData.session} onDelete={handleDelete} />
         </div>
-      )}
-    </div>
+      </div>
+    </BrowserStreamProvider>
   );
 }
 
