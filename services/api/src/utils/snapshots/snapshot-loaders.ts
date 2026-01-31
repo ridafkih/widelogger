@@ -30,7 +30,7 @@ export async function loadSessionContainers(sessionId: string) {
   return Promise.all(
     rows.map(async (row) => {
       const ports = await findPortsByContainerId(row.containerId);
-      const name = row.hostname ?? row.image.split("/").pop()?.split(":")[0] ?? "container";
+      const name = row.image;
       const urls = ports.map(({ port }) => ({
         port,
         url: formatProxyUrl(sessionId, port, config.proxyBaseDomain),

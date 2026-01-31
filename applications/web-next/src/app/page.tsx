@@ -407,10 +407,21 @@ function ConversationView({
   );
 }
 
-function SessionInfoView({ session, onDelete }: { session: Session; onDelete: () => void }) {
+function SessionInfoView({
+  session,
+  project,
+  onDelete,
+}: {
+  session: Session;
+  project: Project;
+  onDelete: () => void;
+}) {
   const { useChannel } = useMultiplayer();
-  const containers = useChannel("sessionContainers", { uuid: session.id });
-  const links = containers.flatMap((container) => container.urls.map(({ url }) => url));
+  const sessionContainers = useChannel("sessionContainers", { uuid: session.id });
+  const links = sessionContainers.flatMap((container) => container.urls.map(({ url }) => url));
+
+  const projectContainers = project.containers ?? [];
+  const hasSessionContainers = sessionContainers.length > 0;
 
   return (
     <SessionInfoPane.Root>
@@ -426,12 +437,20 @@ function SessionInfoView({ session, onDelete }: { session: Session; onDelete: ()
 
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Containers</SessionInfoPane.SectionHeader>
-        {containers.length > 0 ? (
-          containers.map((container) => (
+        {hasSessionContainers ? (
+          sessionContainers.map((container) => (
             <SessionInfoPane.ContainerItem
               key={container.id}
               name={container.name}
               status={container.status}
+            />
+          ))
+        ) : projectContainers.length > 0 ? (
+          projectContainers.map((container) => (
+            <SessionInfoPane.ContainerItem
+              key={container.id}
+              name={container.image}
+              status="pending"
             />
           ))
         ) : (
@@ -557,7 +576,11 @@ function AppViewContent({ selected }: { selected: string | null }) {
           <ConversationView sessionId={selected} sessionData={sessionData} />
         </div>
         <div className="min-w-64 shrink-0">
-          <SessionInfoView session={sessionData.session} onDelete={handleDelete} />
+          <SessionInfoView
+            session={sessionData.session}
+            project={sessionData.project}
+            onDelete={handleDelete}
+          />
         </div>
       </div>
     </BrowserStreamProvider>

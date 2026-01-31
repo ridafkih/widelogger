@@ -97,19 +97,22 @@ function SessionInfoPaneContainerItem({
   status,
 }: {
   name: string;
-  status: "running" | "stopped" | "starting" | "error";
+  status: "running" | "stopped" | "starting" | "error" | "pending";
 }) {
   const statusColor = {
     running: "success",
     stopped: "error",
     starting: "warning",
     error: "error",
+    pending: "muted",
   } as const;
 
   return (
     <div className={row({ interactive: true })}>
       <Box size={12} className={text({ color: statusColor[status] })} />
-      <span className="flex-1 truncate">{name}</span>
+      <span className={cn("flex-1 truncate", status === "pending" && "text-text-muted")}>
+        {name}
+      </span>
     </div>
   );
 }
