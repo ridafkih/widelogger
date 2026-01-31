@@ -234,20 +234,25 @@ function ChatTabContent({ sessionId }: { sessionId: string }) {
 }
 
 function FrameTabContent() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [key, setKey] = useState(0);
   const frameUrl = "http://agent-playground:5173";
 
   const handleRefresh = () => {
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
+    setKey((key) => key + 1);
   };
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
       <UrlBar url={frameUrl} isLoading={isLoading} onRefresh={handleRefresh} />
-      <div className="flex-1 flex items-center justify-center text-text-muted">
-        Frame content coming soon
-      </div>
+      <iframe
+        key={key}
+        src={frameUrl}
+        className="flex-1 border-none"
+        onLoad={() => setIsLoading(false)}
+        title="Frame"
+      />
     </div>
   );
 }
@@ -264,8 +269,10 @@ function StreamTabContent() {
   return (
     <div className="flex flex-1 flex-col min-h-0">
       <UrlBar url={streamUrl} isLoading={isLoading} onRefresh={handleRefresh} />
-      <div className="flex-1 flex items-center justify-center text-text-muted">
-        Stream content coming soon
+      <div className="flex-1 flex items-center justify-center p-4 bg-bg-muted">
+        <div className="w-full max-w-2xl aspect-video bg-bg border border-border flex items-center justify-center text-text-muted text-sm">
+          Stream
+        </div>
       </div>
     </div>
   );
