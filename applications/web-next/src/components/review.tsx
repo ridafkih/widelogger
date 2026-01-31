@@ -491,12 +491,12 @@ function ReviewPreviewView({ children }: { children?: ReactNode }) {
 
 function ReviewPreviewHeader({ children }: { children?: ReactNode }) {
   const { state, actions } = useReview();
-  const hasSelection = !!state.browser.selectedPath;
+  const isVisible = state.view === "preview" && !!state.browser.selectedPath;
 
   return (
     <div
       className={fileHeader({ className: "col-start-1 row-start-1" })}
-      style={{ visibility: hasSelection ? "visible" : "hidden" }}
+      style={{ visibility: isVisible ? "visible" : "hidden" }}
     >
       <span className="flex-1 truncate text-xs text-text-muted ">
         {state.browser.selectedPath ?? "\u00A0"}
