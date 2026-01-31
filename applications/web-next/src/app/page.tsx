@@ -17,12 +17,13 @@ import { SessionInfoPane } from "@/components/session-info-pane";
 import { UrlBar } from "@/components/url-bar";
 import {
   navItems,
-  mockProjects,
   mockReviewFiles,
   mockFileTree,
   mockFileTreeContents,
   mockFileContents,
 } from "@/placeholder/data";
+import { useProjects, useSessions, useSession } from "@/lib/hooks";
+import type { Project } from "@lab/client";
 import { mockPartsMessages } from "@/placeholder/parts";
 import {
   Review,
@@ -33,34 +34,50 @@ import {
 } from "@/components/review";
 import { modelGroups, defaultModel } from "@/placeholder/models";
 
-function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
+function ProjectSessionsList({ project }: { project: Project }) {
   const { selected, select } = useSplitPane();
+  const { data: sessions } = useSessions(project.id);
+
+  return (
+    <ProjectNavigator.List>
+      <ProjectNavigator.Header onAdd={() => console.log("Add session to", project.name)}>
+        <ProjectNavigator.HeaderName>{project.name}</ProjectNavigator.HeaderName>
+        <ProjectNavigator.HeaderCount>{sessions?.length ?? 0}</ProjectNavigator.HeaderCount>
+      </ProjectNavigator.Header>
+      {sessions?.map((session) => (
+        <ProjectNavigator.Item
+          key={session.id}
+          selected={selected === session.id}
+          onClick={() => select(session.id)}
+        >
+          <StatusIcon status={session.status as "running" | "idle" | "complete"} />
+          <Hash>{session.id.slice(0, 6)}</Hash>
+          <ProjectNavigator.ItemTitle>Session</ProjectNavigator.ItemTitle>
+          <ProjectNavigator.ItemDescription>{session.status}</ProjectNavigator.ItemDescription>
+          <Avatar />
+        </ProjectNavigator.Item>
+      ))}
+    </ProjectNavigator.List>
+  );
+}
+
+function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
+  const { data: projects, isLoading, error } = useProjects();
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col justify-between">
       <div className="flex flex-col gap-px bg-border pb-px">
-        {mockProjects.map((project) => (
-          <ProjectNavigator.List key={project.id}>
-            <ProjectNavigator.Header onAdd={() => console.log("Add session to", project.name)}>
-              <ProjectNavigator.HeaderName>{project.name}</ProjectNavigator.HeaderName>
-              <ProjectNavigator.HeaderCount>{project.sessions.length}</ProjectNavigator.HeaderCount>
-            </ProjectNavigator.Header>
-            {project.sessions.map((session) => (
-              <ProjectNavigator.Item
-                key={session.id}
-                selected={selected === session.id}
-                onClick={() => select(session.id)}
-              >
-                <StatusIcon status={session.status} />
-                <Hash>{session.id}</Hash>
-                <ProjectNavigator.ItemTitle>{session.title}</ProjectNavigator.ItemTitle>
-                <ProjectNavigator.ItemDescription>
-                  {session.lastMessage}
-                </ProjectNavigator.ItemDescription>
-                <Avatar />
-              </ProjectNavigator.Item>
-            ))}
-          </ProjectNavigator.List>
+        {isLoading && (
+          <div className="px-3 py-2 bg-bg text-xs text-text-muted">Loading projects...</div>
+        )}
+        {error && (
+          <div className="px-3 py-2 bg-bg text-xs text-red-500">Failed to load projects</div>
+        )}
+        {projects && projects.length === 0 && (
+          <div className="px-3 py-2 bg-bg text-xs text-text-muted">No projects yet</div>
+        )}
+        {projects?.map((project) => (
+          <ProjectSessionsList key={project.id} project={project} />
         ))}
       </div>
       {children}
@@ -69,15 +86,23 @@ function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
 }
 
 function useSessionData(sessionId: string | null) {
-  if (!sessionId) return null;
+  const { data: session, isLoading: sessionLoading } = useSession(sessionId);
+  const { data: projects, isLoading: projectsLoading } = useProjects();
 
-  const project = mockProjects.find((proj) => proj.sessions.some((sess) => sess.id === sessionId));
-  if (!project) return null;
+  if (!sessionId || sessionLoading || projectsLoading) {
+    return { isLoading: sessionLoading || projectsLoading, data: null };
+  }
 
-  const session = project.sessions.find((sess) => sess.id === sessionId);
-  if (!session) return null;
+  if (!session || !projects) {
+    return { isLoading: false, data: null };
+  }
 
-  return { project, session };
+  const project = projects.find((proj) => proj.id === session.projectId);
+  if (!project) {
+    return { isLoading: false, data: null };
+  }
+
+  return { isLoading: false, data: { project, session } };
 }
 
 function useMockFileBrowser(sessionId: string | null) {
@@ -281,12 +306,26 @@ function StreamTabContent() {
 }
 
 function ConversationView({ sessionId }: { sessionId: string | null }) {
-  const sessionData = useSessionData(sessionId);
+  const { isLoading, data: sessionData } = useSessionData(sessionId);
+
+  if (!sessionId) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-muted">
+        Select a session to preview
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-muted">Loading...</div>
+    );
+  }
 
   if (!sessionData) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted">
-        Select a session to preview
+        Session not found
       </div>
     );
   }
@@ -297,11 +336,11 @@ function ConversationView({ sessionId }: { sessionId: string | null }) {
     <Chat.Provider key={sessionId}>
       <Chat.Frame>
         <Chat.Header>
-          <StatusIcon status={session.status} />
+          <StatusIcon status={session.status as "running" | "idle" | "complete"} />
           <Chat.HeaderBreadcrumb>
             <Chat.HeaderProject>{project.name}</Chat.HeaderProject>
             <Chat.HeaderDivider />
-            <Chat.HeaderTitle>{session.title}</Chat.HeaderTitle>
+            <Chat.HeaderTitle>Session {session.id.slice(0, 6)}</Chat.HeaderTitle>
           </Chat.HeaderBreadcrumb>
         </Chat.Header>
         <Chat.Tabs>

@@ -3,12 +3,15 @@
 import { useState, type ReactNode } from "react";
 import { tv } from "tailwind-variants";
 import { ArrowLeft, Box, ChevronRight, Plus, X } from "lucide-react";
+import { useSWRConfig } from "swr";
 import { cn } from "@/lib/cn";
 import { FormInput, InputGroup } from "./form-input";
 import { useAppView } from "./app-view";
 import { IconButton } from "./icon-button";
 import { Tabs } from "./tabs";
-import { mockProjects } from "@/placeholder/data";
+import type { Container } from "@lab/client";
+import { useProjects, useContainers } from "@/lib/hooks";
+import { api } from "@/lib/api";
 
 type SettingsTab = "github" | "providers" | "projects";
 
@@ -81,7 +84,7 @@ function GitHubTab() {
         <FormInput.Label>Personal Access Token</FormInput.Label>
         <FormInput.Password
           value={pat}
-          onChange={(e) => setPat(e.target.value)}
+          onChange={(event) => setPat(event.target.value)}
           placeholder="ghp_xxxxxxxxxxxx"
         />
       </SettingsFormField>
@@ -90,7 +93,7 @@ function GitHubTab() {
         <FormInput.Label>Username</FormInput.Label>
         <FormInput.Text
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(event) => setUsername(event.target.value)}
           placeholder="your-github-username"
         />
       </SettingsFormField>
@@ -99,7 +102,7 @@ function GitHubTab() {
         <FormInput.Label>Commit Author Name</FormInput.Label>
         <FormInput.Text
           value={authorName}
-          onChange={(e) => setAuthorName(e.target.value)}
+          onChange={(event) => setAuthorName(event.target.value)}
           placeholder="Your Name"
         />
       </SettingsFormField>
@@ -109,7 +112,7 @@ function GitHubTab() {
         <FormInput.Text
           type="email"
           value={authorEmail}
-          onChange={(e) => setAuthorEmail(e.target.value)}
+          onChange={(event) => setAuthorEmail(event.target.value)}
           placeholder="my-agent@example.com"
         />
       </SettingsFormField>
@@ -154,7 +157,7 @@ function ProvidersTab() {
         <FormInput.Label>API Key</FormInput.Label>
         <FormInput.Password
           value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
+          onChange={(event) => setApiKey(event.target.value)}
           placeholder="sk-xxxxxxxxxxxx"
         />
       </SettingsFormField>
@@ -179,6 +182,8 @@ function ProjectsList({
   onSelect: (id: string) => void;
   onCreate: () => void;
 }) {
+  const { data: projects, error, isLoading } = useProjects();
+
   return (
     <>
       <div className="flex items-center justify-between">
@@ -193,46 +198,52 @@ function ProjectsList({
         </button>
       </div>
 
-      <div className="flex flex-col gap-px bg-border border border-border">
-        {mockProjects.map((project) => (
-          <button
-            key={project.id}
-            type="button"
-            onClick={() => onSelect(project.id)}
-            className="flex items-center gap-1.5 px-2 py-1.5 bg-bg text-xs text-left hover:bg-bg-hover"
-          >
-            <Box size={12} className="text-text-muted shrink-0" />
-            <span className="text-text truncate">{project.name}</span>
-            <ChevronRight size={12} className="text-text-muted ml-auto shrink-0" />
-          </button>
-        ))}
-      </div>
+      {isLoading && <span className="text-xs text-text-muted">Loading...</span>}
+      {error && <span className="text-xs text-red-500">Failed to load projects</span>}
+      {projects && projects.length === 0 && (
+        <span className="text-xs text-text-muted">No projects yet</span>
+      )}
+      {projects && projects.length > 0 && (
+        <div className="flex flex-col gap-px bg-border border border-border">
+          {projects.map((project) => (
+            <button
+              key={project.id}
+              type="button"
+              onClick={() => onSelect(project.id)}
+              className="flex items-center gap-1.5 px-2 py-1.5 bg-bg text-xs text-left hover:bg-bg-hover"
+            >
+              <Box size={12} className="text-text-muted shrink-0" />
+              <span className="text-text truncate">{project.name}</span>
+              <ChevronRight size={12} className="text-text-muted ml-auto shrink-0" />
+            </button>
+          ))}
+        </div>
+      )}
     </>
   );
 }
 
-function ContainerDisplay({
-  container,
-}: {
-  container: (typeof mockProjects)[number]["containers"][number];
-}) {
+function ContainerDisplay({ container }: { container: Container & { ports?: number[] } }) {
   const styles = containerDisplay();
-  const portsList = container.ports.length > 0 ? container.ports.join(", ") : "none";
-  const envCount = Object.keys(container.env).length;
+  const ports = container.ports ?? [];
+  const portsList = ports.length > 0 ? ports.join(", ") : "none";
 
   return (
     <div className={styles.root()}>
       <span className={styles.header()}>Container</span>
       <span className={styles.image()}>{container.image}</span>
-      <span className={styles.meta()}>
-        Ports: {portsList} · {envCount} env var{envCount !== 1 ? "s" : ""}
-      </span>
+      <span className={styles.meta()}>Ports: {portsList}</span>
     </div>
   );
 }
 
 function ProjectDetail({ projectId, onBack }: { projectId: string; onBack: () => void }) {
-  const project = mockProjects.find((proj) => proj.id === projectId);
+  const { mutate } = useSWRConfig();
+  const { data: projects } = useProjects();
+  const { data: containers, isLoading: containersLoading } = useContainers(projectId);
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  const project = projects?.find((proj) => proj.id === projectId);
 
   if (!project) {
     return (
@@ -242,13 +253,15 @@ function ProjectDetail({ projectId, onBack }: { projectId: string; onBack: () =>
     );
   }
 
-  const handleSave = () => {
-    console.log("Saving project:", project.id);
-  };
-
-  const handleArchive = () => {
-    console.log("Archiving project:", project.id);
-    onBack();
+  const handleArchive = async () => {
+    setIsArchiving(true);
+    try {
+      await api.projects.delete(projectId);
+      await mutate("projects");
+      onBack();
+    } catch {
+      setIsArchiving(false);
+    }
   };
 
   return (
@@ -272,11 +285,13 @@ function ProjectDetail({ projectId, onBack }: { projectId: string; onBack: () =>
 
       <div className={containersSection()}>
         <span className="text-xs text-text-secondary">Containers</span>
-        {project.containers.length === 0 ? (
+        {containersLoading && <span className="text-xs text-text-muted">Loading...</span>}
+        {containers && containers.length === 0 && (
           <span className={listSectionEmpty()}>No containers configured</span>
-        ) : (
+        )}
+        {containers && containers.length > 0 && (
           <div className="flex flex-col gap-2">
-            {project.containers.map((container) => (
+            {containers.map((container) => (
               <ContainerDisplay key={container.id} container={container} />
             ))}
           </div>
@@ -284,11 +299,13 @@ function ProjectDetail({ projectId, onBack }: { projectId: string; onBack: () =>
       </div>
 
       <div className={buttonRow()}>
-        <button type="button" onClick={handleSave} className={primaryButton()}>
-          Save Changes
-        </button>
-        <button type="button" onClick={handleArchive} className={destructiveButton()}>
-          Archive
+        <button
+          type="button"
+          onClick={handleArchive}
+          disabled={isArchiving}
+          className={destructiveButton()}
+        >
+          {isArchiving ? "Archiving..." : "Archive"}
         </button>
       </div>
     </>
@@ -522,10 +539,12 @@ function ContainerEditor({
 }
 
 function ProjectCreate({ onBack }: { onBack: () => void }) {
+  const { mutate } = useSWRConfig();
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [containers, setContainers] = useState<ContainerDraft[]>([]);
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleAddContainer = () => {
     setContainers([...containers, { id: crypto.randomUUID(), image: "", ports: "", envVars: [] }]);
@@ -541,28 +560,30 @@ function ProjectCreate({ onBack }: { onBack: () => void }) {
 
   const isNameValid = name.trim().length > 0;
   const areContainersValid = containers.every((container) => container.image.trim().length > 0);
-  const canSubmit = isNameValid && areContainersValid;
+  const canSubmit = isNameValid && areContainersValid && !isCreating;
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!canSubmit) return;
 
-    const payload = {
-      name: name.trim(),
-      systemPrompt: systemPrompt.trim() || undefined,
-      containers: containers.map((container) => ({
-        image: container.image.trim(),
-        ports: parsePorts(container.ports),
-        env: envVarsToRecord(container.envVars),
-      })),
-    };
+    setIsCreating(true);
+    try {
+      const project = await api.projects.create({
+        name: name.trim(),
+        systemPrompt: systemPrompt.trim() || undefined,
+      });
 
-    console.log("Creating project:", payload);
+      for (const containerDraft of containers) {
+        await api.containers.create(project.id, {
+          image: containerDraft.image.trim(),
+          ports: parsePorts(containerDraft.ports),
+        });
+      }
 
-    setName("");
-    setSystemPrompt("");
-    setContainers([]);
-    setShowSystemPrompt(false);
-    onBack();
+      await mutate("projects");
+      onBack();
+    } catch {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -619,7 +640,7 @@ function ProjectCreate({ onBack }: { onBack: () => void }) {
         disabled={!canSubmit}
         className={primaryButton()}
       >
-        Create Project
+        {isCreating ? "Creating..." : "Create Project"}
       </button>
     </>
   );

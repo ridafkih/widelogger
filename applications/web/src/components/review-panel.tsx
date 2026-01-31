@@ -116,7 +116,6 @@ export function ReviewPanel({ files, onDismiss, labSessionId }: ReviewPanelProps
               file={previewFile}
               selectedLines={shouldClearSelection ? null : undefined}
               options={{
-                theme: "pierre-light",
                 overflow: "scroll",
                 disableFileHeader: true,
                 enableLineSelection: true,
@@ -221,7 +220,6 @@ export function ReviewPanel({ files, onDismiss, labSessionId }: ReviewPanelProps
                   newFile={newFile}
                   selectedLines={shouldClearSelection ? null : undefined}
                   options={{
-                    theme: "pierre-light",
                     diffStyle: "split",
                     hunkSeparators: "line-info",
                     lineDiffType: "word-alt",
