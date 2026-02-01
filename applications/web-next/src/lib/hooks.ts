@@ -1,6 +1,18 @@
 import useSWR, { useSWRConfig } from "swr";
+import { atom, useAtom } from "jotai";
 import { api } from "./api";
 import type { Session } from "@lab/client";
+
+interface CreationState {
+  isCreating: boolean;
+  projectId: string | null;
+}
+
+const creationStateAtom = atom<CreationState>({ isCreating: false, projectId: null });
+
+export function useSessionCreation() {
+  return useAtom(creationStateAtom);
+}
 
 export function useProjects() {
   return useSWR("projects", () => api.projects.list());
@@ -49,8 +61,7 @@ export function useSessions(projectId: string | null) {
 }
 
 export function useSession(sessionId: string | null) {
-  const isTemp = sessionId?.startsWith("temp-");
-  return useSWR(sessionId && !isTemp ? `session-${sessionId}` : null, () => {
+  return useSWR(sessionId ? `session-${sessionId}` : null, () => {
     if (!sessionId) return null;
     return api.sessions.get(sessionId);
   });
@@ -63,50 +74,26 @@ interface CreateSessionOptions {
 
 export function useCreateSession() {
   const { mutate } = useSWRConfig();
+  const [, setCreationState] = useAtom(creationStateAtom);
 
   return async (projectId: string, options: CreateSessionOptions) => {
     const { title, onCreated } = options;
-    const tempId = `temp-${Date.now()}`;
-    const tempSession: Session = {
-      id: tempId,
-      projectId,
-      title: null,
-      opencodeSessionId: null,
-      status: "creating",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
 
-    const cacheKey = `sessions-${projectId}`;
-
-    mutate(cacheKey, (current: Session[] = []) => [...current, tempSession], false);
-    onCreated(tempId);
+    setCreationState({ isCreating: true, projectId });
 
     try {
-      const realSession = await api.sessions.create(projectId, { title });
-
+      const session = await api.sessions.create(projectId, { title });
       mutate(
-        cacheKey,
+        `sessions-${projectId}`,
         (current: Session[] = []) => {
-          const seen = new Set<string>();
-          return current
-            .map((session) => (session.id === tempId ? { ...session, ...realSession } : session))
-            .filter((session) => {
-              if (seen.has(session.id)) return false;
-              seen.add(session.id);
-              return true;
-            });
+          if (current.some((existing) => existing.id === session.id)) return current;
+          return [...current, session];
         },
         false,
       );
-
-      onCreated(realSession.id);
-    } catch {
-      mutate(
-        cacheKey,
-        (current: Session[] = []) => current.filter((session) => session.id !== tempId),
-        false,
-      );
+      onCreated(session.id);
+    } finally {
+      setCreationState({ isCreating: false, projectId: null });
     }
   };
 }

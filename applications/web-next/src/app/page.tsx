@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSWRConfig } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { AppView, useAppView } from "@/components/app-view";
 import { Nav } from "@/components/nav";
 import { Chat, useChat } from "@/components/chat";
@@ -29,6 +29,7 @@ import {
   useSessions,
   useSession,
   useCreateSession,
+  useSessionCreation,
   useDeleteSession,
   useModels,
 } from "@/lib/hooks";
@@ -44,16 +45,15 @@ import { defaultModel } from "@/placeholder/models";
 import { Trash2 } from "lucide-react";
 import { useMultiplayer } from "@/lib/multiplayer";
 import { useAgent, prefetchSessionMessages, type MessageState } from "@/lib/use-agent";
+import { fetchChannelSnapshot } from "@/lib/api";
 import { useSessionStatus } from "@/lib/use-session-status";
 import { useSessionsSync } from "@/lib/use-sessions-sync";
 
 function SessionItem({ session }: { session: Session }) {
   const { selected, select } = useSplitPane();
-  const isTemp = session.id.startsWith("temp-");
   const status = useSessionStatus(session);
 
   const handleMouseDown = () => {
-    if (isTemp) return;
     prefetchSessionMessages(session.id);
   };
 
@@ -63,8 +63,8 @@ function SessionItem({ session }: { session: Session }) {
       onClick={() => select(session.id)}
       onMouseDown={handleMouseDown}
     >
-      <StatusIcon status={isTemp ? "starting" : status} />
-      {isTemp ? <ProjectNavigator.ItemSkeletonBlock /> : <Hash>{session.id.slice(0, 6)}</Hash>}
+      <StatusIcon status={status} />
+      <Hash>{session.id.slice(0, 6)}</Hash>
       {session.title ? (
         <ProjectNavigator.ItemTitle>{session.title}</ProjectNavigator.ItemTitle>
       ) : (
@@ -80,6 +80,9 @@ function ProjectSessionsList({ project }: { project: Project }) {
   const { select } = useSplitPane();
   const { data: sessions } = useSessions(project.id);
   const createSession = useCreateSession();
+  const [creationState] = useSessionCreation();
+
+  const isCreatingHere = creationState.isCreating && creationState.projectId === project.id;
 
   const handleAddSession = () => {
     createSession(project.id, { onCreated: select });
@@ -94,6 +97,12 @@ function ProjectSessionsList({ project }: { project: Project }) {
       {sessions?.map((session) => (
         <SessionItem key={session.id} session={session} />
       ))}
+      {isCreatingHere && (
+        <ProjectNavigator.ItemSkeleton>
+          <ProjectNavigator.ItemSkeletonBlock />
+          <ProjectNavigator.ItemEmptyTitle>Creating...</ProjectNavigator.ItemEmptyTitle>
+        </ProjectNavigator.ItemSkeleton>
+      )}
     </ProjectNavigator.List>
   );
 }
@@ -579,8 +588,16 @@ function AppViewContent({ selected }: { selected: string | null }) {
   const { select } = useSplitPane();
   const { data: sessionData } = useSessionData(selected);
   const deleteSession = useDeleteSession();
+
+  const { data: initialContainers } = useSWR(
+    selected ? `sessionContainers-${selected}` : null,
+    () => fetchChannelSnapshot<SessionContainer[]>("sessionContainers", selected!),
+  );
+
   const { useChannel } = useMultiplayer();
-  const containers = useChannel("sessionContainers", { uuid: selected ?? "" });
+  const liveContainers = useChannel("sessionContainers", { uuid: selected ?? "" });
+
+  const containers = liveContainers.length > 0 ? liveContainers : (initialContainers ?? []);
 
   const handleDelete = () => {
     if (!sessionData) return;

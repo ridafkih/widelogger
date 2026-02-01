@@ -1,4 +1,4 @@
-import { Loader2, Circle, Check, AlertCircle, Trash2 } from "lucide-react";
+import { Loader2, Check, AlertCircle, Trash2, CircleDashed } from "lucide-react";
 import { tv } from "tailwind-variants";
 import type { SessionStatus as BaseSessionStatus } from "@lab/client";
 
@@ -40,7 +40,7 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
       return <Loader2 size={size} className={className} />;
     case "idle":
     case "running":
-      return <Circle size={size} className={className} strokeDasharray="2 2" />;
+      return <CircleDashed size={size} className={className} />;
     case "complete":
       return <Check size={size} className={className} />;
     case "error":

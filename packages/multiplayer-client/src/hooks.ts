@@ -70,8 +70,7 @@ export function createHooks<S extends Schema>(schema: S) {
       if (!channel) throw new Error(`Unknown channel: ${channelName}`);
 
       const params = args[0] ?? {};
-      const isInvalidParam = (value: unknown) =>
-        value === "" || value == null || String(value).startsWith("temp-");
+      const isInvalidParam = (value: unknown) => value === "" || value == null;
       const shouldSkip = hasParams(channel.path) && Object.values(params).some(isInvalidParam);
 
       const resolvedPath = useMemo(
