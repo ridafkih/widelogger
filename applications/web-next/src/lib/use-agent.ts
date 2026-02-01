@@ -190,7 +190,6 @@ export function useAgent(labSessionId: string): UseAgentResult {
           }
         }
 
-
         const sessionId = await getOrCreateOpencodeSession();
         if (cancelled) return;
 
