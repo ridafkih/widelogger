@@ -4,6 +4,7 @@ import { createContext, use, useState, type ReactNode } from "react";
 import { tv } from "tailwind-variants";
 import { TextAreaGroup } from "./textarea-group";
 import { Tabs, useTabs } from "./tabs";
+import { PageFrame, Header } from "./layout-primitives";
 
 type ChatRole = "user" | "assistant";
 
@@ -69,13 +70,11 @@ function ChatProvider({
 }
 
 function ChatFrame({ children }: { children: ReactNode }) {
-  return <div className="relative flex flex-col h-full">{children}</div>;
+  return <PageFrame position="relative">{children}</PageFrame>;
 }
 
 function ChatHeader({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border">{children}</div>
-  );
+  return <Header>{children}</Header>;
 }
 
 function ChatHeaderBreadcrumb({ children }: { children: ReactNode }) {

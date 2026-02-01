@@ -1,17 +1,15 @@
-import { usePathname, useRouter } from "next/navigation";
-import { tv } from "tailwind-variants";
-import { useAppView, type AppViewType } from "./app-view";
+"use client";
 
-const nav = tv({
-  slots: {
-    root: "flex gap-4 px-3 py-2 whitespace-nowrap font-medium border-b border-neutral-200",
-    link: "text-text-secondary hover:text-text cursor-pointer",
-  },
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { tv } from "tailwind-variants";
+import { Header } from "./layout-primitives";
+
+const link = tv({
+  base: "text-text-secondary hover:text-text cursor-pointer",
   variants: {
     active: {
-      true: {
-        link: "text-text",
-      },
+      true: "text-text",
     },
   },
 });
@@ -19,7 +17,6 @@ const nav = tv({
 type NavItem = {
   label: string;
   href: string;
-  view?: AppViewType;
 };
 
 type NavProps = {
@@ -27,37 +24,24 @@ type NavProps = {
 };
 
 export function Nav({ items }: NavProps) {
-  const styles = nav();
-  const router = useRouter();
   const pathname = usePathname();
-  const { view, setView } = useAppView();
 
   const getIsActive = (item: NavItem) => {
-    if (item.view) {
-      return view === item.view;
+    if (item.href === "/") {
+      return pathname === "/";
     }
-    return pathname === item.href;
-  };
-
-  const handleClick = (item: NavItem) => {
-    if (item.view) {
-      setView(item.view);
-    } else {
-      router.push(item.href);
-    }
+    return pathname.startsWith(item.href);
   };
 
   return (
-    <nav className={styles.root()}>
+    <Header as="nav" spacing="wide" className="whitespace-nowrap font-medium">
       {items.map((item) => (
-        <span
-          key={item.href}
-          onClick={() => handleClick(item)}
-          className={nav({ active: getIsActive(item) }).link()}
-        >
+        <Link key={item.href} href={item.href} className={link({ active: getIsActive(item) })}>
           {item.label}
-        </span>
+        </Link>
       ))}
-    </nav>
+    </Header>
   );
 }
+
+export type { NavItem };

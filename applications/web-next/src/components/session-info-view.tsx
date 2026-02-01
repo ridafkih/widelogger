@@ -1,0 +1,96 @@
+"use client";
+
+import { Trash2 } from "lucide-react";
+import { SessionInfoPane } from "@/components/session-info-pane";
+import { BrowserStreamView } from "@/components/browser-stream";
+import type { Project, Session } from "@lab/client";
+
+type SessionContainer = {
+  id: string;
+  name: string;
+  status: "running" | "stopped" | "starting" | "error";
+  urls: { port: number; url: string }[];
+};
+
+type SessionInfoViewProps = {
+  session: Session;
+  project: Project;
+  containers: SessionContainer[];
+  onDelete: () => void;
+};
+
+export function SessionInfoView({ session, project, containers, onDelete }: SessionInfoViewProps) {
+  const links = containers.flatMap((container) => container.urls.map(({ url }) => url));
+
+  const projectContainers = project.containers ?? [];
+  const hasSessionContainers = containers.length > 0;
+
+  return (
+    <SessionInfoPane.Root>
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Changed Files</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.Empty>No changed files</SessionInfoPane.Empty>
+      </SessionInfoPane.Section>
+
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Branches</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.Empty>No branches yet</SessionInfoPane.Empty>
+      </SessionInfoPane.Section>
+
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Containers</SessionInfoPane.SectionHeader>
+        {hasSessionContainers ? (
+          containers.map((container) => (
+            <SessionInfoPane.ContainerItem
+              key={container.id}
+              name={container.name}
+              status={container.status}
+            />
+          ))
+        ) : projectContainers.length > 0 ? (
+          projectContainers.map((container) => (
+            <SessionInfoPane.ContainerItem
+              key={container.id}
+              name={container.image}
+              status="pending"
+            />
+          ))
+        ) : (
+          <SessionInfoPane.Empty>No containers</SessionInfoPane.Empty>
+        )}
+      </SessionInfoPane.Section>
+
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Tasks</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.Empty>No tasks yet</SessionInfoPane.Empty>
+      </SessionInfoPane.Section>
+
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Links</SessionInfoPane.SectionHeader>
+        {links.length > 0 ? (
+          links.map((url) => <SessionInfoPane.LinkItem key={url} href={url} />)
+        ) : (
+          <SessionInfoPane.Empty>No links</SessionInfoPane.Empty>
+        )}
+      </SessionInfoPane.Section>
+
+      <SessionInfoPane.Stream>
+        <BrowserStreamView />
+      </SessionInfoPane.Stream>
+
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Logs</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.Empty>No logs</SessionInfoPane.Empty>
+      </SessionInfoPane.Section>
+
+      <SessionInfoPane.Section>
+        <SessionInfoPane.SectionHeader>Controls</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.ActionButton icon={Trash2} variant="danger" onClick={onDelete}>
+          Delete
+        </SessionInfoPane.ActionButton>
+      </SessionInfoPane.Section>
+    </SessionInfoPane.Root>
+  );
+}
+
+export type { SessionContainer };

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppView } from "@/components/app-view";
 import { CenteredLayout } from "@/components/centered-layout";
 import { Nav } from "@/components/nav";
 import { TextAreaGroup } from "@/components/textarea-group";
@@ -63,20 +62,18 @@ function OrchestratorPrompt() {
 
 export default function Page() {
   return (
-    <AppView.Provider>
-      <Orchestration.Provider>
-        <div className="flex flex-col h-screen">
-          <Nav items={navItems} />
-          <CenteredLayout.Root>
-            <CenteredLayout.Hero>
-              <OrchestratorPrompt />
-            </CenteredLayout.Hero>
-            <CenteredLayout.Content>
-              <SessionList.View />
-            </CenteredLayout.Content>
-          </CenteredLayout.Root>
-        </div>
-      </Orchestration.Provider>
-    </AppView.Provider>
+    <Orchestration.Provider>
+      <div className="flex flex-col h-screen">
+        <Nav items={navItems} />
+        <CenteredLayout.Root>
+          <CenteredLayout.Hero>
+            <OrchestratorPrompt />
+          </CenteredLayout.Hero>
+          <CenteredLayout.Content>
+            <SessionList.View />
+          </CenteredLayout.Content>
+        </CenteredLayout.Root>
+      </div>
+    </Orchestration.Provider>
   );
 }

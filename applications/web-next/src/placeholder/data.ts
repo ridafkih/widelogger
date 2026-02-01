@@ -1,15 +1,9 @@
-import type { AppViewType } from "@/components/app-view";
-
-type NavItem = {
-  label: string;
-  href: string;
-  view?: AppViewType;
-};
+import type { NavItem } from "@/components/nav";
 
 export const navItems: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Editor", href: "/editor" },
-  { label: "Settings", href: "/settings", view: "settings" },
+  { label: "Settings", href: "/settings" },
 ];
 
 type ReviewableFile = {
