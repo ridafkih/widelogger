@@ -103,13 +103,14 @@ export class CaddyProxyManager implements ProxyManager {
 
     try {
       await this.docker.connectToNetwork(this.caddyContainerId, networkName);
-    } catch (err) {
-      if (!isAlreadyConnectedError(err)) {
-        throw err;
+    } catch (error) {
+      if (!isAlreadyConnectedError(error)) {
+        throw error;
       }
     }
 
     const registeredRoutes: RouteInfo[] = [];
+    const routePromises: Promise<void>[] = [];
 
     for (const container of containers) {
       for (const containerPortStr of Object.keys(container.ports)) {
@@ -119,20 +120,24 @@ export class CaddyProxyManager implements ProxyManager {
 
         const upstream = `${container.hostname}:${containerPort}`;
 
-        await this.caddy.addRoute({
-          "@id": routeId,
-          match: [{ host: [`${subdomain}.${this.matchDomain}`, `${subdomain}.caddy`] }],
-          handle: [createReverseProxyHandler(upstream)],
-        });
+        routePromises.push(
+          this.caddy.addRoute({
+            "@id": routeId,
+            match: [{ host: [`${subdomain}.${this.matchDomain}`, `${subdomain}.caddy`] }],
+            handle: [createReverseProxyHandler(upstream)],
+          }),
+        );
 
-        await this.caddy.addRoute({
-          "@id": `${routeId}-path`,
-          match: [{ path: [`/${subdomain}`, `/${subdomain}/*`] }],
-          handle: [
-            { handler: "rewrite", strip_path_prefix: `/${subdomain}` },
-            createReverseProxyHandler(upstream),
-          ],
-        });
+        routePromises.push(
+          this.caddy.addRoute({
+            "@id": `${routeId}-path`,
+            match: [{ path: [`/${subdomain}`, `/${subdomain}/*`] }],
+            handle: [
+              { handler: "rewrite", strip_path_prefix: `/${subdomain}` },
+              createReverseProxyHandler(upstream),
+            ],
+          }),
+        );
 
         registeredRoutes.push({
           containerPort,
@@ -140,6 +145,8 @@ export class CaddyProxyManager implements ProxyManager {
         });
       }
     }
+
+    await Promise.all(routePromises);
 
     this.clusters.set(clusterId, { networkName, routes: registeredRoutes });
     return registeredRoutes;

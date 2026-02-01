@@ -40,6 +40,7 @@ export const config = {
   caddyAdminUrl: getRequiredEnv("CADDY_ADMIN_URL"),
   caddyContainerName: getRequiredEnv("CADDY_CONTAINER_NAME"),
   proxyBaseDomain: getRequiredEnv("PROXY_BASE_DOMAIN"),
+  poolSize: getOptionalEnvInt("POOL_SIZE", 0),
 };
 
 export type Config = typeof config;

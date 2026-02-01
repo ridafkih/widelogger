@@ -1,6 +1,6 @@
 import { db } from "@lab/database/client";
 import { sessions, type Session } from "@lab/database/schema/sessions";
-import { eq, ne, and } from "drizzle-orm";
+import { eq, ne, and, count } from "drizzle-orm";
 
 export async function findSessionById(sessionId: string): Promise<Session | null> {
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId));
@@ -11,7 +11,13 @@ export async function findSessionsByProjectId(projectId: string): Promise<Sessio
   return db
     .select()
     .from(sessions)
-    .where(and(eq(sessions.projectId, projectId), ne(sessions.status, "deleting")));
+    .where(
+      and(
+        eq(sessions.projectId, projectId),
+        ne(sessions.status, "deleting"),
+        ne(sessions.status, "pooled"),
+      ),
+    );
 }
 
 export async function createSession(projectId: string, title?: string): Promise<Session> {
@@ -65,7 +71,7 @@ export async function findAllSessionSummaries(): Promise<
   return db
     .select({ id: sessions.id, projectId: sessions.projectId, title: sessions.title })
     .from(sessions)
-    .where(ne(sessions.status, "deleting"));
+    .where(and(ne(sessions.status, "deleting"), ne(sessions.status, "pooled")));
 }
 
 export async function getSessionOpencodeId(sessionId: string): Promise<string | null> {
@@ -79,4 +85,40 @@ export async function getSessionOpencodeId(sessionId: string): Promise<string | 
 
 export async function findRunningSessions(): Promise<{ id: string }[]> {
   return db.select({ id: sessions.id }).from(sessions).where(eq(sessions.status, "running"));
+}
+
+export async function claimPooledSession(projectId: string): Promise<Session | null> {
+  return db.transaction(async (tx) => {
+    const [candidate] = await tx
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.projectId, projectId), eq(sessions.status, "pooled")))
+      .limit(1)
+      .for("update", { skipLocked: true });
+
+    if (!candidate) {
+      return null;
+    }
+
+    const [session] = await tx
+      .update(sessions)
+      .set({ status: "running", updatedAt: new Date() })
+      .where(eq(sessions.id, candidate.id))
+      .returning();
+
+    return session ?? null;
+  });
+}
+
+export async function countPooledSessions(projectId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: count() })
+    .from(sessions)
+    .where(and(eq(sessions.projectId, projectId), eq(sessions.status, "pooled")));
+  return result?.count ?? 0;
+}
+
+export async function createPooledSession(projectId: string): Promise<Session> {
+  const [session] = await db.insert(sessions).values({ projectId, status: "pooled" }).returning();
+  return session;
 }

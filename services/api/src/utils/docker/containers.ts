@@ -14,7 +14,7 @@ import {
   updateSessionContainerDockerId,
   updateSessionContainersStatusBySessionId,
 } from "../repositories/container.repository";
-import { deleteSession } from "../repositories/session.repository";
+import { deleteSession, findSessionById } from "../repositories/session.repository";
 import { proxyManager, isProxyInitialized, ensureProxyInitialized } from "../proxy";
 import { publisher } from "../../clients/publisher";
 import type { BrowserService } from "../browser/browser-service";
@@ -41,16 +41,23 @@ export async function initializeSessionContainers(
   try {
     networkName = await createSessionNetwork(sessionId);
 
-    for (const containerDefinition of containerDefinitions) {
-      const ports = await findPortsByContainerId(containerDefinition.id);
-      const envVars = await findEnvVarsByContainerId(containerDefinition.id);
+    const preparedContainers = await Promise.all(
+      containerDefinitions.map(async (containerDefinition) => {
+        const [ports, envVars, containerWorkspace] = await Promise.all([
+          findPortsByContainerId(containerDefinition.id),
+          findEnvVarsByContainerId(containerDefinition.id),
+          initializeContainerWorkspace(
+            sessionId,
+            containerDefinition.id,
+            containerDefinition.image,
+          ),
+        ]);
 
-      const containerWorkspace = await initializeContainerWorkspace(
-        sessionId,
-        containerDefinition.id,
-        containerDefinition.image,
-      );
+        return { containerDefinition, ports, envVars, containerWorkspace };
+      }),
+    );
 
+    for (const { containerDefinition, ports, envVars, containerWorkspace } of preparedContainers) {
       const env: Record<string, string> = {};
       for (const envVar of envVars) {
         env[envVar.key] = envVar.value;
@@ -115,10 +122,48 @@ export async function initializeSessionContainers(
     if (isProxyInitialized() && clusterContainers.length > 0) {
       await proxyManager.registerCluster(sessionId, networkName, clusterContainers);
     }
+
+    const session = await findSessionById(sessionId);
+    if (!session || session.status === "deleting") {
+      console.log(`Session ${sessionId} was deleted during initialization, cleaning up`);
+      await cleanupOrphanedContainers(sessionId, dockerIds, browserService);
+      return;
+    }
   } catch (error) {
     console.error(`Failed to initialize session ${sessionId}:`, error);
     await handleInitializationError(sessionId, projectId, dockerIds, browserService);
   }
+}
+
+async function cleanupOrphanedContainers(
+  sessionId: string,
+  dockerIds: string[],
+  browserService: BrowserService,
+): Promise<void> {
+  await Promise.all(
+    dockerIds.map((dockerId) =>
+      docker
+        .stopContainer(dockerId)
+        .then(() => docker.removeContainer(dockerId))
+        .catch((error) =>
+          console.error(`Failed to cleanup orphaned container ${dockerId}:`, error),
+        ),
+    ),
+  );
+
+  if (isProxyInitialized()) {
+    try {
+      await proxyManager.unregisterCluster(sessionId);
+    } catch (error) {
+      console.warn(`Failed to unregister proxy cluster for orphaned session ${sessionId}:`, error);
+    }
+  }
+
+  await cleanupSessionNetwork(sessionId).catch((error) =>
+    console.error(`Failed to cleanup network for orphaned session ${sessionId}:`, error),
+  );
+
+  await browserService.forceStopBrowser(sessionId);
 }
 
 async function handleInitializationError(
@@ -142,12 +187,12 @@ async function handleInitializationError(
       docker
         .stopContainer(dockerId)
         .then(() => docker.removeContainer(dockerId))
-        .catch((err) => console.error(`Failed to cleanup container ${dockerId}:`, err)),
+        .catch((error) => console.error(`Failed to cleanup container ${dockerId}:`, error)),
     ),
   );
 
-  await cleanupSessionNetwork(sessionId).catch((err) =>
-    console.error(`Failed to cleanup network for session ${sessionId}:`, err),
+  await cleanupSessionNetwork(sessionId).catch((error) =>
+    console.error(`Failed to cleanup network for session ${sessionId}:`, error),
   );
 
   await browserService.forceStopBrowser(sessionId);

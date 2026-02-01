@@ -5,6 +5,7 @@ import { createOpenCodeProxyHandler } from "../utils/handlers/opencode-handler";
 import { createChannelRestHandler } from "../utils/handlers/channel-rest-handler";
 import { bootstrapBrowserService, shutdownBrowserService } from "../utils/browser/bootstrap";
 import { initializeSessionContainers } from "../utils/docker/containers";
+import { setPoolBrowserService, initializePool } from "../utils/pool";
 import { isHttpMethod, isRouteModule, type RouteContext } from "../utils/handlers/route-handler";
 import { publisher } from "./publisher";
 import { join } from "node:path";
@@ -117,6 +118,9 @@ const bootstrap = async () => {
   });
 
   browserService.startReconciler();
+
+  setPoolBrowserService(browserService);
+  initializePool();
 
   return { server, browserService };
 };
