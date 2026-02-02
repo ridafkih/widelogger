@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 function CenteredLayoutRoot({ children }: { children: ReactNode }) {
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto pb-12">
       <div className="min-h-full flex flex-col items-center px-4">
         <div className="w-full max-w-2xl flex flex-col">{children}</div>
       </div>
