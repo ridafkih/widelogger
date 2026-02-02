@@ -57,11 +57,18 @@ type EnvVar = {
   value: string;
 };
 
+type DependencyDraft = {
+  id: string;
+  dependsOnDraftId: string;
+  condition: string;
+};
+
 type ContainerDraft = {
   id: string;
   image: string;
   ports: string;
   envVars: EnvVar[];
+  dependencies: DependencyDraft[];
 };
 
 const parsePorts = (portsString: string): number[] => {
@@ -72,6 +79,42 @@ const parsePorts = (portsString: string): number[] => {
     .map((segment) => parseInt(segment, 10))
     .filter((port) => !isNaN(port) && port > 0 && port <= 65535);
 };
+
+function sortContainersByDependencies(containers: ContainerDraft[]): ContainerDraft[] {
+  const sorted: ContainerDraft[] = [];
+  const remaining = new Set(containers.map((container) => container.id));
+  const containerMap = new Map(containers.map((container) => [container.id, container]));
+
+  while (remaining.size > 0) {
+    let addedAny = false;
+
+    for (const id of remaining) {
+      const container = containerMap.get(id);
+      if (!container) continue;
+
+      const unresolvedDeps = container.dependencies.filter(
+        (dependency) =>
+          dependency.dependsOnDraftId && remaining.has(dependency.dependsOnDraftId),
+      );
+
+      if (unresolvedDeps.length === 0) {
+        sorted.push(container);
+        remaining.delete(id);
+        addedAny = true;
+      }
+    }
+
+    if (!addedAny && remaining.size > 0) {
+      for (const id of remaining) {
+        const container = containerMap.get(id);
+        if (container) sorted.push(container);
+      }
+      break;
+    }
+  }
+
+  return sorted;
+}
 
 function SettingsFormField({ children }: { children: ReactNode }) {
   return <div className="flex flex-col gap-1">{children}</div>;
@@ -145,16 +188,68 @@ function EnvVarRow({
   );
 }
 
+function DependencyRow({
+  dependency,
+  availableContainers,
+  onChange,
+  onRemove,
+}: {
+  dependency: DependencyDraft;
+  availableContainers: { id: string; label: string }[];
+  onChange: (updated: DependencyDraft) => void;
+  onRemove: () => void;
+}) {
+  const options = availableContainers.map((container) => ({
+    value: container.id,
+    label: container.label,
+  }));
+
+  return (
+    <InputGroup.Root>
+      <div className="flex-1">
+        <FormInput.Select
+          value={dependency.dependsOnDraftId}
+          onChange={(value) => onChange({ ...dependency, dependsOnDraftId: value })}
+          options={options}
+          placeholder="Select container..."
+        />
+      </div>
+      <InputGroup.Action onClick={onRemove}>
+        <X size={10} />
+      </InputGroup.Action>
+    </InputGroup.Root>
+  );
+}
+
+function getContainerLabel(container: ContainerDraft, index: number): string {
+  if (container.image.trim()) {
+    const imageName = container.image.split("/").pop() || container.image;
+    return imageName.split(":")[0] || `Container ${index + 1}`;
+  }
+  return `Container ${index + 1}`;
+}
+
 function ContainerEditor({
   container,
+  containerIndex,
+  allContainers,
   onChange,
   onRemove,
 }: {
   container: ContainerDraft;
+  containerIndex: number;
+  allContainers: ContainerDraft[];
   onChange: (updated: ContainerDraft) => void;
   onRemove: () => void;
 }) {
   const styles = containerEditor();
+
+  const availableContainers = allContainers
+    .map((otherContainer, index) => ({
+      id: otherContainer.id,
+      label: getContainerLabel(otherContainer, index),
+    }))
+    .filter((otherContainer) => otherContainer.id !== container.id);
 
   const handleAddEnvVar = () => {
     onChange({
@@ -177,10 +272,36 @@ function ContainerEditor({
     });
   };
 
+  const handleAddDependency = () => {
+    onChange({
+      ...container,
+      dependencies: [
+        ...container.dependencies,
+        { id: crypto.randomUUID(), dependsOnDraftId: "", condition: "service_started" },
+      ],
+    });
+  };
+
+  const handleDependencyChange = (id: string, updated: DependencyDraft) => {
+    onChange({
+      ...container,
+      dependencies: container.dependencies.map((dependency) =>
+        dependency.id === id ? updated : dependency,
+      ),
+    });
+  };
+
+  const handleDependencyRemove = (id: string) => {
+    onChange({
+      ...container,
+      dependencies: container.dependencies.filter((dependency) => dependency.id !== id),
+    });
+  };
+
   return (
     <div className={styles.root()}>
       <div className={styles.header()}>
-        <span className={styles.title()}>Container</span>
+        <span className={styles.title()}>{getContainerLabel(container, containerIndex)}</span>
         <button type="button" onClick={onRemove} className={styles.removeButton()}>
           <X size={12} />
         </button>
@@ -223,6 +344,28 @@ function ContainerEditor({
           ))}
         </ListSectionContent>
       </div>
+
+      {availableContainers.length > 0 && (
+        <div className={styles.envSection()}>
+          <ListSectionHeader
+            label="Depends On"
+            onAdd={handleAddDependency}
+            addLabel="Add"
+            iconSize={10}
+          />
+          <ListSectionContent items={container.dependencies} emptyText="(None)">
+            {container.dependencies.map((dependency) => (
+              <DependencyRow
+                key={dependency.id}
+                dependency={dependency}
+                availableContainers={availableContainers}
+                onChange={(updated) => handleDependencyChange(dependency.id, updated)}
+                onRemove={() => handleDependencyRemove(dependency.id)}
+              />
+            ))}
+          </ListSectionContent>
+        </div>
+      )}
     </div>
   );
 }
@@ -238,7 +381,10 @@ export function ProjectCreate() {
   const [isCreating, setIsCreating] = useState(false);
 
   const handleAddContainer = () => {
-    setContainers([...containers, { id: crypto.randomUUID(), image: "", ports: "", envVars: [] }]);
+    setContainers([
+      ...containers,
+      { id: crypto.randomUUID(), image: "", ports: "", envVars: [], dependencies: [] },
+    ]);
   };
 
   const handleContainerChange = (id: string, updated: ContainerDraft) => {
@@ -264,11 +410,28 @@ export function ProjectCreate() {
         systemPrompt: systemPrompt.trim() || undefined,
       });
 
-      for (const containerDraft of containers) {
-        await api.containers.create(project.id, {
+      const sortedContainers = sortContainersByDependencies(containers);
+      const draftIdToRealId = new Map<string, string>();
+
+      for (const containerDraft of sortedContainers) {
+        const validDependencies = containerDraft.dependencies
+          .filter((dependency) => dependency.dependsOnDraftId)
+          .map((dependency) => {
+            const realId = draftIdToRealId.get(dependency.dependsOnDraftId);
+            if (!realId) return null;
+            return { containerId: realId, condition: dependency.condition };
+          })
+          .filter((dependency): dependency is { containerId: string; condition: string } =>
+            dependency !== null,
+          );
+
+        const createdContainer = await api.containers.create(project.id, {
           image: containerDraft.image.trim(),
           ports: parsePorts(containerDraft.ports),
+          dependsOn: validDependencies.length > 0 ? validDependencies : undefined,
         });
+
+        draftIdToRealId.set(containerDraft.id, createdContainer.id);
       }
 
       await mutate("projects");
@@ -334,10 +497,12 @@ export function ProjectCreate() {
             addLabel="Add Container"
           />
           <ListSectionContent items={containers} emptyText="(No containers yet)">
-            {containers.map((container) => (
+            {containers.map((container, index) => (
               <ContainerEditor
                 key={container.id}
                 container={container}
+                containerIndex={index}
+                allContainers={containers}
                 onChange={(updated) => handleContainerChange(container.id, updated)}
                 onRemove={() => handleContainerRemove(container.id)}
               />

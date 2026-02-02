@@ -48,15 +48,38 @@ function SettingsFormField({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-1">{children}</div>;
 }
 
-function ContainerDisplay({ container }: { container: ProjectContainer }) {
+function getContainerLabel(container: ProjectContainer): string {
+  const imageName = container.image.split("/").pop() || container.image;
+  return imageName.split(":")[0] || container.image;
+}
+
+function ContainerDisplay({
+  container,
+  allContainers,
+}: {
+  container: ProjectContainer;
+  allContainers: ProjectContainer[];
+}) {
   const styles = containerDisplay();
   const portsList = container.ports.length > 0 ? container.ports.join(", ") : "none";
 
+  const dependencyLabels = container.dependencies
+    .map((dependency) => {
+      const depContainer = allContainers.find(
+        (otherContainer) => otherContainer.id === dependency.dependsOnContainerId,
+      );
+      return depContainer ? getContainerLabel(depContainer) : null;
+    })
+    .filter((label): label is string => label !== null);
+
   return (
     <div className={styles.root()}>
-      <span className={styles.header()}>Container</span>
+      <span className={styles.header()}>{getContainerLabel(container)}</span>
       <span className={styles.image()}>{container.image}</span>
       <span className={styles.meta()}>Ports: {portsList}</span>
+      {dependencyLabels.length > 0 && (
+        <span className={styles.meta()}>Depends on: {dependencyLabels.join(", ")}</span>
+      )}
     </div>
   );
 }
@@ -163,7 +186,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           {containers.length > 0 && (
             <div className="flex flex-col gap-2">
               {containers.map((container) => (
-                <ContainerDisplay key={container.id} container={container} />
+                <ContainerDisplay
+                  key={container.id}
+                  container={container}
+                  allContainers={containers}
+                />
               ))}
             </div>
           )}

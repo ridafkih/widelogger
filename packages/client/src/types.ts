@@ -1,8 +1,14 @@
+export interface ContainerDependency {
+  dependsOnContainerId: string;
+  condition: string;
+}
+
 export interface ProjectContainer {
   id: string;
   image: string;
   hostname: string | null;
   ports: number[];
+  dependencies: ContainerDependency[];
 }
 
 export interface Project {
@@ -31,14 +37,21 @@ export interface Container {
   projectId: string;
   image: string;
   hostname: string | null;
+  dependencies: ContainerDependency[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DependsOnInput {
+  containerId: string;
+  condition?: string;
 }
 
 export interface CreateContainerInput {
   image: string;
   hostname?: string;
   ports?: number[];
+  dependsOn?: (DependsOnInput | string)[];
 }
 
 export interface SessionContainerInfo {

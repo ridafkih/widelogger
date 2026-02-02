@@ -83,8 +83,8 @@ function FormInputSelect({
     <div className="relative">
       <select
         value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        className={cn(input(), "appearance-none pr-6 cursor-pointer", className)}
+        onChange={({ target }) => onChange?.(target.value)}
+        className={cn(input(), "appearance-none pr-6 cursor-pointer border-0", className)}
       >
         {placeholder && (
           <option value="" disabled>

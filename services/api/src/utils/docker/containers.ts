@@ -8,12 +8,18 @@ import {
   formatNetworkAlias,
 } from "../../types/session";
 import {
-  findContainersByProjectId,
+  findContainersWithDependencies,
   findPortsByContainerId,
   findEnvVarsByContainerId,
   updateSessionContainerDockerId,
   updateSessionContainersStatusBySessionId,
+  type ContainerWithDependencies,
 } from "../repositories/container.repository";
+import {
+  resolveStartOrder,
+  CircularDependencyError,
+  type ContainerNode,
+} from "./dependency-resolver";
 import { deleteSession, findSessionById } from "../repositories/session.repository";
 import { proxyManager, isProxyInitialized, ensureProxyInitialized } from "../proxy";
 import { publisher } from "../../clients/publisher";
@@ -27,95 +33,182 @@ interface ClusterContainer {
   ports: Record<number, number>;
 }
 
+interface PreparedContainer {
+  containerDefinition: ContainerWithDependencies;
+  ports: { port: number }[];
+  envVars: { key: string; value: string }[];
+  containerWorkspace: string;
+}
+
+function buildContainerNodes(containers: ContainerWithDependencies[]): ContainerNode[] {
+  return containers.map((container) => ({
+    id: container.id,
+    dependsOn: container.dependencies.map((dependency) => dependency.dependsOnContainerId),
+  }));
+}
+
+async function prepareContainerData(
+  sessionId: string,
+  containerDefinition: ContainerWithDependencies,
+): Promise<PreparedContainer> {
+  const [ports, envVars, containerWorkspace] = await Promise.all([
+    findPortsByContainerId(containerDefinition.id),
+    findEnvVarsByContainerId(containerDefinition.id),
+    initializeContainerWorkspace(sessionId, containerDefinition.id, containerDefinition.image),
+  ]);
+
+  return { containerDefinition, ports, envVars, containerWorkspace };
+}
+
+function buildEnvironmentVariables(
+  sessionId: string,
+  envVars: { key: string; value: string }[],
+): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const envVar of envVars) {
+    env[envVar.key] = envVar.value;
+  }
+  env.AGENT_BROWSER_SOCKET_DIR = VOLUMES.BROWSER_SOCKET_DIR;
+  env.AGENT_BROWSER_SESSION = sessionId;
+  return env;
+}
+
+function buildNetworkAliasesAndPortMap(
+  sessionId: string,
+  ports: { port: number }[],
+): { portMap: Record<number, number>; networkAliases: string[] } {
+  const portMap: Record<number, number> = {};
+  const networkAliases: string[] = [];
+  for (const { port } of ports) {
+    portMap[port] = port;
+    networkAliases.push(formatNetworkAlias(sessionId, port));
+  }
+  return { portMap, networkAliases };
+}
+
+async function createAndStartContainer(
+  sessionId: string,
+  projectId: string,
+  networkName: string,
+  prepared: PreparedContainer,
+): Promise<{ dockerId: string; clusterContainer: ClusterContainer | null }> {
+  const { containerDefinition, ports, envVars, containerWorkspace } = prepared;
+
+  const env = buildEnvironmentVariables(sessionId, envVars);
+  const serviceHostname = containerDefinition.hostname || containerDefinition.id;
+  const uniqueHostname = formatUniqueHostname(sessionId, containerDefinition.id);
+  const projectName = formatProjectName(sessionId);
+  const containerName = formatContainerName(sessionId, containerDefinition.id);
+
+  const containerVolumes = [
+    { source: VOLUMES.WORKSPACES_HOST_PATH, target: "/workspaces" },
+    { source: config.browserSocketVolume, target: VOLUMES.BROWSER_SOCKET_DIR },
+  ];
+
+  const dockerId = await docker.createContainer({
+    name: containerName,
+    image: containerDefinition.image,
+    hostname: uniqueHostname,
+    networkMode: networkName,
+    workdir: containerWorkspace,
+    env: Object.keys(env).length > 0 ? env : undefined,
+    ports: ports.map(({ port }) => ({ container: port, host: undefined })),
+    volumes: containerVolumes,
+    labels: {
+      "com.docker.compose.project": projectName,
+      "com.docker.compose.service": serviceHostname,
+      [LABELS.SESSION]: sessionId,
+      [LABELS.PROJECT]: projectId,
+      [LABELS.CONTAINER]: containerDefinition.id,
+    },
+  });
+
+  await updateSessionContainerDockerId(sessionId, containerDefinition.id, dockerId);
+  await docker.startContainer(dockerId);
+
+  const { portMap, networkAliases } = buildNetworkAliasesAndPortMap(sessionId, ports);
+
+  if (networkAliases.length > 0) {
+    await docker.disconnectFromNetwork(dockerId, networkName);
+    await docker.connectToNetwork(dockerId, networkName, { aliases: networkAliases });
+  }
+
+  const clusterContainer =
+    Object.keys(portMap).length > 0
+      ? { containerId: containerDefinition.id, hostname: uniqueHostname, ports: portMap }
+      : null;
+
+  return { dockerId, clusterContainer };
+}
+
+async function startContainersInLevel(
+  sessionId: string,
+  projectId: string,
+  networkName: string,
+  containerIds: string[],
+  preparedByContainerId: Map<string, PreparedContainer>,
+): Promise<{ dockerIds: string[]; clusterContainers: ClusterContainer[] }> {
+  const levelDockerIds: string[] = [];
+  const levelClusterContainers: ClusterContainer[] = [];
+
+  const results = await Promise.all(
+    containerIds.map((containerId) => {
+      const prepared = preparedByContainerId.get(containerId);
+      if (!prepared) {
+        throw new Error(`Prepared container not found for ${containerId}`);
+      }
+      return createAndStartContainer(sessionId, projectId, networkName, prepared);
+    }),
+  );
+
+  for (const result of results) {
+    levelDockerIds.push(result.dockerId);
+    if (result.clusterContainer) {
+      levelClusterContainers.push(result.clusterContainer);
+    }
+  }
+
+  return { dockerIds: levelDockerIds, clusterContainers: levelClusterContainers };
+}
+
 export async function initializeSessionContainers(
   sessionId: string,
   projectId: string,
   browserService: BrowserService,
 ): Promise<void> {
-  const containerDefinitions = await findContainersByProjectId(projectId);
+  const containerDefinitions = await findContainersWithDependencies(projectId);
   const dockerIds: string[] = [];
   const clusterContainers: ClusterContainer[] = [];
 
   let networkName: string;
 
   try {
+    const containerNodes = buildContainerNodes(containerDefinitions);
+    const startLevels = resolveStartOrder(containerNodes);
+
     networkName = await createSessionNetwork(sessionId);
 
     const preparedContainers = await Promise.all(
-      containerDefinitions.map(async (containerDefinition) => {
-        const [ports, envVars, containerWorkspace] = await Promise.all([
-          findPortsByContainerId(containerDefinition.id),
-          findEnvVarsByContainerId(containerDefinition.id),
-          initializeContainerWorkspace(
-            sessionId,
-            containerDefinition.id,
-            containerDefinition.image,
-          ),
-        ]);
-
-        return { containerDefinition, ports, envVars, containerWorkspace };
-      }),
+      containerDefinitions.map((containerDefinition) =>
+        prepareContainerData(sessionId, containerDefinition),
+      ),
     );
 
-    for (const { containerDefinition, ports, envVars, containerWorkspace } of preparedContainers) {
-      const env: Record<string, string> = {};
-      for (const envVar of envVars) {
-        env[envVar.key] = envVar.value;
-      }
+    const preparedByContainerId = new Map<string, PreparedContainer>();
+    for (const prepared of preparedContainers) {
+      preparedByContainerId.set(prepared.containerDefinition.id, prepared);
+    }
 
-      const serviceHostname = containerDefinition.hostname ?? containerDefinition.id;
-      const uniqueHostname = formatUniqueHostname(sessionId, containerDefinition.id);
-      const projectName = formatProjectName(sessionId);
-      const containerName = formatContainerName(sessionId, containerDefinition.id);
-
-      const containerVolumes = [
-        { source: VOLUMES.WORKSPACES_HOST_PATH, target: "/workspaces" },
-        { source: config.browserSocketVolume, target: VOLUMES.BROWSER_SOCKET_DIR },
-      ];
-      env.AGENT_BROWSER_SOCKET_DIR = VOLUMES.BROWSER_SOCKET_DIR;
-      env.AGENT_BROWSER_SESSION = sessionId;
-
-      const dockerId = await docker.createContainer({
-        name: containerName,
-        image: containerDefinition.image,
-        hostname: uniqueHostname,
-        networkMode: networkName,
-        workdir: containerWorkspace,
-        env: Object.keys(env).length > 0 ? env : undefined,
-        ports: ports.map(({ port }) => ({ container: port, host: undefined })),
-        volumes: containerVolumes,
-        labels: {
-          "com.docker.compose.project": projectName,
-          "com.docker.compose.service": serviceHostname,
-          [LABELS.SESSION]: sessionId,
-          [LABELS.PROJECT]: projectId,
-          [LABELS.CONTAINER]: containerDefinition.id,
-        },
-      });
-
-      dockerIds.push(dockerId);
-      await updateSessionContainerDockerId(sessionId, containerDefinition.id, dockerId);
-      await docker.startContainer(dockerId);
-
-      const portMap: Record<number, number> = {};
-      const networkAliases: string[] = [];
-      for (const { port } of ports) {
-        portMap[port] = port;
-        networkAliases.push(formatNetworkAlias(sessionId, port));
-      }
-
-      if (networkAliases.length > 0) {
-        await docker.disconnectFromNetwork(dockerId, networkName);
-        await docker.connectToNetwork(dockerId, networkName, { aliases: networkAliases });
-      }
-
-      if (Object.keys(portMap).length > 0) {
-        clusterContainers.push({
-          containerId: containerDefinition.id,
-          hostname: uniqueHostname,
-          ports: portMap,
-        });
-      }
+    for (const level of startLevels) {
+      const levelResult = await startContainersInLevel(
+        sessionId,
+        projectId,
+        networkName,
+        level.containerIds,
+        preparedByContainerId,
+      );
+      dockerIds.push(...levelResult.dockerIds);
+      clusterContainers.push(...levelResult.clusterContainers);
     }
 
     await ensureProxyInitialized();
@@ -130,6 +223,9 @@ export async function initializeSessionContainers(
       return;
     }
   } catch (error) {
+    if (error instanceof CircularDependencyError) {
+      console.error(`Circular dependency in project ${projectId}: ${error.cycle.join(" -> ")}`);
+    }
     console.error(`Failed to initialize session ${sessionId}:`, error);
     await handleInitializationError(sessionId, projectId, dockerIds, browserService);
   }

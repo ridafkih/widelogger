@@ -27,6 +27,10 @@
       "types": "./src/schema/container-permissions.ts",
       "default": "./src/schema/container-permissions.ts"
     },
+    "./schema/container-dependencies": {
+      "types": "./src/schema/container-dependencies.ts",
+      "default": "./src/schema/container-dependencies.ts"
+    },
     "./schema/sessions": {
       "types": "./src/schema/sessions.ts",
       "default": "./src/schema/sessions.ts"

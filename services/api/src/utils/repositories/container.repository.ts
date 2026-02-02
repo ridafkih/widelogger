@@ -2,8 +2,12 @@ import { db } from "@lab/database/client";
 import { containers, type Container } from "@lab/database/schema/containers";
 import { containerPorts, type ContainerPort } from "@lab/database/schema/container-ports";
 import { containerEnvVars, type ContainerEnvVar } from "@lab/database/schema/container-env-vars";
+import {
+  containerDependencies,
+  type ContainerDependency,
+} from "@lab/database/schema/container-dependencies";
 import { sessionContainers, type SessionContainer } from "@lab/database/schema/session-containers";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import type { ContainerStatus } from "../../types/container";
 
 export async function findContainersByProjectId(projectId: string): Promise<Container[]> {
@@ -187,4 +191,138 @@ export async function getSessionContainersForReconciliation(sessionId: string): 
     .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
     .where(eq(sessionContainers.sessionId, sessionId))
     .orderBy(asc(containerPorts.port));
+}
+
+export async function findDependenciesByContainerId(
+  containerId: string,
+): Promise<ContainerDependency[]> {
+  return db
+    .select()
+    .from(containerDependencies)
+    .where(eq(containerDependencies.containerId, containerId));
+}
+
+export interface ContainerWithDependencies extends Container {
+  dependencies: { dependsOnContainerId: string; condition: string }[];
+}
+
+async function fetchDependenciesForContainers(
+  containerIds: string[],
+): Promise<ContainerDependency[]> {
+  return db
+    .select()
+    .from(containerDependencies)
+    .where(inArray(containerDependencies.containerId, containerIds));
+}
+
+function groupDependenciesByContainerId(
+  dependencies: ContainerDependency[],
+): Map<string, { dependsOnContainerId: string; condition: string }[]> {
+  const grouped = new Map<string, { dependsOnContainerId: string; condition: string }[]>();
+
+  for (const dependency of dependencies) {
+    const existing = grouped.get(dependency.containerId) || [];
+    grouped.set(dependency.containerId, [
+      ...existing,
+      {
+        dependsOnContainerId: dependency.dependsOnContainerId,
+        condition: dependency.condition,
+      },
+    ]);
+  }
+
+  return grouped;
+}
+
+function attachDependenciesToContainers(
+  projectContainers: Container[],
+  dependenciesByContainerId: Map<string, { dependsOnContainerId: string; condition: string }[]>,
+): ContainerWithDependencies[] {
+  return projectContainers.map((container) => ({
+    ...container,
+    dependencies: dependenciesByContainerId.get(container.id) || [],
+  }));
+}
+
+export async function findContainersWithDependencies(
+  projectId: string,
+): Promise<ContainerWithDependencies[]> {
+  const projectContainers = await findContainersByProjectId(projectId);
+
+  if (projectContainers.length === 0) return [];
+
+  const containerIds = projectContainers.map((container) => container.id);
+  const dependencies = await fetchDependenciesForContainers(containerIds);
+  const dependenciesByContainerId = groupDependenciesByContainerId(dependencies);
+
+  return attachDependenciesToContainers(projectContainers, dependenciesByContainerId);
+}
+
+function buildDependencyRecords(
+  containerId: string,
+  dependencies: { dependsOnContainerId: string; condition?: string }[],
+): { containerId: string; dependsOnContainerId: string; condition: string }[] {
+  return dependencies.map((dependency) => ({
+    containerId,
+    dependsOnContainerId: dependency.dependsOnContainerId,
+    condition: dependency.condition || "service_started",
+  }));
+}
+
+export async function createContainerDependencies(
+  containerId: string,
+  dependencies: { dependsOnContainerId: string; condition?: string }[],
+): Promise<void> {
+  if (dependencies.length === 0) return;
+
+  const records = buildDependencyRecords(containerId, dependencies);
+  await db.insert(containerDependencies).values(records);
+}
+
+export async function deleteContainerDependencies(containerId: string): Promise<void> {
+  await db.delete(containerDependencies).where(eq(containerDependencies.containerId, containerId));
+}
+
+function checkSelfDependency(containerId: string, dependsOnIds: string[]): string | null {
+  if (dependsOnIds.includes(containerId)) {
+    return "Container cannot depend on itself";
+  }
+  return null;
+}
+
+function findMissingDependencies(
+  dependsOnIds: string[],
+  projectContainerIds: Set<string>,
+): string[] {
+  const errors: string[] = [];
+  for (const depId of dependsOnIds) {
+    if (!projectContainerIds.has(depId)) {
+      errors.push(`Dependency container ${depId} does not exist in project`);
+    }
+  }
+  return errors;
+}
+
+export async function validateDependencies(
+  projectId: string,
+  containerId: string,
+  dependsOnIds: string[],
+): Promise<{ valid: boolean; errors: string[] }> {
+  const errors: string[] = [];
+
+  const selfDependencyError = checkSelfDependency(containerId, dependsOnIds);
+  if (selfDependencyError) {
+    errors.push(selfDependencyError);
+  }
+
+  if (dependsOnIds.length === 0) {
+    return { valid: errors.length === 0, errors };
+  }
+
+  const projectContainers = await findContainersByProjectId(projectId);
+  const projectContainerIds = new Set(projectContainers.map((container) => container.id));
+  const missingErrors = findMissingDependencies(dependsOnIds, projectContainerIds);
+  errors.push(...missingErrors);
+
+  return { valid: errors.length === 0, errors };
 }
