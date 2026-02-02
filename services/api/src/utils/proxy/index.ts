@@ -47,7 +47,10 @@ async function reconcileRoutes(): Promise<void> {
           ports: {},
         });
       }
-      containerMap.get(containerId)!.ports[port] = port;
+      const container = containerMap.get(containerId);
+      if (container) {
+        container.ports[port] = port;
+      }
     }
 
     if (containerMap.size === 0) continue;
@@ -80,4 +83,22 @@ export async function ensureProxyInitialized(): Promise<void> {
 
 export function isProxyInitialized(): boolean {
   return initialized;
+}
+
+export async function ensureCaddyRoutesExist(): Promise<void> {
+  if (!initialized) return;
+
+  try {
+    const config = (await proxyManager.getConfig()) as {
+      apps?: { http?: { servers?: { srv0?: { routes?: unknown[] } } } };
+    };
+    const routes = config?.apps?.http?.servers?.srv0?.routes ?? [];
+
+    if (routes.length === 0) {
+      console.log("[Proxy] Caddy has no routes, running reconciliation...");
+      await reconcileRoutes();
+    }
+  } catch (error) {
+    console.warn("[Proxy] Failed to check Caddy routes:", error);
+  }
 }

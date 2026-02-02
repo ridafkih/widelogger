@@ -1,5 +1,4 @@
 import type { PromptContext, ServiceRoute } from "../../types/prompt";
-import { config } from "../../config/environment";
 
 export interface ContainerInfo {
   hostname: string;
@@ -16,7 +15,7 @@ export interface CreatePromptContextParams {
 export function createPromptContext(params: CreatePromptContextParams): PromptContext {
   const serviceRoutes: ServiceRoute[] = params.containers.map((container) => ({
     port: container.port,
-    url: `http://${container.hostname}.${config.proxyBaseDomain}/`,
+    url: `http://${container.hostname}.internal/`,
   }));
 
   return {

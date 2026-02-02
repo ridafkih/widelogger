@@ -70,7 +70,9 @@ export class CaddyProxyManager implements ProxyManager {
   }
 
   private get matchDomain(): string {
-    return this.baseDomain.split(":")[0];
+    const domain = this.baseDomain.split(":")[0];
+    if (!domain) throw new Error("Invalid base domain");
+    return domain;
   }
 
   async initialize(): Promise<void> {
@@ -101,49 +103,76 @@ export class CaddyProxyManager implements ProxyManager {
       throw new Error("ProxyManager not initialized. Call initialize() first.");
     }
 
-    try {
-      await this.docker.connectToNetwork(this.caddyContainerId, networkName);
-    } catch (error) {
-      if (!isAlreadyConnectedError(error)) {
-        throw error;
-      }
-    }
-
+    const networkAliases = ["internal"];
     const registeredRoutes: RouteInfo[] = [];
-    const routePromises: Promise<void>[] = [];
+    const routeConfigs: {
+      routeId: string;
+      subdomain: string;
+      upstream: string;
+      containerPort: number;
+    }[] = [];
 
     for (const container of containers) {
       for (const containerPortStr of Object.keys(container.ports)) {
         const containerPort = parseInt(containerPortStr, 10);
         const subdomain = `${clusterId}--${containerPort}`;
         const routeId = `${clusterId}-${containerPort}`;
-
         const upstream = `${container.hostname}:${containerPort}`;
 
-        routePromises.push(
-          this.caddy.addRoute({
-            "@id": routeId,
-            match: [{ host: [`${subdomain}.${this.matchDomain}`, `${subdomain}.caddy`] }],
-            handle: [createReverseProxyHandler(upstream)],
-          }),
-        );
-
-        routePromises.push(
-          this.caddy.addRoute({
-            "@id": `${routeId}-path`,
-            match: [{ path: [`/${subdomain}`, `/${subdomain}/*`] }],
-            handle: [
-              { handler: "rewrite", strip_path_prefix: `/${subdomain}` },
-              createReverseProxyHandler(upstream),
-            ],
-          }),
-        );
-
-        registeredRoutes.push({
-          containerPort,
-          url: `http://${subdomain}.${this.baseDomain}`,
-        });
+        networkAliases.push(`${subdomain}.internal`);
+        routeConfigs.push({ routeId, subdomain, upstream, containerPort });
       }
+    }
+
+    try {
+      await this.docker.connectToNetwork(this.caddyContainerId, networkName, {
+        aliases: networkAliases,
+      });
+    } catch (error) {
+      if (isAlreadyConnectedError(error)) {
+        await this.docker.disconnectFromNetwork(this.caddyContainerId, networkName);
+        await this.docker.connectToNetwork(this.caddyContainerId, networkName, {
+          aliases: networkAliases,
+        });
+      } else {
+        throw error;
+      }
+    }
+
+    const routePromises: Promise<void>[] = [];
+
+    for (const { routeId, subdomain, upstream, containerPort } of routeConfigs) {
+      routePromises.push(
+        this.caddy.addRoute({
+          "@id": routeId,
+          match: [
+            {
+              host: [
+                `${subdomain}.${this.matchDomain}`,
+                `${subdomain}.${this.baseDomain}`,
+                `${subdomain}.internal`,
+              ],
+            },
+          ],
+          handle: [createReverseProxyHandler(upstream)],
+        }),
+      );
+
+      routePromises.push(
+        this.caddy.addRoute({
+          "@id": `${routeId}-path`,
+          match: [{ path: [`/${subdomain}`, `/${subdomain}/*`] }],
+          handle: [
+            { handler: "rewrite", strip_path_prefix: `/${subdomain}` },
+            createReverseProxyHandler(upstream),
+          ],
+        }),
+      );
+
+      registeredRoutes.push({
+        containerPort,
+        url: `http://${subdomain}.${this.baseDomain}`,
+      });
     }
 
     await Promise.all(routePromises);
@@ -181,6 +210,10 @@ export class CaddyProxyManager implements ProxyManager {
     return registration.routes;
   }
 
+  async getConfig(): Promise<unknown> {
+    return this.caddy.getConfig();
+  }
+
   private createBaseConfig(): CaddyConfig {
     return {
       admin: { listen: "0.0.0.0:2019" },
@@ -203,9 +236,13 @@ export class CaddyProxyManager implements ProxyManager {
     }
 
     const startTime = Date.now();
+    const containerId = this.caddyContainerId;
+    if (!containerId) {
+      throw new Error("Caddy container ID not set");
+    }
 
     for await (const event of this.docker.streamContainerEvents({
-      filters: { container: [this.caddyContainerId!] },
+      filters: { container: [containerId] },
     })) {
       if (Date.now() - startTime > timeoutMs) {
         throw new Error("Caddy failed to become healthy: timeout");

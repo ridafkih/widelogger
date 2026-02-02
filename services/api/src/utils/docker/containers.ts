@@ -21,6 +21,7 @@ import {
   type ContainerNode,
 } from "./dependency-resolver";
 import { deleteSession, findSessionById } from "../repositories/session.repository";
+import { getGitHubCredentials } from "../repositories/github-settings.repository";
 import { proxyManager, isProxyInitialized, ensureProxyInitialized } from "../proxy";
 import { publisher } from "../../clients/publisher";
 import type { BrowserService } from "../browser/browser-service";
@@ -60,9 +61,17 @@ async function prepareContainerData(
   return { containerDefinition, ports, envVars, containerWorkspace };
 }
 
+interface GitHubEnvConfig {
+  pat: string | null;
+  authorName: string | null;
+  authorEmail: string | null;
+  attributeAgent: boolean;
+}
+
 function buildEnvironmentVariables(
   sessionId: string,
   envVars: { key: string; value: string }[],
+  github?: GitHubEnvConfig | null,
 ): Record<string, string> {
   const env: Record<string, string> = {};
   for (const envVar of envVars) {
@@ -70,17 +79,36 @@ function buildEnvironmentVariables(
   }
   env.AGENT_BROWSER_SOCKET_DIR = VOLUMES.BROWSER_SOCKET_DIR;
   env.AGENT_BROWSER_SESSION = sessionId;
+
+  if (github) {
+    if (github.pat) {
+      env.GH_TOKEN = github.pat;
+    }
+    if (github.authorName) {
+      env.GIT_AUTHOR_NAME = github.authorName;
+      env.GIT_COMMITTER_NAME = github.authorName;
+    }
+    if (github.authorEmail) {
+      env.GIT_AUTHOR_EMAIL = github.authorEmail;
+      env.GIT_COMMITTER_EMAIL = github.authorEmail;
+    }
+    env.GIT_TERMINAL_PROMPT = "0";
+  }
+
   return env;
 }
 
 function buildNetworkAliasesAndPortMap(
   sessionId: string,
+  containerId: string,
   ports: { port: number }[],
 ): { portMap: Record<number, number>; networkAliases: string[] } {
   const portMap: Record<number, number> = {};
   const networkAliases: string[] = [];
+  const uniqueHostname = formatUniqueHostname(sessionId, containerId);
   for (const { port } of ports) {
     portMap[port] = port;
+    networkAliases.push(uniqueHostname);
     networkAliases.push(formatNetworkAlias(sessionId, port));
   }
   return { portMap, networkAliases };
@@ -91,10 +119,11 @@ async function createAndStartContainer(
   projectId: string,
   networkName: string,
   prepared: PreparedContainer,
+  github?: GitHubEnvConfig | null,
 ): Promise<{ dockerId: string; clusterContainer: ClusterContainer | null }> {
   const { containerDefinition, ports, envVars, containerWorkspace } = prepared;
 
-  const env = buildEnvironmentVariables(sessionId, envVars);
+  const env = buildEnvironmentVariables(sessionId, envVars, github);
   const serviceHostname = containerDefinition.hostname || containerDefinition.id;
   const uniqueHostname = formatUniqueHostname(sessionId, containerDefinition.id);
   const projectName = formatProjectName(sessionId);
@@ -126,7 +155,11 @@ async function createAndStartContainer(
   await updateSessionContainerDockerId(sessionId, containerDefinition.id, dockerId);
   await docker.startContainer(dockerId);
 
-  const { portMap, networkAliases } = buildNetworkAliasesAndPortMap(sessionId, ports);
+  const { portMap, networkAliases } = buildNetworkAliasesAndPortMap(
+    sessionId,
+    containerDefinition.id,
+    ports,
+  );
 
   if (networkAliases.length > 0) {
     await docker.disconnectFromNetwork(dockerId, networkName);
@@ -147,6 +180,7 @@ async function startContainersInLevel(
   networkName: string,
   containerIds: string[],
   preparedByContainerId: Map<string, PreparedContainer>,
+  github?: GitHubEnvConfig | null,
 ): Promise<{ dockerIds: string[]; clusterContainers: ClusterContainer[] }> {
   const levelDockerIds: string[] = [];
   const levelClusterContainers: ClusterContainer[] = [];
@@ -157,7 +191,7 @@ async function startContainersInLevel(
       if (!prepared) {
         throw new Error(`Prepared container not found for ${containerId}`);
       }
-      return createAndStartContainer(sessionId, projectId, networkName, prepared);
+      return createAndStartContainer(sessionId, projectId, networkName, prepared, github);
     }),
   );
 
@@ -188,11 +222,14 @@ export async function initializeSessionContainers(
 
     networkName = await createSessionNetwork(sessionId);
 
-    const preparedContainers = await Promise.all(
-      containerDefinitions.map((containerDefinition) =>
-        prepareContainerData(sessionId, containerDefinition),
+    const [preparedContainers, githubCredentials] = await Promise.all([
+      Promise.all(
+        containerDefinitions.map((containerDefinition) =>
+          prepareContainerData(sessionId, containerDefinition),
+        ),
       ),
-    );
+      getGitHubCredentials(),
+    ]);
 
     const preparedByContainerId = new Map<string, PreparedContainer>();
     for (const prepared of preparedContainers) {
@@ -206,6 +243,7 @@ export async function initializeSessionContainers(
         networkName,
         level.containerIds,
         preparedByContainerId,
+        githubCredentials,
       );
       dockerIds.push(...levelResult.dockerIds);
       clusterContainers.push(...levelResult.clusterContainers);
