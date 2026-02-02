@@ -39,7 +39,7 @@ function FilePath({ path, workingDirectory, changeType = "read" }: FilePathProps
   const Icon = icons[changeType];
 
   return (
-    <span className="inline-flex items-center gap-1.5 min-w-0">
+    <span className="inline-flex items-center gap-1.5 min-w-0 overflow-hidden w-full">
       <Icon className={iconVariants({ changeType })} />
       <span className="text-xs truncate">{relativePath}</span>
     </span>
