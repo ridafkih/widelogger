@@ -2,7 +2,7 @@ import { opencode } from "../../clients/opencode";
 import { TIMING } from "../../config/constants";
 import { getChangeType } from "../../types/file";
 import { formatWorkspacePath } from "../../types/session";
-import { getAllSessionsWithOpencodeId } from "../repositories/session.repository";
+import { findRunningSessions } from "../repositories/session.repository";
 import { publisher } from "../../clients/publisher";
 
 interface FileDiff {
@@ -157,10 +157,7 @@ function processEvent(labSessionId: string, event: unknown): void {
 class SessionTracker {
   private readonly abortController = new AbortController();
 
-  constructor(
-    readonly labSessionId: string,
-    readonly opencodeSessionId: string,
-  ) {
+  constructor(readonly labSessionId: string) {
     this.monitor();
   }
 
@@ -236,7 +233,7 @@ class OpenCodeMonitor {
   }
 
   private async syncSessions(): Promise<void> {
-    const active = await getAllSessionsWithOpencodeId();
+    const active = await findRunningSessions();
     const activeIds = new Set(active.map((session) => session.id));
 
     for (const [id, tracker] of this.trackers) {
@@ -246,9 +243,9 @@ class OpenCodeMonitor {
       }
     }
 
-    for (const { id, opencodeSessionId } of active) {
-      if (opencodeSessionId && !this.trackers.has(id)) {
-        this.trackers.set(id, new SessionTracker(id, opencodeSessionId));
+    for (const { id } of active) {
+      if (!this.trackers.has(id)) {
+        this.trackers.set(id, new SessionTracker(id));
       }
     }
   }
