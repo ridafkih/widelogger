@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { tv } from "tailwind-variants";
 import { Header } from "./layout-primitives";
-import { ThemeToggle } from "./theme-toggle";
 
 const link = tv({
   base: "text-text-secondary hover:text-text cursor-pointer",
@@ -48,8 +47,6 @@ export function Nav({ items }: NavProps) {
           {item.label}
         </Link>
       ))}
-      <div className="flex-1" />
-      <ThemeToggle />
     </Header>
   );
 }

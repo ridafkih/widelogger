@@ -9,9 +9,9 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 const themeScript = `
   (function() {
-    const theme = localStorage.getItem('theme');
-    const isDark = theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    if (isDark) document.documentElement.classList.add('dark');
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
   })();
 `;
 

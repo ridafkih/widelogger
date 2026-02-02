@@ -4,20 +4,17 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Streamdown } from "streamdown";
 import { File } from "@pierre/diffs/react";
 import { cn } from "@/lib/cn";
-import { useTheme } from "@/lib/use-theme";
 
 const pierreThemes = { light: "pierre-light", dark: "pierre-dark" } as const;
 
 function CodeBlock({ content, language }: { content: string; language?: string }) {
-  const { resolvedTheme } = useTheme();
-
   return (
     <div className="w-0 min-w-full">
       <File
         file={{ name: language ? `file.${language}` : "file.txt", contents: content }}
         options={{
           theme: pierreThemes,
-          themeType: resolvedTheme === "dark" ? "dark" : "light",
+          themeType: "system",
           overflow: "scroll",
           disableFileHeader: true,
         }}

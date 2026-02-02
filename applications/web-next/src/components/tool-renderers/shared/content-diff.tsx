@@ -2,7 +2,6 @@
 
 import { MultiFileDiff } from "@pierre/diffs/react";
 import type { FileContents } from "@pierre/diffs";
-import { useTheme } from "@/lib/use-theme";
 
 const pierreThemes = { light: "pierre-light", dark: "pierre-dark" } as const;
 
@@ -13,8 +12,6 @@ type ContentDiffProps = {
 };
 
 function ContentDiff({ oldContent, newContent, filename }: ContentDiffProps) {
-  const { resolvedTheme } = useTheme();
-
   const oldFile: FileContents = {
     name: filename,
     contents: oldContent,
@@ -32,7 +29,7 @@ function ContentDiff({ oldContent, newContent, filename }: ContentDiffProps) {
         newFile={newFile}
         options={{
           theme: pierreThemes,
-          themeType: resolvedTheme === "dark" ? "dark" : "light",
+          themeType: "system",
           diffStyle: "split",
           hunkSeparators: "line-info",
           lineDiffType: "word-alt",

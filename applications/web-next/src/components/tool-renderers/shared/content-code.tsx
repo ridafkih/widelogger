@@ -1,7 +1,6 @@
 "use client";
 
 import { File } from "@pierre/diffs/react";
-import { useTheme } from "@/lib/use-theme";
 
 const pierreThemes = { light: "pierre-light", dark: "pierre-dark" } as const;
 
@@ -57,8 +56,6 @@ type ContentCodeProps = {
 };
 
 function ContentCode({ content, filename, language }: ContentCodeProps) {
-  const { resolvedTheme } = useTheme();
-
   const effectiveLanguage = language ?? inferLanguage(filename);
   const displayFilename =
     filename ?? (effectiveLanguage ? `file.${effectiveLanguage}` : "file.txt");
@@ -69,7 +66,7 @@ function ContentCode({ content, filename, language }: ContentCodeProps) {
         file={{ name: displayFilename, contents: content }}
         options={{
           theme: pierreThemes,
-          themeType: resolvedTheme === "dark" ? "dark" : "light",
+          themeType: "system",
           overflow: "scroll",
           disableFileHeader: true,
         }}
