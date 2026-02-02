@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageFrame, Header } from "@/components/layout-primitives";
+import { useSessionTitle } from "@/lib/use-session-title";
 import { useSessionContext } from "../../layout";
 
 type FileReviewPageProps = {
@@ -16,6 +17,7 @@ export default function FileReviewPage({ params }: FileReviewPageProps) {
   const searchParams = useSearchParams();
   const filePath = searchParams.get("path");
   const { session, project } = useSessionContext();
+  const displayTitle = useSessionTitle(sessionId, session?.title);
 
   if (!filePath) {
     return (
@@ -52,7 +54,7 @@ export default function FileReviewPage({ params }: FileReviewPageProps) {
       <div className="flex-1 flex items-center justify-center text-text-muted">
         File review for: {filePath}
         <br />
-        (Session: {session?.title ?? sessionId}, Project: {project?.name})
+        (Session: {displayTitle ?? sessionId}, Project: {project?.name})
       </div>
     </PageFrame>
   );

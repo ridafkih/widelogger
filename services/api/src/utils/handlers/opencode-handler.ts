@@ -7,6 +7,7 @@ import { findSessionById } from "../repositories/session.repository";
 import { getProjectSystemPrompt } from "../repositories/project.repository";
 import { getSessionContainersWithPorts } from "../repositories/container.repository";
 import { publisher } from "../../clients/publisher";
+import { setLastMessage } from "../monitors/last-message-store";
 
 const PROMPT_ENDPOINTS = ["/session/", "/prompt", "/message"];
 
@@ -61,7 +62,7 @@ async function buildProxyBody(
 
   const isSessionCreate = isSessionCreateRequest(path, request.method);
   if (labSessionId && isSessionCreate) {
-    const originalBody = await request.json();
+    const originalBody = await request.json().catch(() => ({}));
     const directory = formatWorkspacePath(labSessionId);
     return JSON.stringify({ ...originalBody, directory });
   }
@@ -75,6 +76,7 @@ async function buildProxyBody(
 
   const userMessageText = extractUserMessageText(originalBody);
   if (userMessageText) {
+    setLastMessage(labSessionId, userMessageText);
     publisher.publishDelta(
       "sessionMetadata",
       { uuid: labSessionId },

@@ -5,6 +5,7 @@ import { formatWorkspacePath } from "../../types/session";
 import { findRunningSessions } from "../repositories/session.repository";
 import { publisher } from "../../clients/publisher";
 import { setInferenceStatus, clearInferenceStatus } from "./inference-status-store";
+import { setLastMessage, clearLastMessage } from "./last-message-store";
 
 interface FileDiff {
   file: string;
@@ -100,8 +101,9 @@ function processSessionDiff(labSessionId: string, event: SessionDiffEvent): void
 
 function processMessageUpdated(labSessionId: string, event: MessageUpdatedEvent): void {
   const text = extractTextFromParts(event.properties.parts);
+  setInferenceStatus(labSessionId, "generating");
   if (text) {
-    setInferenceStatus(labSessionId, "generating");
+    setLastMessage(labSessionId, text);
     publisher.publishDelta(
       "sessionMetadata",
       { uuid: labSessionId },
@@ -110,13 +112,20 @@ function processMessageUpdated(labSessionId: string, event: MessageUpdatedEvent)
         inferenceStatus: "generating",
       },
     );
+  } else {
+    publisher.publishDelta(
+      "sessionMetadata",
+      { uuid: labSessionId },
+      { inferenceStatus: "generating" },
+    );
   }
 }
 
 function processMessagePartUpdated(labSessionId: string, event: MessagePartUpdatedEvent): void {
   const part = event.properties.part;
+  setInferenceStatus(labSessionId, "generating");
   if (part.type === "text" && part.text) {
-    setInferenceStatus(labSessionId, "generating");
+    setLastMessage(labSessionId, part.text);
     publisher.publishDelta(
       "sessionMetadata",
       { uuid: labSessionId },
@@ -124,6 +133,12 @@ function processMessagePartUpdated(labSessionId: string, event: MessagePartUpdat
         lastMessage: part.text,
         inferenceStatus: "generating",
       },
+    );
+  } else {
+    publisher.publishDelta(
+      "sessionMetadata",
+      { uuid: labSessionId },
+      { inferenceStatus: "generating" },
     );
   }
 }
@@ -168,6 +183,7 @@ class SessionTracker {
   stop(): void {
     this.abortController.abort();
     clearInferenceStatus(this.labSessionId);
+    clearLastMessage(this.labSessionId);
   }
 
   get isActive(): boolean {

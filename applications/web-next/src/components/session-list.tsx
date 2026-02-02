@@ -1,20 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Box, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Project, Session } from "@lab/client";
 import { tv } from "tailwind-variants";
 import { useProjects, useSessions, useCreateSession, useSessionCreation } from "@/lib/hooks";
-import { prefetchSessionMessages } from "@/lib/use-agent";
-import { prefetchSessionContainers } from "@/lib/api";
-import { useMultiplayer } from "@/lib/multiplayer";
-import { useSessionStatus } from "@/lib/use-session-status";
 import { useSessionsSync } from "@/lib/use-sessions-sync";
 import { StatusIcon } from "./status-icon";
-import { Hash } from "./hash";
 import { IconButton } from "./icon-button";
-import { ProjectNavigator } from "./project-navigator-list";
+import { SessionItem } from "./session-item";
 
 const row = tv({
   base: "flex items-center gap-2 py-2",
@@ -69,35 +63,21 @@ function SessionListProject({ project, children }: { project: Project; children?
 }
 
 function SessionListItem({ session }: { session: Session }) {
-  const router = useRouter();
-  const { useChannel } = useMultiplayer();
-  const metadata = useChannel("sessionMetadata", { uuid: session.id });
-  const status = useSessionStatus(session);
-
-  const handleMouseDown = () => {
-    prefetchSessionMessages(session.id);
-    prefetchSessionContainers(session.id);
-  };
-
-  const handleClick = () => {
-    router.push(`/editor/${session.id}/chat`);
-  };
-
   return (
-    <div onMouseDown={handleMouseDown} onClick={handleClick} className={row({ type: "session" })}>
-      <div className="max-w-1/2 flex items-center gap-2">
-        <div className="flex items-center gap-2 shrink-0">
-          <StatusIcon status={status} />
-          <Hash>{session.id.slice(0, 6)}</Hash>
+    <SessionItem.Provider session={session}>
+      <SessionItem.Link className={row({ type: "session" })}>
+        <div className="max-w-1/2 flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <SessionItem.Status />
+            <SessionItem.Hash />
+          </div>
+          <SessionItem.Title />
         </div>
-        <ProjectNavigator.ItemTitle empty={!session.title}>
-          {session.title}
-        </ProjectNavigator.ItemTitle>
-      </div>
-      <div className="overflow-hidden flex grow justify-end">
-        <ProjectNavigator.ItemDescription>{metadata.lastMessage}</ProjectNavigator.ItemDescription>
-      </div>
-    </div>
+        <div className="overflow-hidden flex grow justify-end">
+          <SessionItem.LastMessage />
+        </div>
+      </SessionItem.Link>
+    </SessionItem.Provider>
   );
 }
 

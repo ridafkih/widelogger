@@ -77,7 +77,7 @@ export function createClient(config: ClientConfig) {
 
       get: (sessionId: string) => request<Session>(`/sessions/${sessionId}`),
 
-      create: (projectId: string, data?: { title?: string }) =>
+      create: (projectId: string, data?: { title?: string; initialMessage?: string }) =>
         request<Session>(`/projects/${projectId}/sessions`, {
           method: "POST",
           body: JSON.stringify(data ?? {}),

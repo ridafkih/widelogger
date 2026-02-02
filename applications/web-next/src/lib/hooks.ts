@@ -118,6 +118,7 @@ export function useSession(sessionId: string | null) {
 
 interface CreateSessionOptions {
   title?: string;
+  initialMessage?: string;
   currentSessionCount: number;
 }
 
@@ -126,12 +127,12 @@ export function useCreateSession() {
   const [, setCreationState] = useAtom(creationStateAtom);
 
   return async (projectId: string, options: CreateSessionOptions) => {
-    const { title, currentSessionCount } = options;
+    const { title, initialMessage, currentSessionCount } = options;
 
     setCreationState({ isCreating: true, projectId, sessionCountAtCreation: currentSessionCount });
 
     try {
-      const session = await api.sessions.create(projectId, { title });
+      const session = await api.sessions.create(projectId, { title, initialMessage });
       mutate(
         `sessions-${projectId}`,
         (current: Session[] = []) => {

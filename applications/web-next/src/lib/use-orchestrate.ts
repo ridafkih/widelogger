@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { api } from "./api";
 import { useMultiplayer } from "./multiplayer";
-import type { schema } from "@lab/multiplayer-sdk";
-import type { z } from "zod";
 
-type ChannelStatus = z.infer<typeof schema.channels.orchestrationStatus.snapshot>["status"];
-export type OrchestrationStatus = "idle" | ChannelStatus;
+export type OrchestrationStatus =
+  | "idle"
+  | "pending"
+  | "thinking"
+  | "delegating"
+  | "starting"
+  | "complete"
+  | "error";
 
 export interface OrchestrationState {
   status: OrchestrationStatus;
@@ -33,9 +37,12 @@ const initialState: OrchestrationState = {
 };
 
 export function useOrchestrate(): UseOrchestrateResult {
-  const multiplayer = useMultiplayer();
+  const { useChannel } = useMultiplayer();
   const [state, setState] = useState<OrchestrationState>(initialState);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  const orchestrationStatus = useChannel("orchestrationStatus", {
+    uuid: state.orchestrationId ?? "",
+  });
 
   const isLoading =
     state.status === "pending" ||
@@ -44,19 +51,26 @@ export function useOrchestrate(): UseOrchestrateResult {
     state.status === "starting";
 
   useEffect(() => {
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
-  }, []);
+    if (!state.orchestrationId) return;
+
+    if (orchestrationStatus.status !== "pending") {
+      setState((prev) => ({
+        ...prev,
+        status: orchestrationStatus.status,
+        projectName: orchestrationStatus.projectName,
+        sessionId: orchestrationStatus.sessionId,
+        errorMessage: orchestrationStatus.errorMessage,
+      }));
+    }
+  }, [
+    state.orchestrationId,
+    orchestrationStatus.status,
+    orchestrationStatus.projectName,
+    orchestrationStatus.sessionId,
+    orchestrationStatus.errorMessage,
+  ]);
 
   const reset = useCallback(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
     setState(initialState);
   }, []);
 
@@ -78,28 +92,11 @@ export function useOrchestrate(): UseOrchestrateResult {
           modelId: options?.modelId,
         });
 
-        const unsubscribe = multiplayer.subscribe(
-          "orchestrationStatus",
-          { uuid: result.orchestrationId },
-          (snapshot) => {
-            setState((prev) => ({
-              ...prev,
-              status: snapshot.status,
-              projectName: snapshot.projectName,
-              sessionId: snapshot.sessionId,
-              errorMessage: snapshot.errorMessage,
-            }));
-          },
-        );
-
-        unsubscribeRef.current = unsubscribe;
-
         setState((prev) => ({
           ...prev,
           orchestrationId: result.orchestrationId,
           projectName: result.projectName,
           sessionId: result.sessionId,
-          status: "complete",
         }));
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Orchestration failed";
@@ -112,7 +109,7 @@ export function useOrchestrate(): UseOrchestrateResult {
         });
       }
     },
-    [multiplayer, reset],
+    [reset],
   );
 
   return {

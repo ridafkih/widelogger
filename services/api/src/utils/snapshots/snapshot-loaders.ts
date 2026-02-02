@@ -14,6 +14,7 @@ import {
 } from "../repositories/container.repository";
 import { opencode } from "../../clients/opencode";
 import { getInferenceStatus } from "../monitors/inference-status-store";
+import { getLastMessage, setLastMessage } from "../monitors/last-message-store";
 import type { BrowserService } from "../browser/browser-service";
 import type { AppSchema } from "@lab/multiplayer-sdk";
 
@@ -75,9 +76,10 @@ export async function loadSessionMetadata(sessionId: string) {
   const session = await findSessionById(sessionId);
   const title = session?.title ?? "";
   const inferenceStatus = getInferenceStatus(sessionId);
+  const storedLastMessage = getLastMessage(sessionId);
 
   if (!session?.opencodeSessionId) {
-    return { title, inferenceStatus, participantCount: 0 };
+    return { title, lastMessage: storedLastMessage, inferenceStatus, participantCount: 0 };
   }
 
   try {
@@ -90,9 +92,14 @@ export async function loadSessionMetadata(sessionId: string) {
 
     const text = textPart && "text" in textPart && textPart.text;
 
-    return { title, lastMessage: text, inferenceStatus, participantCount: 0 };
+    if (text) {
+      setLastMessage(sessionId, text);
+      return { title, lastMessage: text, inferenceStatus, participantCount: 0 };
+    }
+
+    return { title, lastMessage: storedLastMessage, inferenceStatus, participantCount: 0 };
   } catch {
-    return { title, inferenceStatus, participantCount: 0 };
+    return { title, lastMessage: storedLastMessage, inferenceStatus, participantCount: 0 };
   }
 }
 

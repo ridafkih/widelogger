@@ -15,13 +15,15 @@ import { PageFrame, Header, PageContent } from "@/components/layout-primitives";
 import { useAgent, invalidateSessionCache } from "@/lib/use-agent";
 import { useDeleteSession } from "@/lib/hooks";
 import { useSessionStatus } from "@/lib/use-session-status";
+import { useSessionTitle } from "@/lib/use-session-title";
 import { useSessionContext } from "../layout";
 
 type TabValue = "chat" | "review" | "frame" | "stream";
 
 function SessionHeader() {
-  const { session, project } = useSessionContext();
+  const { session, project, sessionId } = useSessionContext();
   const status = useSessionStatus(session);
+  const displayTitle = useSessionTitle(sessionId, session?.title);
 
   return (
     <Header>
@@ -29,8 +31,8 @@ function SessionHeader() {
       <Breadcrumb.Root>
         <Breadcrumb.MutedItem>{project?.name}</Breadcrumb.MutedItem>
         <Breadcrumb.Separator />
-        {session?.title ? (
-          <Breadcrumb.Item>{session.title}</Breadcrumb.Item>
+        {displayTitle ? (
+          <Breadcrumb.Item>{displayTitle}</Breadcrumb.Item>
         ) : (
           <Breadcrumb.Item muted>Unnamed Session</Breadcrumb.Item>
         )}

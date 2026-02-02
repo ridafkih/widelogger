@@ -40,7 +40,7 @@ const contentBlock = tv({
 });
 
 function MessagePartText({ part, isStreaming }: { part: TextPart; isStreaming?: boolean }) {
-  if (part.text.length === 0) return null;
+  if (part.text.trim().length === 0) return null;
 
   return (
     <div className={contentBlock()} data-opencode-component="Text">
@@ -67,6 +67,8 @@ function useReasoning() {
 
 function MessagePartReasoning({ part, children }: { part: ReasoningPart; children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
+
+  if (part.text.trim().length === 0) return null;
 
   return (
     <ReasoningContext

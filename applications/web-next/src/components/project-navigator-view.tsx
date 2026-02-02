@@ -1,52 +1,29 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectNavigator } from "@/components/project-navigator-list";
-import { Avatar } from "@/components/avatar";
-import { StatusIcon } from "@/components/status-icon";
-import { Hash } from "@/components/hash";
+import { SessionItem } from "@/components/session-item";
 import { useProjects, useSessions, useCreateSession, useSessionCreation } from "@/lib/hooks";
-import { prefetchSessionMessages } from "@/lib/use-agent";
-import { prefetchSessionContainers } from "@/lib/api";
-import { useSessionStatus } from "@/lib/use-session-status";
-import { useMultiplayer } from "@/lib/multiplayer";
 import { useSessionsSync } from "@/lib/use-sessions-sync";
 import type { Project, Session } from "@lab/client";
 
-type SessionItemProps = {
-  session: Session;
-  isSelected: boolean;
-};
-
-function SessionItem({ session, isSelected }: SessionItemProps) {
-  const { useChannel } = useMultiplayer();
-  const metadata = useChannel("sessionMetadata", { uuid: session.id });
-  const status = useSessionStatus(session);
-
-  const handleMouseDown = () => {
-    prefetchSessionMessages(session.id);
-    prefetchSessionContainers(session.id);
-  };
+function SidebarSessionItem({ isSelected }: { isSelected: boolean }) {
+  const { prefetch } = SessionItem.useContext();
 
   return (
-    <Link href={`/editor/${session.id}/chat`} className="contents">
-      <ProjectNavigator.Item selected={isSelected} onMouseDown={handleMouseDown}>
+    <SessionItem.Link className="contents">
+      <ProjectNavigator.Item selected={isSelected} onMouseDown={prefetch}>
         <div className="max-w-1/2 flex items-center gap-2">
-          <StatusIcon status={status} />
-          <Hash>{session.id.slice(0, 6)}</Hash>
-          <ProjectNavigator.ItemTitle empty={!session.title}>
-            {session.title}
-          </ProjectNavigator.ItemTitle>
+          <SessionItem.Status />
+          <SessionItem.Hash />
+          <SessionItem.Title />
         </div>
         <div className="flex grow overflow-hidden justify-end">
-          <ProjectNavigator.ItemDescription>
-            {metadata.lastMessage}
-          </ProjectNavigator.ItemDescription>
+          <SessionItem.LastMessage />
         </div>
       </ProjectNavigator.Item>
-    </Link>
+    </SessionItem.Link>
   );
 }
 
@@ -94,11 +71,9 @@ function ProjectSessionsList({ project, selectedSessionId }: ProjectSessionsList
         <ProjectNavigator.HeaderCount>{sessionCount}</ProjectNavigator.HeaderCount>
       </ProjectNavigator.Header>
       {sessions?.map((session) => (
-        <SessionItem
-          key={session.id}
-          session={session}
-          isSelected={selectedSessionId === session.id}
-        />
+        <SessionItem.Provider key={session.id} session={session}>
+          <SidebarSessionItem isSelected={selectedSessionId === session.id} />
+        </SessionItem.Provider>
       ))}
       {showSkeleton && (
         <ProjectNavigator.ItemSkeleton>

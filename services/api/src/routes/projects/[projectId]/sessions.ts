@@ -14,7 +14,7 @@ const POST: RouteHandler = async (request, params, context) => {
   try {
     const result = await spawnSession({
       projectId,
-      taskSummary: body.title,
+      taskSummary: body.initialMessage || body.title || "",
       browserService: context.browserService,
     });
 

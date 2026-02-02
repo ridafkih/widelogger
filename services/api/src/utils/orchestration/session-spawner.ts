@@ -1,6 +1,6 @@
 import type { Session } from "@lab/database/schema/sessions";
 import { claimPooledSession } from "../pool/pool-manager";
-import { createSession, updateSessionTitle } from "../repositories/session.repository";
+import { createSession } from "../repositories/session.repository";
 import {
   findContainersByProjectId,
   createSessionContainer,
@@ -10,6 +10,7 @@ import { publisher } from "../../clients/publisher";
 import type { BrowserService } from "../browser/browser-service";
 import { initializeSessionContainers } from "../docker/containers";
 import { reconcilePool } from "../pool/pool-manager";
+import { generateSessionTitle } from "../title-generation/title-generator";
 
 export interface SpawnSessionOptions {
   projectId: string;
@@ -35,10 +36,6 @@ function validateContainerStatus(status: string): ContainerStatus {
     return status;
   }
   throw new Error(`Invalid container status: ${status}`);
-}
-
-function normalizeTaskSummary(taskSummary?: string): string | undefined {
-  return taskSummary?.trim().replace(/\s+/g, " ");
 }
 
 function extractContainerDisplayName(container: {
@@ -76,18 +73,10 @@ function scheduleBackgroundWork(
   });
 }
 
-async function claimAndPreparePooledSession(
-  projectId: string,
-  title?: string,
-): Promise<SpawnSessionResult | null> {
+async function claimAndPreparePooledSession(projectId: string): Promise<SpawnSessionResult | null> {
   const pooledSession = await claimPooledSession(projectId);
   if (!pooledSession) {
     return null;
-  }
-
-  const session = await updateSessionTitle(pooledSession.id, title);
-  if (!session) {
-    throw new Error("Failed to update pooled session title");
   }
 
   const existingContainers = await getSessionContainersWithDetails(pooledSession.id);
@@ -98,20 +87,17 @@ async function claimAndPreparePooledSession(
     urls: [],
   }));
 
-  publishSessionCreated(session, containers);
-  return { session, containers };
+  publishSessionCreated(pooledSession, containers);
+  return { session: pooledSession, containers };
 }
 
-async function createSessionWithContainers(
-  projectId: string,
-  title?: string,
-): Promise<SpawnSessionResult> {
+async function createSessionWithContainers(projectId: string): Promise<SpawnSessionResult> {
   const containerDefinitions = await findContainersByProjectId(projectId);
   if (containerDefinitions.length === 0) {
     throw new Error("Project has no container definitions");
   }
 
-  const session = await createSession(projectId, title);
+  const session = await createSession(projectId);
   const containers: ContainerRow[] = [];
 
   for (const definition of containerDefinitions) {
@@ -136,14 +122,29 @@ async function createSessionWithContainers(
 
 export async function spawnSession(options: SpawnSessionOptions): Promise<SpawnSessionResult> {
   const { projectId, taskSummary, browserService } = options;
-  const title = normalizeTaskSummary(taskSummary);
 
-  const pooledResult = await claimAndPreparePooledSession(projectId, title);
+  const pooledResult = await claimAndPreparePooledSession(projectId);
   if (pooledResult) {
+    scheduleBackgroundTitleGeneration(pooledResult.session.id, taskSummary);
     return pooledResult;
   }
 
-  const result = await createSessionWithContainers(projectId, title);
+  const result = await createSessionWithContainers(projectId);
   scheduleBackgroundWork(result.session.id, projectId, browserService);
+  scheduleBackgroundTitleGeneration(result.session.id, taskSummary);
   return result;
+}
+
+function scheduleBackgroundTitleGeneration(sessionId: string, userMessage: string): void {
+  if (!userMessage?.trim()) {
+    return;
+  }
+
+  generateSessionTitle({
+    sessionId,
+    userMessage,
+    fallbackTitle: userMessage.slice(0, 50).trim(),
+  }).catch((error) => {
+    console.error(`[SessionSpawner] Title generation failed for ${sessionId}:`, error);
+  });
 }
