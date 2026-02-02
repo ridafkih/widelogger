@@ -356,10 +356,8 @@ const metaRow = tv({
   base: "flex items-center gap-3 px-4 py-1.5 text-xs text-text-muted",
 });
 
-function MessagePartStepStart({}: { part: StepStartPart }) {
-  return (
-    <div className={metaRow()} style={stripedBackground} data-opencode-component="StepStart"></div>
-  );
+function MessagePartStepStart({ }: { part: StepStartPart }) {
+  return null;
 }
 
 function MessagePartStepFinish({}: { part: StepFinishPart }) {
