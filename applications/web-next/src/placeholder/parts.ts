@@ -5,7 +5,7 @@ import type {
   StepStartPart,
   StepFinishPart,
   Part,
-} from "@opencode-ai/sdk/client";
+} from "@opencode-ai/sdk/v2/client";
 
 type MockMessage = {
   id: string;

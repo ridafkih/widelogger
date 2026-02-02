@@ -10,8 +10,11 @@ import type {
   EventMessageRemoved,
   EventMessagePartUpdated,
   EventMessagePartRemoved,
-  EventPermissionUpdated,
+  EventPermissionAsked,
   EventPermissionReplied,
+  EventQuestionAsked,
+  EventQuestionReplied,
+  EventQuestionRejected,
   Part,
   TextPart,
   ReasoningPart,
@@ -24,7 +27,9 @@ import type {
   AgentPart,
   RetryPart,
   CompactionPart,
-} from "@opencode-ai/sdk/client";
+  QuestionRequest,
+  QuestionInfo,
+} from "@opencode-ai/sdk/v2/client";
 
 export type { SnapshotPart, PatchPart, AgentPart, RetryPart, CompactionPart };
 
@@ -70,13 +75,27 @@ export function isMessagePartRemovedEvent(event: Event): event is EventMessagePa
   return event.type === "message.part.removed";
 }
 
-export function isPermissionUpdatedEvent(event: Event): event is EventPermissionUpdated {
-  return event.type === "permission.updated";
+export function isPermissionAskedEvent(event: Event): event is EventPermissionAsked {
+  return event.type === "permission.asked";
 }
 
 export function isPermissionRepliedEvent(event: Event): event is EventPermissionReplied {
   return event.type === "permission.replied";
 }
+
+export function isQuestionAskedEvent(event: Event): event is EventQuestionAsked {
+  return event.type === "question.asked";
+}
+
+export function isQuestionRepliedEvent(event: Event): event is EventQuestionReplied {
+  return event.type === "question.replied";
+}
+
+export function isQuestionRejectedEvent(event: Event): event is EventQuestionRejected {
+  return event.type === "question.rejected";
+}
+
+export type { QuestionRequest, QuestionInfo };
 
 export function isTextPart(part: Part): part is TextPart {
   return part.type === "text";

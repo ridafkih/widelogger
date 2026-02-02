@@ -14,7 +14,7 @@ import type {
   AgentPart,
   RetryPart,
   CompactionPart,
-} from "@opencode-ai/sdk/client";
+} from "@opencode-ai/sdk/v2/client";
 import { Check, ChevronRight, Loader2, File, FilePlus, FileEdit } from "lucide-react";
 import { tv } from "tailwind-variants";
 import { Markdown } from "./markdown";
@@ -170,8 +170,14 @@ function useTool() {
   return context;
 }
 
-function MessagePartTool({ part, children }: { part: ToolPart; children: ReactNode }) {
-  const [expanded, setExpanded] = useState(false);
+interface MessagePartToolProps {
+  part: ToolPart;
+  children: ReactNode;
+  defaultExpanded?: boolean;
+}
+
+function MessagePartTool({ part, children, defaultExpanded = false }: MessagePartToolProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
     <ToolContext
@@ -306,17 +312,26 @@ function MessagePartToolError({ error }: { error: string }) {
 
 type ToolRendererProps = {
   tool: string;
+  callId: string;
   input?: Record<string, unknown>;
   output?: string | null;
   error?: string | null;
   status: string;
 };
 
-function MessagePartToolRenderer({ tool, input, output, error, status }: ToolRendererProps) {
+function MessagePartToolRenderer({
+  tool,
+  callId,
+  input,
+  output,
+  error,
+  status,
+}: ToolRendererProps) {
   const Renderer = getToolRenderer(tool);
   return (
     <Renderer
       tool={tool}
+      callId={callId}
       input={input}
       output={output}
       error={error}
@@ -440,9 +455,11 @@ function MessagePartRoot({
     const input = part.state.input;
     const output = status === "completed" ? part.state.output : null;
     const error = status === "error" ? part.state.error : null;
+    const isQuestionTool = part.tool === "askuserquestion" || part.tool === "question";
+    const shouldAutoExpand = isQuestionTool && status === "running";
 
     return (
-      <MessagePartTool part={part}>
+      <MessagePartTool part={part} defaultExpanded={shouldAutoExpand}>
         <MessagePartToolHeader>
           <MessagePartToolStatus />
           <MessagePartToolName />
@@ -454,6 +471,7 @@ function MessagePartRoot({
         <MessagePartToolDetails>
           <MessagePartToolRenderer
             tool={part.tool}
+            callId={part.callID}
             input={input}
             output={output}
             error={error}

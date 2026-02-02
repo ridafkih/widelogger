@@ -5,7 +5,7 @@ import {
   createOpencodeClient,
   type FileContent,
   type File as SdkFile,
-} from "@opencode-ai/sdk/client";
+} from "@opencode-ai/sdk/v2/client";
 import { useOpenCodeSession } from "./opencode-session";
 import type { BrowserState, BrowserActions, FileNode, FileStatus } from "@/components/review";
 
@@ -93,9 +93,7 @@ export function useFileBrowser(sessionId: string | null): {
     if (!client) return;
 
     try {
-      const response = await client.file.status({
-        query: {},
-      });
+      const response = await client.file.status({});
 
       if (response.data) {
         const statuses = new Map<string, FileStatus>();
@@ -127,7 +125,7 @@ export function useFileBrowser(sessionId: string | null): {
       setRootLoading(true);
       try {
         const response = await client.file.list({
-          query: { path: "." },
+          path: ".",
         });
 
         if (cancelled) return;
@@ -184,7 +182,7 @@ export function useFileBrowser(sessionId: string | null): {
 
         try {
           const response = await client.file.list({
-            query: { path },
+            path,
           });
 
           if (response.data) {
@@ -223,7 +221,7 @@ export function useFileBrowser(sessionId: string | null): {
 
       try {
         const response = await client.file.read({
-          query: { path },
+          path,
         });
 
         if (response.data && response.data.type === "text") {

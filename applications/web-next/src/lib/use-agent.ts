@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { createOpencodeClient, type Message, type Part } from "@opencode-ai/sdk/client";
+import { createOpencodeClient, type Message, type Part } from "@opencode-ai/sdk/v2/client";
 import { api } from "./api";
 import { useOpenCodeSession, type Event } from "./opencode-session";
 
@@ -105,8 +105,13 @@ async function fetchSessionMessages(labSessionId: string): Promise<CachedSession
 
   const client = createSessionClient(labSessionId);
   const messagesResponse = await client.session.messages({
-    path: { id: labSession.opencodeSessionId },
+    sessionID: labSession.opencodeSessionId,
   });
+
+  if (messagesResponse.error) {
+    console.error("[fetchSessionMessages] Error:", messagesResponse.error);
+    return null;
+  }
 
   if (!messagesResponse.data) return null;
 
@@ -198,7 +203,6 @@ export function useAgent(labSessionId: string): UseAgentResult {
         throw new Error("Failed to create OpenCode session");
       }
 
-      await api.sessions.update(labSessionId, { opencodeSessionId: response.data.id });
       return response.data.id;
     };
 
@@ -220,10 +224,21 @@ export function useAgent(labSessionId: string): UseAgentResult {
         const sessionId = await getOrCreateOpencodeSession();
         if (cancelled) return;
 
+        console.log("[useAgent] Fetching messages for session:", sessionId);
         const messagesResponse = await opencodeClient.session.messages({
-          path: { id: sessionId },
+          sessionID: sessionId,
+        });
+        console.log("[useAgent] Messages response:", {
+          hasData: !!messagesResponse.data,
+          dataLength: messagesResponse.data?.length,
+          hasError: !!messagesResponse.error,
+          error: messagesResponse.error,
         });
         if (cancelled) return;
+
+        if (messagesResponse.error) {
+          throw new Error(`Failed to fetch messages: ${JSON.stringify(messagesResponse.error)}`);
+        }
 
         const loadedMessages = parseLoadedMessages(messagesResponse.data ?? []);
         applySessionData(sessionId, loadedMessages);
@@ -262,18 +277,49 @@ export function useAgent(labSessionId: string): UseAgentResult {
     };
 
     const processEvent = (event: Event) => {
-      const eventSessionId = getSessionIdFromEvent(event);
-      if (eventSessionId !== currentOpencodeSessionRef.current) return;
+      // Only log non-heartbeat events to reduce noise
+      if (event.type !== "server.heartbeat") {
+        console.log("[useAgent] Event received:", {
+          type: event.type,
+          properties: event.properties,
+        });
+      }
+
+      // Only filter session-specific events
+      const sessionSpecificEvents = [
+        "message.updated",
+        "message.part.updated",
+        "session.idle",
+        "session.error",
+        "session.status",
+      ];
+
+      if (sessionSpecificEvents.includes(event.type)) {
+        const eventSessionId = getSessionIdFromEvent(event);
+        console.log("[useAgent] Session ID check for", event.type, ":", {
+          eventSessionId,
+          currentSessionId: currentOpencodeSessionRef.current,
+          match: eventSessionId === currentOpencodeSessionRef.current,
+        });
+
+        if (eventSessionId !== currentOpencodeSessionRef.current) {
+          console.log("[useAgent] Event filtered out due to session ID mismatch");
+          return;
+        }
+      }
 
       if (event.type === "message.updated") {
+        console.log("[useAgent] Processing message.updated");
         handleMessageUpdated(event.properties.info);
       }
 
       if (event.type === "message.part.updated") {
+        console.log("[useAgent] Processing message.part.updated", event.properties.part);
         handleMessagePartUpdated(event.properties.part);
       }
 
       if (event.type === "session.idle" || event.type === "session.error") {
+        console.log("[useAgent] Session state change:", event.type);
         if (sendingTimeoutRef.current) {
           clearTimeout(sendingTimeoutRef.current);
           sendingTimeoutRef.current = null;
@@ -309,14 +355,12 @@ export function useAgent(labSessionId: string): UseAgentResult {
       try {
         const [providerID, modelID] = modelId?.split("/") ?? [];
         const response = await opencodeClient.session.promptAsync({
-          path: { id: opencodeSessionId },
-          body: {
-            model: {
-              providerID,
-              modelID,
-            },
-            parts: [{ type: "text", text: content }],
+          sessionID: opencodeSessionId,
+          model: {
+            providerID,
+            modelID,
           },
+          parts: [{ type: "text", text: content }],
         });
 
         if (response.error) {

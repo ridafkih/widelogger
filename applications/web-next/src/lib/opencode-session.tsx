@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useCallback, type ReactNode } from "react";
-import { createOpencodeClient, type Event } from "@opencode-ai/sdk/client";
+import { createOpencodeClient, type Event } from "@opencode-ai/sdk/v2/client";
 
 type EventListener = (event: Event) => void;
 
@@ -49,35 +49,26 @@ export function OpenCodeSessionProvider({ sessionId, children }: OpenCodeSession
       headers: { "X-Lab-Session-Id": sessionId },
     });
 
-    const connect = async (attempt = 0): Promise<void> => {
-      if (signal.aborted) return;
-
+    (async () => {
       try {
-        const { stream } = await client.event.subscribe({ query: {}, signal });
+        console.log("[OpenCodeSession] Starting SSE subscription for session:", sessionId);
+        const { stream } = await client.event.subscribe({}, { signal });
+        console.log("[OpenCodeSession] SSE subscription established");
 
         for await (const event of stream) {
-          if (signal.aborted) break;
+          console.log("[OpenCodeSession] Raw event received:", event.type);
           for (const listener of listenersRef.current) {
             listener(event);
           }
         }
-
+        console.log("[OpenCodeSession] SSE stream ended");
+      } catch (error) {
         if (!signal.aborted) {
-          return connect(0);
+          console.error("[OpenCodeSession] SSE error:", error);
         }
-      } catch {
-        if (signal.aborted) return;
-
-        const delay = Math.min(
-          RECONNECT_BASE_DELAY_MS * Math.pow(2, attempt),
-          RECONNECT_MAX_DELAY_MS,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return connect(attempt + 1);
+        // Connection closed or aborted - cleanup handles this
       }
-    };
-
-    connect();
+    })();
 
     return () => {
       abortController.abort();
@@ -107,6 +98,3 @@ export function useOpenCodeSession() {
 }
 
 export type { Event };
-
-const RECONNECT_BASE_DELAY_MS = 1000;
-const RECONNECT_MAX_DELAY_MS = 30000;

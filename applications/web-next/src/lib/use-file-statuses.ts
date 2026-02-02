@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { createOpencodeClient } from "@opencode-ai/sdk/client";
+import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { useOpenCodeSession } from "./opencode-session";
 
 type FileStatus = "added" | "modified" | "deleted";
@@ -54,9 +54,7 @@ async function fetchFileStatusesFromApi(sessionId: string): Promise<ChangedFile[
   const client = createSessionClient(sessionId);
 
   try {
-    const response = await client.file.status({
-      query: {},
-    });
+    const response = await client.file.status({});
 
     if (response.data) {
       return response.data.map((file) => ({
@@ -111,9 +109,7 @@ export function useFileStatuses(sessionId: string | null): ChangedFile[] {
     if (!client || !sessionId) return;
 
     try {
-      const response = await client.file.status({
-        query: {},
-      });
+      const response = await client.file.status({});
 
       if (response.data) {
         const files: ChangedFile[] = response.data.map((file) => ({
