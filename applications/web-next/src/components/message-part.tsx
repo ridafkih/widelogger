@@ -40,8 +40,10 @@ const contentBlock = tv({
 });
 
 function MessagePartText({ part, isStreaming }: { part: TextPart; isStreaming?: boolean }) {
+  if (part.text.length === 0) return null;
+
   return (
-    <div className={contentBlock()}>
+    <div className={contentBlock()} data-opencode-component="Text">
       <Markdown isStreaming={isStreaming}>{part.text}</Markdown>
     </div>
   );
@@ -74,7 +76,7 @@ function MessagePartReasoning({ part, children }: { part: ReasoningPart; childre
         meta: { part },
       }}
     >
-      <div>{children}</div>
+      <div data-opencode-component="Reasoning">{children}</div>
     </ReasoningContext>
   );
 }
@@ -163,7 +165,7 @@ function MessagePartTool({ part, children }: { part: ToolPart; children: ReactNo
         meta: { part },
       }}
     >
-      <div>{children}</div>
+      <div data-opencode-component="Tool">{children}</div>
     </ToolContext>
   );
 }
@@ -250,7 +252,7 @@ function MessagePartToolError({ error }: { error: string }) {
 
 function MessagePartFile({ part }: { part: FilePart }) {
   return (
-    <div className={actionRow()}>
+    <div className={actionRow()} data-opencode-component="File">
       <span>{part.filename || part.url}</span>
       {part.source && "path" in part.source && (
         <span className="text-text-muted">{part.source.path}</span>
@@ -265,33 +267,35 @@ const metaRow = tv({
 });
 
 function MessagePartStepStart({}: { part: StepStartPart }) {
-  return <div className={metaRow()} style={stripedBackground}></div>;
+  return (
+    <div className={metaRow()} style={stripedBackground} data-opencode-component="StepStart"></div>
+  );
 }
 
 function MessagePartStepFinish({}: { part: StepFinishPart }) {
-  return <div className={metaRow()} style={stripedBackground} />;
+  return null;
 }
 
 function MessagePartSnapshot({ part }: { part: SnapshotPart }) {
   return (
-    <div className={metaRow()}>
+    <div className={metaRow()} data-opencode-component="Snapshot">
       <span>Snapshot</span>
       <span className="font-mono">{part.id.slice(0, 8)}</span>
     </div>
   );
 }
 
-function MessagePartPatch({ part }: { part: PatchPart }) {
+function MessagePartPatch({}: { part: PatchPart }) {
   return (
-    <div className={metaRow()}>
+    <div className={metaRow()} data-opencode-component="Patch">
       <span>Patch applied</span>
     </div>
   );
 }
 
-function MessagePartAgent({ part }: { part: AgentPart }) {
+function MessagePartAgent({}: { part: AgentPart }) {
   return (
-    <div className={actionRow()}>
+    <div className={actionRow()} data-opencode-component="Agent">
       <Loader2 size={14} className="text-text-muted animate-spin" />
       <span>Agent task</span>
       <ChevronRight size={14} className="text-text-muted ml-auto" />
@@ -301,7 +305,7 @@ function MessagePartAgent({ part }: { part: AgentPart }) {
 
 function MessagePartSubtask({ part }: { part: SubtaskPart }) {
   return (
-    <div className={actionRow()}>
+    <div className={actionRow()} data-opencode-component="Subtask">
       <Loader2 size={14} className="text-text-muted animate-spin" />
       <span>{part.description}</span>
       <ChevronRight size={14} className="text-text-muted ml-auto" />
@@ -311,7 +315,7 @@ function MessagePartSubtask({ part }: { part: SubtaskPart }) {
 
 function MessagePartRetry({ part }: { part: RetryPart }) {
   return (
-    <div className={cn(actionRow(), "text-yellow-500")}>
+    <div className={cn(actionRow(), "text-yellow-500")} data-opencode-component="Retry">
       <Loader2 size={14} className="animate-spin" />
       <span>Retrying...</span>
     </div>
@@ -320,7 +324,7 @@ function MessagePartRetry({ part }: { part: RetryPart }) {
 
 function MessagePartCompaction({ part }: { part: CompactionPart }) {
   return (
-    <div className={metaRow()}>
+    <div className={metaRow()} data-opencode-component="Compaction">
       <span>Context compacted</span>
     </div>
   );

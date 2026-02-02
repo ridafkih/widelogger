@@ -70,7 +70,6 @@ function ChatProvider({
     if (!force && !isNearBottomRef.current) return;
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
     });
   }, []);
 
@@ -174,7 +173,7 @@ function ChatMessages({ children }: { children: ReactNode }) {
 }
 
 const block = tv({
-  base: "",
+  base: "empty:hidden",
   variants: {
     role: {
       user: "bg-bg",
