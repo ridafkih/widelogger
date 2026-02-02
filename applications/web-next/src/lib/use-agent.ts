@@ -32,7 +32,10 @@ interface UseAgentResult {
 export interface CachedSessionData {
   opencodeSessionId: string;
   messages: MessageState[];
+  timestamp: number;
 }
+
+const CACHE_TTL = 5 * 60 * 1000;
 
 const sessionCache = new Map<string, CachedSessionData>();
 const pendingPrefetches = new Map<string, Promise<CachedSessionData | null>>();
@@ -84,6 +87,18 @@ function getSessionIdFromEvent(event: Event): string | undefined {
   return undefined;
 }
 
+function sortPartsById(parts: Part[]): Part[] {
+  return parts.toSorted((partA, partB) => partA.id.localeCompare(partB.id));
+}
+
+function upsertPart(parts: Part[], part: Part): Part[] {
+  const existingIndex = parts.findIndex((existing) => existing.id === part.id);
+  if (existingIndex === -1) {
+    return [...parts, part];
+  }
+  return parts.map((existing, index) => (index === existingIndex ? part : existing));
+}
+
 async function fetchSessionMessages(labSessionId: string): Promise<CachedSessionData | null> {
   const labSession = await api.sessions.get(labSessionId);
   if (!labSession.opencodeSessionId) return null;
@@ -98,17 +113,19 @@ async function fetchSessionMessages(labSessionId: string): Promise<CachedSession
   return {
     opencodeSessionId: labSession.opencodeSessionId,
     messages: parseLoadedMessages(messagesResponse.data),
+    timestamp: Date.now(),
   };
 }
 
 export async function prefetchSessionMessages(labSessionId: string): Promise<void> {
-  if (sessionCache.has(labSessionId)) return;
+  const cached = sessionCache.get(labSessionId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return;
   if (pendingPrefetches.has(labSessionId)) return;
 
   const prefetchPromise = (async (): Promise<CachedSessionData | null> => {
     try {
       const data = await fetchSessionMessages(labSessionId);
-      if (data) sessionCache.set(labSessionId, data);
+      if (data) sessionCache.set(labSessionId, { ...data, timestamp: Date.now() });
       return data;
     } catch {
       return null;
@@ -120,6 +137,11 @@ export async function prefetchSessionMessages(labSessionId: string): Promise<voi
   pendingPrefetches.set(labSessionId, prefetchPromise);
 }
 
+export function invalidateSessionCache(labSessionId: string): void {
+  sessionCache.delete(labSessionId);
+  pendingPrefetches.delete(labSessionId);
+}
+
 export function useAgent(labSessionId: string): UseAgentResult {
   const { subscribe } = useOpenCodeSession();
   const [opencodeSessionId, setOpencodeSessionId] = useState<string | null>(null);
@@ -128,6 +150,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
   const [error, setError] = useState<Error | null>(null);
   const [isSending, setIsSending] = useState(false);
   const currentOpencodeSessionRef = useRef<string | null>(null);
+  const sendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const opencodeClient = useMemo(() => {
     if (!labSessionId) return null;
@@ -136,7 +159,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
 
   useEffect(() => {
     const cached = sessionCache.get(labSessionId);
-    if (cached) {
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       setMessages(cached.messages);
       setOpencodeSessionId(cached.opencodeSessionId);
       currentOpencodeSessionRef.current = cached.opencodeSessionId;
@@ -158,7 +181,11 @@ export function useAgent(labSessionId: string): UseAgentResult {
       setMessages(sessionMessages);
       setOpencodeSessionId(sessionId);
       currentOpencodeSessionRef.current = sessionId;
-      sessionCache.set(labSessionId, { opencodeSessionId: sessionId, messages: sessionMessages });
+      sessionCache.set(labSessionId, {
+        opencodeSessionId: sessionId,
+        messages: sessionMessages,
+        timestamp: Date.now(),
+      });
       setIsLoading(false);
     };
 
@@ -229,15 +256,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
       setMessages((previous) =>
         previous.map((message) => {
           if (message.id !== part.messageID) return message;
-
-          const partIndex = message.parts.findIndex((existing) => existing.id === part.id);
-          if (partIndex === -1) {
-            return { ...message, parts: [...message.parts, part] };
-          }
-
-          const newParts = [...message.parts];
-          newParts[partIndex] = part;
-          return { ...message, parts: newParts };
+          return { ...message, parts: sortPartsById(upsertPart(message.parts, part)) };
         }),
       );
     };
@@ -254,7 +273,11 @@ export function useAgent(labSessionId: string): UseAgentResult {
         handleMessagePartUpdated(event.properties.part);
       }
 
-      if (event.type === "session.idle") {
+      if (event.type === "session.idle" || event.type === "session.error") {
+        if (sendingTimeoutRef.current) {
+          clearTimeout(sendingTimeoutRef.current);
+          sendingTimeoutRef.current = null;
+        }
         setIsSending(false);
       }
     };
@@ -270,6 +293,18 @@ export function useAgent(labSessionId: string): UseAgentResult {
 
       setError(null);
       setIsSending(true);
+
+      if (sendingTimeoutRef.current) {
+        clearTimeout(sendingTimeoutRef.current);
+      }
+
+      sendingTimeoutRef.current = setTimeout(
+        () => {
+          setIsSending(false);
+          sendingTimeoutRef.current = null;
+        },
+        5 * 60 * 1000,
+      );
 
       try {
         const [providerID, modelID] = modelId?.split("/") ?? [];
@@ -292,6 +327,11 @@ export function useAgent(labSessionId: string): UseAgentResult {
         setError(errorInstance);
         setIsSending(false);
         throw errorInstance;
+      } finally {
+        if (sendingTimeoutRef.current) {
+          clearTimeout(sendingTimeoutRef.current);
+          sendingTimeoutRef.current = null;
+        }
       }
     },
     [opencodeSessionId, opencodeClient],

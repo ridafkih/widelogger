@@ -51,24 +51,31 @@ export function OpenCodeSessionProvider({ sessionId, children }: OpenCodeSession
 
     const directory = `/workspaces/${sessionId}`;
 
-    const connect = async () => {
-      while (!signal.aborted) {
-        try {
-          const { stream } = await client.event.subscribe({ query: { directory }, signal });
+    const connect = async (attempt = 0): Promise<void> => {
+      if (signal.aborted) return;
 
-          for await (const event of stream) {
-            if (signal.aborted) break;
-            for (const listener of listenersRef.current) {
-              listener(event);
-            }
+      try {
+        const { stream } = await client.event.subscribe({ query: { directory }, signal });
+
+        for await (const event of stream) {
+          if (signal.aborted) break;
+          for (const listener of listenersRef.current) {
+            listener(event);
           }
-        } catch {
-          if (signal.aborted) return;
         }
 
         if (!signal.aborted) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return connect(0);
         }
+      } catch {
+        if (signal.aborted) return;
+
+        const delay = Math.min(
+          RECONNECT_BASE_DELAY_MS * Math.pow(2, attempt),
+          RECONNECT_MAX_DELAY_MS,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return connect(attempt + 1);
       }
     };
 
@@ -102,3 +109,6 @@ export function useOpenCodeSession() {
 }
 
 export type { Event };
+
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 30000;

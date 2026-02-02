@@ -40,7 +40,7 @@ function SessionItem({ session, isSelected }: SessionItemProps) {
             {session.title}
           </ProjectNavigator.ItemTitle>
         </div>
-        <div className="flex grow overflow-hidden">
+        <div className="flex grow overflow-hidden justify-end">
           <ProjectNavigator.ItemDescription>
             {metadata.lastMessage}
           </ProjectNavigator.ItemDescription>

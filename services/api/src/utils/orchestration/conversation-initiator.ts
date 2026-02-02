@@ -12,7 +12,7 @@ export async function initiateConversation(options: InitiateConversationOptions)
   const { sessionId, task, modelId } = options;
   const workspacePath = formatWorkspacePath(sessionId);
 
-  const createResponse = await opencode.session.create({ query: { directory: workspacePath } });
+  const createResponse = await opencode.session.create({ directory: workspacePath });
   if (createResponse.error || !createResponse.data) {
     throw new Error(`Failed to create OpenCode session: ${JSON.stringify(createResponse.error)}`);
   }
