@@ -82,6 +82,14 @@ services:
     environment:
       MCP_PORT: "3000"
       API_BASE_URL: "http://api:4000"
+      RUSTFS_ENDPOINT: $RUSTFS_ENDPOINT
+      RUSTFS_ACCESS_KEY: $RUSTFS_ACCESS_KEY
+      RUSTFS_SECRET_KEY: $RUSTFS_SECRET_KEY
+      RUSTFS_BUCKET: $RUSTFS_BUCKET
+      RUSTFS_PUBLIC_URL: $RUSTFS_PUBLIC_URL
+    depends_on:
+      rustfs:
+        condition: service_healthy
 
   api:
     build:
@@ -151,9 +159,49 @@ services:
     ports:
       - "9223-9300:9223-9300"
 
+  rustfs:
+    image: rustfs/rustfs
+    container_name: lab-rustfs
+    user: "10001:10001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+      RUSTFS_ACCESS_KEY: $RUSTFS_ACCESS_KEY
+      RUSTFS_SECRET_KEY: $RUSTFS_SECRET_KEY
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - rustfs_data:/data
+
+  rustfs-init:
+    image: minio/mc
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    environment:
+      RUSTFS_ACCESS_KEY: $RUSTFS_ACCESS_KEY
+      RUSTFS_SECRET_KEY: $RUSTFS_SECRET_KEY
+      RUSTFS_BUCKET: $RUSTFS_BUCKET
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set rustfs http://rustfs:9000 $$RUSTFS_ACCESS_KEY $$RUSTFS_SECRET_KEY;
+      mc mb rustfs/$$RUSTFS_BUCKET --ignore-existing;
+      mc anonymous set download rustfs/$$RUSTFS_BUCKET;
+      exit 0;
+      "
+
 volumes:
   postgres_data:
   session_workspaces:
   browser_sockets:
   browser_profiles:
   opencode_data:
+  rustfs_data:

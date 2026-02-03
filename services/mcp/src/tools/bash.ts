@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
-import { parse } from "sh-syntax";
+import { parse } from "shell-quote";
 import type { ToolContext } from "../types/tool";
 import { config } from "../config/environment";
 
@@ -19,45 +19,52 @@ async function getWorkspaceContainer(
   return response.json();
 }
 
-function getCommandName(node: object): string | null {
-  if (!("type" in node) || !("name" in node)) return null;
-  if (node.type !== "Command" && node.type !== "SimpleCommand") return null;
-  if (typeof node.name !== "object" || node.name === null) return null;
-  if (!("text" in node.name) || typeof node.name.text !== "string") return null;
-  return node.name.text;
+const BLOCKED_COMMANDS = [
+  {
+    name: "gh",
+    subcommand: undefined,
+    message: `Error: Direct use of the 'gh' CLI is not allowed. Use the GitHub tools instead:\n\n- github_create_pull_request: Create a PR\n- github_list_pull_requests: List PRs\n- github_get_pull_request_comments: Get PR reviews and comments\n- github_get_commit_status: Get CI/status checks\n- github_create_issue: Create an issue\n- github_get_repository: Get repo info`,
+  },
+  {
+    name: "agent-browser",
+    subcommand: "screenshot",
+    message: `Error: Direct use of 'agent-browser screenshot' is not allowed. Use the screenshot tool instead:\n\n- screenshot: Capture a screenshot of the browser session and return a public URL`,
+  },
+] as const;
+
+type BlockedCommand = (typeof BLOCKED_COMMANDS)[number];
+
+function isOperator(token: unknown): boolean {
+  return typeof token === "object" && token !== null && "op" in token;
 }
 
-function findCommandNames(node: unknown): string[] {
-  if (typeof node !== "object" || node === null) return [];
+function getCommandSegments(command: string): string[][] {
+  return parse(command)
+    .reduce<string[][]>(
+      (segments, token) => {
+        if (isOperator(token)) return [...segments, []];
+        if (typeof token !== "string") return segments;
 
-  const names: string[] = [];
-
-  const commandName = getCommandName(node);
-  if (commandName) {
-    names.push(commandName);
-  }
-
-  for (const value of Object.values(node)) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        names.push(...findCommandNames(item));
-      }
-    } else {
-      names.push(...findCommandNames(value));
-    }
-  }
-
-  return names;
+        const rest = segments.slice(0, -1);
+        const current = segments.at(-1) ?? [];
+        return [...rest, [...current, token]];
+      },
+      [[]],
+    )
+    .filter((segment) => segment.length > 0);
 }
 
-async function containsBlockedCommand(command: string, blocked: string[]): Promise<boolean> {
-  try {
-    const ast = await parse(command);
-    const commandNames = findCommandNames(ast);
-    return commandNames.some((name) => blocked.includes(name));
-  } catch {
-    return false;
+function matchesBlocked([name, subcommand]: string[], blocked: BlockedCommand): boolean {
+  if (name !== blocked.name) return false;
+  return blocked.subcommand === undefined || subcommand === blocked.subcommand;
+}
+
+function findBlockedCommand(command: string): BlockedCommand | null {
+  for (const segment of getCommandSegments(command)) {
+    const match = BLOCKED_COMMANDS.find((blocked) => matchesBlocked(segment, blocked));
+    if (match) return match;
   }
+  return null;
 }
 
 export function bash(server: McpServer, { docker }: ToolContext) {
@@ -77,15 +84,11 @@ export function bash(server: McpServer, { docker }: ToolContext) {
       },
     },
     async (args) => {
-      if (await containsBlockedCommand(args.command, ["gh"])) {
+      const blocked = findBlockedCommand(args.command);
+      if (blocked) {
         return {
           isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error: Direct use of the 'gh' CLI is not allowed. Use the GitHub tools instead:\n\n- github_create_pull_request: Create a PR\n- github_list_pull_requests: List PRs\n- github_get_pull_request_comments: Get PR reviews and comments\n- github_get_commit_status: Get CI/status checks\n- github_create_issue: Create an issue\n- github_get_repository: Get repo info`,
-            },
-          ],
+          content: [{ type: "text", text: blocked.message }],
         };
       }
 
