@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { createOpencodeClient, type Event } from "@opencode-ai/sdk/v2/client";
 
 type EventListener = (event: Event) => void;
@@ -75,12 +75,12 @@ export function OpenCodeSessionProvider({ sessionId, children }: OpenCodeSession
     };
   }, [sessionId]);
 
-  const subscribe = useCallback((listener: EventListener) => {
+  const subscribe = (listener: EventListener) => {
     listenersRef.current.add(listener);
     return () => {
       listenersRef.current.delete(listener);
     };
-  }, []);
+  };
 
   return (
     <OpenCodeSessionContext.Provider value={{ sessionId, subscribe }}>

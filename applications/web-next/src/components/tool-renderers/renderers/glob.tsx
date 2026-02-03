@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { ResultsToggle, ContentText, ContentError, getString } from "../shared";
 import type { ToolRendererProps } from "../types";
 
@@ -10,10 +10,7 @@ function GlobRenderer({ input, output, error, status }: ToolRendererProps) {
   const pattern = getString(input, "pattern");
   const path = getString(input, "path");
 
-  const fileCount = useMemo(() => {
-    if (!output) return 0;
-    return output.split("\n").filter((line) => line.trim()).length;
-  }, [output]);
+  const fileCount = output ? output.split("\n").filter((line) => line.trim()).length : 0;
 
   return (
     <div className="flex flex-col">

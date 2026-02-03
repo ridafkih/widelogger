@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { api } from "./api";
 import { useMultiplayer } from "./multiplayer";
 
@@ -68,48 +68,45 @@ export function useOrchestrate(): UseOrchestrateResult {
     orchestrationStatus.errorMessage,
   ]);
 
-  const reset = useCallback(() => {
+  const reset = () => {
     setState(initialState);
-  }, []);
+  };
 
-  const submit = useCallback(
-    async (content: string, options?: { channelId?: string; modelId?: string }) => {
-      reset();
-      setState({
-        status: "pending",
-        projectName: null,
-        sessionId: null,
-        errorMessage: null,
-        orchestrationId: null,
+  const submit = async (content: string, options?: { channelId?: string; modelId?: string }) => {
+    reset();
+    setState({
+      status: "pending",
+      projectName: null,
+      sessionId: null,
+      errorMessage: null,
+      orchestrationId: null,
+    });
+
+    try {
+      const result = await api.orchestrate({
+        content,
+        channelId: options?.channelId,
+        modelId: options?.modelId,
       });
 
-      try {
-        const result = await api.orchestrate({
-          content,
-          channelId: options?.channelId,
-          modelId: options?.modelId,
-        });
-
-        setState((prev) => ({
-          ...prev,
-          orchestrationId: result.orchestrationId,
-          projectName: result.projectName,
-          sessionId: result.sessionId,
-          status: result.sessionId ? "complete" : prev.status,
-        }));
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Orchestration failed";
-        setState({
-          status: "error",
-          projectName: null,
-          sessionId: null,
-          errorMessage,
-          orchestrationId: null,
-        });
-      }
-    },
-    [reset],
-  );
+      setState((prev) => ({
+        ...prev,
+        orchestrationId: result.orchestrationId,
+        projectName: result.projectName,
+        sessionId: result.sessionId,
+        status: result.sessionId ? "complete" : prev.status,
+      }));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Orchestration failed";
+      setState({
+        status: "error",
+        projectName: null,
+        sessionId: null,
+        errorMessage,
+        orchestrationId: null,
+      });
+    }
+  };
 
   return {
     state,

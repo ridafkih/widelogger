@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, createContext, use, type ReactNode } from "react";
+import { useState, createContext, use, type ReactNode } from "react";
 import { Check, X, Loader2 } from "lucide-react";
 import { tv } from "tailwind-variants";
 import { useQuestionActions } from "@/lib/question-context";
@@ -142,38 +142,35 @@ function QuestionStateProvider({ children }: { children: ReactNode }) {
   );
   const [customByQuestion, setCustomByQuestion] = useState<Map<number, string>>(() => new Map());
 
-  const toggleOption = useCallback(
-    (questionIndex: number, label: string, allowMultiple: boolean) => {
-      setSelectedByQuestion((previous) => {
-        const updated = new Map(previous);
-        const currentSelected = updated.get(questionIndex) ?? new Set<string>();
-        const newSelected = new Set(currentSelected);
+  const toggleOption = (questionIndex: number, label: string, allowMultiple: boolean) => {
+    setSelectedByQuestion((previous) => {
+      const updated = new Map(previous);
+      const currentSelected = updated.get(questionIndex) ?? new Set<string>();
+      const newSelected = new Set(currentSelected);
 
-        if (newSelected.has(label)) {
-          newSelected.delete(label);
-        } else {
-          if (!allowMultiple) {
-            newSelected.clear();
-          }
-          newSelected.add(label);
+      if (newSelected.has(label)) {
+        newSelected.delete(label);
+      } else {
+        if (!allowMultiple) {
+          newSelected.clear();
         }
+        newSelected.add(label);
+      }
 
-        updated.set(questionIndex, newSelected);
+      updated.set(questionIndex, newSelected);
+      return updated;
+    });
+
+    if (!allowMultiple) {
+      setCustomByQuestion((previous) => {
+        const updated = new Map(previous);
+        updated.delete(questionIndex);
         return updated;
       });
+    }
+  };
 
-      if (!allowMultiple) {
-        setCustomByQuestion((previous) => {
-          const updated = new Map(previous);
-          updated.delete(questionIndex);
-          return updated;
-        });
-      }
-    },
-    [],
-  );
-
-  const setCustomValue = useCallback((questionIndex: number, value: string) => {
+  const setCustomValue = (questionIndex: number, value: string) => {
     setCustomByQuestion((previous) => {
       const updated = new Map(previous);
       if (value) {
@@ -183,7 +180,7 @@ function QuestionStateProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     });
-  }, []);
+  };
 
   return (
     <QuestionStateContext
@@ -271,7 +268,7 @@ function ActionButtons({ callId, questions, isSubmitting, onReply, onReject }: A
     return (selected && selected.size > 0) || (custom && custom.length > 0);
   });
 
-  const handleReply = useCallback(async () => {
+  const handleReply = async () => {
     if (!callId) return;
     const answers: string[][] = questions.map((_, questionIndex) => {
       const selected = state.selectedByQuestion.get(questionIndex) ?? new Set<string>();
@@ -284,12 +281,12 @@ function ActionButtons({ callId, questions, isSubmitting, onReply, onReject }: A
     });
 
     await onReply(callId, answers);
-  }, [callId, questions, state.selectedByQuestion, state.customByQuestion, onReply]);
+  };
 
-  const handleReject = useCallback(async () => {
+  const handleReject = async () => {
     if (!callId) return;
     await onReject(callId);
-  }, [callId, onReject]);
+  };
 
   const isReplyDisabled = isSubmitting || !hasAnySelection || !callId;
 
@@ -353,7 +350,11 @@ function QuestionRenderer({ callId, input, status, output, error }: ToolRenderer
     <QuestionStateProvider>
       <div className={card()}>
         {questions.map((question, questionIndex) => (
-          <SingleQuestion key={questionIndex} question={question} questionIndex={questionIndex} />
+          <SingleQuestion
+            key={`${question.header}-${question.question}-${questionIndex}`}
+            question={question}
+            questionIndex={questionIndex}
+          />
         ))}
         <ActionButtons
           callId={callId}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useReducer, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { createOpencodeClient, type FileContent } from "@opencode-ai/sdk/v2/client";
 import { useFileStatuses, type ChangedFile } from "./use-file-statuses";
@@ -20,6 +20,108 @@ function createSessionClient(labSessionId: string) {
 }
 
 type Patch = NonNullable<FileContent["patch"]>;
+
+type FileBrowserState = {
+  expandedPaths: Set<string>;
+  loadedContents: Map<string, FileNode[]>;
+  loadingPaths: Set<string>;
+  selectedPath: string | null;
+  previewContent: string | null;
+  previewPatch: Patch | null;
+  previewLoading: boolean;
+};
+
+type FileBrowserAction =
+  | { type: "RESET" }
+  | { type: "TOGGLE_EXPANDED"; path: string; expand: boolean }
+  | { type: "SET_EXPANDED_PATHS"; paths: Set<string> }
+  | { type: "SET_LOADED_CONTENTS"; path: string; contents: FileNode[] }
+  | { type: "ADD_LOADING_PATH"; path: string }
+  | { type: "REMOVE_LOADING_PATH"; path: string }
+  | { type: "SELECT_FILE"; path: string }
+  | { type: "CLEAR_FILE_SELECTION" }
+  | { type: "SET_PREVIEW_CONTENT"; content: string | null; patch: Patch | null }
+  | { type: "SET_PREVIEW_LOADING"; loading: boolean };
+
+function getInitialState(): FileBrowserState {
+  return {
+    expandedPaths: new Set(),
+    loadedContents: new Map(),
+    loadingPaths: new Set(),
+    selectedPath: null,
+    previewContent: null,
+    previewPatch: null,
+    previewLoading: false,
+  };
+}
+
+function fileBrowserReducer(state: FileBrowserState, action: FileBrowserAction): FileBrowserState {
+  switch (action.type) {
+    case "RESET":
+      return getInitialState();
+
+    case "TOGGLE_EXPANDED": {
+      const next = new Set(state.expandedPaths);
+      if (action.expand) {
+        next.add(action.path);
+      } else {
+        next.delete(action.path);
+      }
+      return { ...state, expandedPaths: next };
+    }
+
+    case "SET_EXPANDED_PATHS":
+      return { ...state, expandedPaths: action.paths };
+
+    case "SET_LOADED_CONTENTS": {
+      const next = new Map(state.loadedContents);
+      next.set(action.path, action.contents);
+      return { ...state, loadedContents: next };
+    }
+
+    case "ADD_LOADING_PATH": {
+      const next = new Set(state.loadingPaths);
+      next.add(action.path);
+      return { ...state, loadingPaths: next };
+    }
+
+    case "REMOVE_LOADING_PATH": {
+      const next = new Set(state.loadingPaths);
+      next.delete(action.path);
+      return { ...state, loadingPaths: next };
+    }
+
+    case "SELECT_FILE":
+      return {
+        ...state,
+        selectedPath: action.path,
+        previewLoading: true,
+        previewContent: null,
+        previewPatch: null,
+      };
+
+    case "CLEAR_FILE_SELECTION":
+      return {
+        ...state,
+        selectedPath: null,
+        previewContent: null,
+        previewPatch: null,
+      };
+
+    case "SET_PREVIEW_CONTENT":
+      return {
+        ...state,
+        previewContent: action.content,
+        previewPatch: action.patch,
+      };
+
+    case "SET_PREVIEW_LOADING":
+      return { ...state, previewLoading: action.loading };
+
+    default:
+      return state;
+  }
+}
 
 function getParentPaths(filePath: string): string[] {
   const segments = filePath.split("/");
@@ -71,28 +173,17 @@ export function useFileBrowser(sessionId: string | null): {
 } {
   const { files: changedFiles, isLoading: statusesLoading } = useFileStatuses(sessionId);
 
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
-  const [loadedContents, setLoadedContents] = useState<Map<string, FileNode[]>>(new Map());
-  const [loadingPaths, setLoadingPaths] = useState<Set<string>>(new Set());
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [previewContent, setPreviewContent] = useState<string | null>(null);
-  const [previewPatch, setPreviewPatch] = useState<Patch | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const [browserState, dispatch] = useReducer(fileBrowserReducer, null, getInitialState);
 
-  const client = useMemo(() => {
-    if (!sessionId) return null;
-    return createSessionClient(sessionId);
-  }, [sessionId]);
+  const client = sessionId ? createSessionClient(sessionId) : null;
 
   const { data: rootNodes, isLoading: rootLoading } = useSWR<FileNode[]>(
     sessionId ? `file-browser-root-${sessionId}` : null,
     () => fetchRootFiles(sessionId!),
   );
 
-  const { statuses: fileStatuses, dirsWithChanges: directoriesWithChanges } = useMemo(
-    () => buildStatusMaps(changedFiles),
-    [changedFiles],
-  );
+  const { statuses: fileStatuses, dirsWithChanges: directoriesWithChanges } =
+    buildStatusMaps(changedFiles);
 
   const initializedSessionRef = useRef<string | null>(null);
 
@@ -100,93 +191,21 @@ export function useFileBrowser(sessionId: string | null): {
     if (initializedSessionRef.current === sessionId) return;
     initializedSessionRef.current = sessionId;
 
-    setExpandedPaths(new Set());
-    setLoadedContents(new Map());
-    setLoadingPaths(new Set());
-    setSelectedPath(null);
-    setPreviewContent(null);
-    setPreviewPatch(null);
+    dispatch({ type: "RESET" });
   }, [sessionId]);
 
-  const toggleDirectory = useCallback(
-    async (path: string) => {
-      if (expandedPaths.has(path)) {
-        setExpandedPaths((prev) => {
-          const next = new Set(prev);
-          next.delete(path);
-          return next;
-        });
-        return;
-      }
+  const toggleDirectory = async (path: string) => {
+    if (browserState.expandedPaths.has(path)) {
+      dispatch({ type: "TOGGLE_EXPANDED", path, expand: false });
+      return;
+    }
 
-      if (!loadedContents.has(path) && client) {
-        setLoadingPaths((prev) => new Set([...prev, path]));
-
-        try {
-          const response = await client.file.list({ path });
-
-          if (response.data) {
-            const nodes: FileNode[] = response.data.map((node) => ({
-              name: node.name,
-              path: node.path,
-              type: node.type,
-              ignored: node.ignored,
-            }));
-            setLoadedContents((prev) => new Map(prev).set(path, nodes));
-          }
-        } catch (error) {
-          console.error("Failed to fetch directory contents:", error);
-        } finally {
-          setLoadingPaths((prev) => {
-            const next = new Set(prev);
-            next.delete(path);
-            return next;
-          });
-        }
-      }
-
-      setExpandedPaths((prev) => new Set([...prev, path]));
-    },
-    [client, expandedPaths, loadedContents],
-  );
-
-  const selectFile = useCallback(
-    async (path: string) => {
-      if (!client) return;
-
-      setSelectedPath(path);
-      setPreviewLoading(true);
-      setPreviewContent(null);
-      setPreviewPatch(null);
+    if (!browserState.loadedContents.has(path) && client) {
+      dispatch({ type: "ADD_LOADING_PATH", path });
 
       try {
-        const response = await client.file.read({ path });
+        const response = await client.file.list({ path });
 
-        if (!response.data || response.data.type !== "text") return;
-
-        setPreviewContent(response.data.content);
-        setPreviewPatch(response.data.patch ?? null);
-      } catch (error) {
-        console.error("Failed to read file:", error);
-      } finally {
-        setPreviewLoading(false);
-      }
-    },
-    [client],
-  );
-
-  const clearFileSelection = useCallback(() => {
-    setSelectedPath(null);
-    setPreviewContent(null);
-    setPreviewPatch(null);
-  }, []);
-
-  const loadDirectoryContents = useCallback(
-    async (dirPath: string) => {
-      if (!client || loadedContents.has(dirPath)) return;
-
-      try {
-        const response = await client.file.list({ path: dirPath });
         if (response.data) {
           const nodes: FileNode[] = response.data.map((node) => ({
             name: node.name,
@@ -194,34 +213,79 @@ export function useFileBrowser(sessionId: string | null): {
             type: node.type,
             ignored: node.ignored,
           }));
-          setLoadedContents((prev) => new Map(prev).set(dirPath, nodes));
+          dispatch({ type: "SET_LOADED_CONTENTS", path, contents: nodes });
         }
       } catch (error) {
         console.error("Failed to fetch directory contents:", error);
+      } finally {
+        dispatch({ type: "REMOVE_LOADING_PATH", path });
       }
-    },
-    [client, loadedContents],
-  );
+    }
 
-  const expandToFile = useCallback(
-    async (filePath: string) => {
-      const parents = getParentPaths(filePath);
-      await Promise.all(parents.map(loadDirectoryContents));
-      setExpandedPaths(new Set(parents));
-    },
-    [loadDirectoryContents],
-  );
+    dispatch({ type: "TOGGLE_EXPANDED", path, expand: true });
+  };
+
+  const selectFile = async (path: string) => {
+    if (!client) return;
+
+    dispatch({ type: "SELECT_FILE", path });
+
+    try {
+      const response = await client.file.read({ path });
+
+      if (!response.data || response.data.type !== "text") return;
+
+      dispatch({
+        type: "SET_PREVIEW_CONTENT",
+        content: response.data.content,
+        patch: response.data.patch ?? null,
+      });
+    } catch (error) {
+      console.error("Failed to read file:", error);
+    } finally {
+      dispatch({ type: "SET_PREVIEW_LOADING", loading: false });
+    }
+  };
+
+  const clearFileSelection = () => {
+    dispatch({ type: "CLEAR_FILE_SELECTION" });
+  };
+
+  const loadDirectoryContents = async (dirPath: string) => {
+    if (!client || browserState.loadedContents.has(dirPath)) return;
+
+    try {
+      const response = await client.file.list({ path: dirPath });
+      if (response.data) {
+        const nodes: FileNode[] = response.data.map((node) => ({
+          name: node.name,
+          path: node.path,
+          type: node.type,
+          ignored: node.ignored,
+        }));
+        dispatch({ type: "SET_LOADED_CONTENTS", path: dirPath, contents: nodes });
+      }
+    } catch (error) {
+      console.error("Failed to fetch directory contents:", error);
+    }
+  };
+
+  const expandToFile = async (filePath: string) => {
+    const parents = getParentPaths(filePath);
+    await Promise.all(parents.map(loadDirectoryContents));
+    dispatch({ type: "SET_EXPANDED_PATHS", paths: new Set(parents) });
+  };
 
   const state: BrowserState = {
     rootNodes: rootNodes ?? [],
-    expandedPaths,
-    loadedContents,
-    loadingPaths,
+    expandedPaths: browserState.expandedPaths,
+    loadedContents: browserState.loadedContents,
+    loadingPaths: browserState.loadingPaths,
     rootLoading: rootLoading || statusesLoading,
-    selectedPath,
-    previewContent,
-    previewPatch,
-    previewLoading,
+    selectedPath: browserState.selectedPath,
+    previewContent: browserState.previewContent,
+    previewPatch: browserState.previewPatch,
+    previewLoading: browserState.previewLoading,
     fileStatuses,
     directoriesWithChanges,
   };

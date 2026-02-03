@@ -5,8 +5,6 @@ import {
   use,
   useState,
   useRef,
-  useMemo,
-  useCallback,
   useEffect,
   type ReactNode,
   type RefObject,
@@ -136,7 +134,7 @@ function ReviewProvider({ children, files, onDismiss, onSubmitFeedback, browser 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const prevSelectionRef = useRef<LineSelection | null>(null);
 
-  const pendingFiles = useMemo(() => files.filter((file) => file.status === "pending"), [files]);
+  const pendingFiles = files.filter((file) => file.status === "pending");
 
   useEffect(() => {
     if (selection) {
@@ -145,27 +143,24 @@ function ReviewProvider({ children, files, onDismiss, onSubmitFeedback, browser 
     prevSelectionRef.current = selection;
   }, [selection]);
 
-  const selectLines = useCallback((filePath: string, range: SelectedLineRange | null) => {
+  const selectLines = (filePath: string, range: SelectedLineRange | null) => {
     if (range) {
       setSelection({ filePath, range });
     } else {
       setSelection((prev) => (prev?.filePath === filePath ? null : prev));
     }
-  }, []);
+  };
 
-  const clearSelection = useCallback(() => {
+  const clearSelection = () => {
     setSelection(null);
-  }, []);
+  };
 
-  const submitFeedback = useCallback(
-    (feedback: string) => {
-      if (selection && onSubmitFeedback) {
-        onSubmitFeedback(selection, feedback);
-      }
-      clearSelection();
-    },
-    [selection, onSubmitFeedback, clearSelection],
-  );
+  const submitFeedback = (feedback: string) => {
+    if (selection && onSubmitFeedback) {
+      onSubmitFeedback(selection, feedback);
+    }
+    clearSelection();
+  };
 
   const defaultBrowserState: BrowserState = {
     rootNodes: [],
@@ -208,7 +203,7 @@ function ReviewProvider({ children, files, onDismiss, onSubmitFeedback, browser 
 
   const meta: ReviewMeta = { textareaRef, prevSelectionRef };
 
-  const value = useMemo(() => ({ state, actions, meta }), [state, actions, meta]);
+  const value = { state, actions, meta };
 
   return <ReviewContext value={value}>{children}</ReviewContext>;
 }
@@ -227,7 +222,7 @@ function ReviewMainPanel({ children }: { children: ReactNode }) {
 
 function ReviewSidePanel({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const toggle = useCallback(() => setCollapsed((prev) => !prev), []);
+  const toggle = () => setCollapsed((prev) => !prev);
 
   return (
     <SidePanelContext value={{ collapsed, toggle }}>

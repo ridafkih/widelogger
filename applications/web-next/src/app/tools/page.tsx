@@ -123,14 +123,14 @@ export function formatDate(date: Date): string {
           tool: "Write",
           input: {
             file_path: "/Users/dev/project/src/hooks/use-toggle.ts",
-            content: `import { useState, useCallback } from "react";
+            content: `import { useState } from "react";
 
 export function useToggle(initial = false) {
   const [value, setValue] = useState(initial);
 
-  const toggle = useCallback(() => {
+  const toggle = () => {
     setValue((prev) => !prev);
-  }, []);
+  };
 
   return [value, toggle] as const;
 }`,

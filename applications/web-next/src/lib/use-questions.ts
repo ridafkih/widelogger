@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState } from "react";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 
 interface UseQuestionsResult {
@@ -25,64 +25,55 @@ function createSessionClient(labSessionId: string) {
 export function useQuestions(labSessionId: string): UseQuestionsResult {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const opencodeClient = useMemo(() => {
-    if (!labSessionId) return null;
-    return createSessionClient(labSessionId);
-  }, [labSessionId]);
+  const opencodeClient = labSessionId ? createSessionClient(labSessionId) : null;
 
-  const reply = useCallback(
-    async (requestId: string, answers: string[][]) => {
-      if (!opencodeClient) {
-        throw new Error("Client not initialized");
+  const reply = async (requestId: string, answers: string[][]) => {
+    if (!opencodeClient) {
+      throw new Error("Client not initialized");
+    }
+
+    console.log("[useQuestions] Sending reply:", { requestId, answers });
+    setIsSubmitting(true);
+
+    try {
+      const response = await opencodeClient.question.reply({
+        requestID: requestId,
+        answers,
+      });
+      console.log("[useQuestions] Reply response:", response);
+      if (response.error) {
+        throw new Error(`Failed to reply to question: ${JSON.stringify(response.error)}`);
       }
+      console.log("[useQuestions] Reply successful, waiting for events...");
+    } catch (replyError) {
+      console.error("[useQuestions] reply error:", replyError);
+      throw replyError;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-      console.log("[useQuestions] Sending reply:", { requestId, answers });
-      setIsSubmitting(true);
+  const reject = async (requestId: string) => {
+    if (!opencodeClient) {
+      throw new Error("Client not initialized");
+    }
 
-      try {
-        const response = await opencodeClient.question.reply({
-          requestID: requestId,
-          answers,
-        });
-        console.log("[useQuestions] Reply response:", response);
-        if (response.error) {
-          throw new Error(`Failed to reply to question: ${JSON.stringify(response.error)}`);
-        }
-        console.log("[useQuestions] Reply successful, waiting for events...");
-      } catch (replyError) {
-        console.error("[useQuestions] reply error:", replyError);
-        throw replyError;
-      } finally {
-        setIsSubmitting(false);
+    setIsSubmitting(true);
+
+    try {
+      const response = await opencodeClient.question.reject({
+        requestID: requestId,
+      });
+      if (response.error) {
+        throw new Error(`Failed to reject question: ${JSON.stringify(response.error)}`);
       }
-    },
-    [opencodeClient],
-  );
-
-  const reject = useCallback(
-    async (requestId: string) => {
-      if (!opencodeClient) {
-        throw new Error("Client not initialized");
-      }
-
-      setIsSubmitting(true);
-
-      try {
-        const response = await opencodeClient.question.reject({
-          requestID: requestId,
-        });
-        if (response.error) {
-          throw new Error(`Failed to reject question: ${JSON.stringify(response.error)}`);
-        }
-      } catch (rejectError) {
-        console.error("[useQuestions] reject error:", rejectError);
-        throw rejectError;
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-    [opencodeClient],
-  );
+    } catch (rejectError) {
+      console.error("[useQuestions] reject error:", rejectError);
+      throw rejectError;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return {
     isSubmitting,

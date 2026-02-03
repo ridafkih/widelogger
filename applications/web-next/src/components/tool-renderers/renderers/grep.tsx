@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { ResultsToggle, ContentText, ContentError, getString } from "../shared";
 import type { ToolRendererProps } from "../types";
 
@@ -11,10 +11,7 @@ function GrepRenderer({ input, output, error, status }: ToolRendererProps) {
   const path = getString(input, "path");
   const glob = getString(input, "glob");
 
-  const resultCount = useMemo(() => {
-    if (!output) return 0;
-    return output.split("\n").filter((line) => line.trim()).length;
-  }, [output]);
+  const resultCount = output ? output.split("\n").filter((line) => line.trim()).length : 0;
 
   return (
     <div className="flex flex-col">

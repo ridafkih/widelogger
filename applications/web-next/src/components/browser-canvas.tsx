@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  createContext,
-  use,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, useRef, createContext, use, type ReactNode } from "react";
 import { useMultiplayer } from "@/lib/multiplayer";
 import { useMultiplayerEnabled } from "@/app/providers";
 import { cn } from "@/lib/cn";
@@ -53,7 +45,7 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
     });
   }, [sessionId]);
 
-  const processFrame = useCallback((base64: string) => {
+  const processFrame = (base64: string) => {
     fetch(`data:image/jpeg;base64,${base64}`)
       .then((res) => res.blob())
       .then((blob) => createImageBitmap(blob))
@@ -67,7 +59,7 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
       .catch((error) => {
         console.error("Failed to process frame:", error);
       });
-  }, []);
+  };
 
   useEffect(() => {
     if (isEnabled && frameSnapshot.lastFrame) {
@@ -75,12 +67,9 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
     }
   }, [isEnabled, frameSnapshot.lastFrame, processFrame]);
 
-  const handleFrameEvent = useCallback(
-    (event: { type: "frame"; data: string; timestamp: number }) => {
-      processFrame(event.data);
-    },
-    [processFrame],
-  );
+  const handleFrameEvent = (event: { type: "frame"; data: string; timestamp: number }) => {
+    processFrame(event.data);
+  };
 
   useChannelEvent("sessionBrowserFrames", handleFrameEvent, { uuid: sessionId });
 

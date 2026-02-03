@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useState,
-  useRef,
-  useCallback,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { createContext, use, useState, useRef, type ReactNode, type RefObject } from "react";
 import { tv } from "tailwind-variants";
 import { TextAreaGroup } from "./textarea-group";
 import { Tabs, useTabs } from "./tabs";
@@ -69,12 +61,12 @@ function ChatProvider({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const isNearBottomRef = useRef(true);
 
-  const scrollToBottom = useCallback((force = false) => {
+  const scrollToBottom = (force = false) => {
     if (!force && !isNearBottomRef.current) return;
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
     });
-  }, []);
+  };
 
   const handleSubmit = () => {
     if (!input.trim()) return;
@@ -161,14 +153,14 @@ function ChatTabContent({ value, children }: { value: ChatTab; children: ReactNo
 function ChatMessageList({ children }: { children: ReactNode }) {
   const { scrollRef, isNearBottomRef } = useChat();
 
-  const handleScroll = useCallback(() => {
+  const handleScroll = () => {
     const { current: element } = scrollRef;
     if (!element) return;
     const { scrollHeight, scrollTop, clientHeight } = element;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
     isNearBottomRef.current = distanceFromBottom < SCROLL_THRESHOLD;
-  }, [scrollRef, isNearBottomRef]);
+  };
 
   return (
     <div

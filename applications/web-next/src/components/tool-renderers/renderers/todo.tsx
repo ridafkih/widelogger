@@ -73,8 +73,11 @@ function TodoRenderer({ input, error }: ToolRendererProps) {
       )}
       {todos.map((todo, index) => {
         const Icon = statusIcons[todo.status ?? "pending"] ?? Circle;
+        const todoKey =
+          todo.id ??
+          `${todo.subject ?? todo.content ?? "todo"}-${todo.status ?? "pending"}-${index}`;
         return (
-          <div key={todo.id ?? index} className="px-4 py-1 flex items-start gap-2">
+          <div key={todoKey} className="px-4 py-1 flex items-start gap-2">
             <Icon className={statusIcon({ status: todo.status ?? "pending" })} />
             <span className="text-xs">{todo.content ?? todo.subject}</span>
           </div>

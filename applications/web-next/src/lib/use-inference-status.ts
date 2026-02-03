@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useOpenCodeSession, type Event } from "./opencode-session";
 
 type InferenceStatus = "generating" | "idle";
@@ -38,19 +38,16 @@ export function useInferenceStatus(
   const { subscribe } = useOpenCodeSession();
   const [status, setStatus] = useState<InferenceStatus>("idle");
 
-  const handleEvent = useCallback(
-    (event: Event): void => {
-      const eventSessionId = getSessionIdFromEvent(event);
-      if (eventSessionId !== opencodeSessionId) return;
+  const handleEvent = (event: Event): void => {
+    const eventSessionId = getSessionIdFromEvent(event);
+    if (eventSessionId !== opencodeSessionId) return;
 
-      if (event.type === "message.updated" || event.type === "message.part.updated") {
-        setStatus("generating");
-      } else if (event.type === "session.idle") {
-        setStatus("idle");
-      }
-    },
-    [opencodeSessionId],
-  );
+    if (event.type === "message.updated" || event.type === "message.part.updated") {
+      setStatus("generating");
+    } else if (event.type === "session.idle") {
+      setStatus("idle");
+    }
+  };
 
   useEffect(() => {
     if (!enabled || !opencodeSessionId) {

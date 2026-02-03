@@ -1,16 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
 import { ContentCode, ContentError, parseFileOutput, getString } from "../shared";
 import type { ToolRendererProps } from "../types";
 
 function ReadRenderer({ input, output, error, status }: ToolRendererProps) {
   const filePath = getString(input, "filePath");
 
-  const parsedContent = useMemo(() => {
-    if (!output) return null;
-    return parseFileOutput(output);
-  }, [output]);
+  const parsedContent = output ? parseFileOutput(output) : null;
 
   return (
     <div className="flex flex-col">

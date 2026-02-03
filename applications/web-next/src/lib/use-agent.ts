@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { createOpencodeClient, type Message, type Part } from "@opencode-ai/sdk/v2/client";
 import { api } from "./api";
@@ -146,10 +146,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
   const streamedMessagesRef = useRef<MessageState[] | null>(null);
   const sessionDataRef = useRef<SessionData | null>(null);
 
-  const opencodeClient = useMemo(() => {
-    if (!labSessionId) return null;
-    return createSessionClient(labSessionId);
-  }, [labSessionId]);
+  const opencodeClient = labSessionId ? createSessionClient(labSessionId) : null;
 
   const {
     data: sessionData,
@@ -264,57 +261,54 @@ export function useAgent(labSessionId: string): UseAgentResult {
     return subscribe(processEvent);
   }, [subscribe, opencodeSessionId, mutate, labSessionId]);
 
-  const sendMessage = useCallback(
-    async ({ content, modelId }: SendMessageOptions) => {
-      if (!opencodeSessionId || !opencodeClient) {
-        throw new Error("Session not initialized");
+  const sendMessage = async ({ content, modelId }: SendMessageOptions) => {
+    if (!opencodeSessionId || !opencodeClient) {
+      throw new Error("Session not initialized");
+    }
+
+    setError(null);
+    setIsSending(true);
+
+    if (sendingTimeoutRef.current) {
+      clearTimeout(sendingTimeoutRef.current);
+    }
+
+    sendingTimeoutRef.current = setTimeout(
+      () => {
+        setIsSending(false);
+        sendingTimeoutRef.current = null;
+      },
+      5 * 60 * 1000,
+    );
+
+    try {
+      const [providerID, modelID] = modelId?.split("/") ?? [];
+      const response = await opencodeClient.session.promptAsync({
+        sessionID: opencodeSessionId,
+        model: {
+          providerID,
+          modelID,
+        },
+        parts: [{ type: "text", text: content }],
+      });
+
+      if (response.error) {
+        throw new Error(`Failed to send message: ${JSON.stringify(response.error)}`);
       }
-
-      setError(null);
-      setIsSending(true);
-
+    } catch (error) {
+      const errorInstance = error instanceof Error ? error : new Error("Failed to send message");
+      setError(errorInstance);
+      setIsSending(false);
+      throw errorInstance;
+    } finally {
       if (sendingTimeoutRef.current) {
         clearTimeout(sendingTimeoutRef.current);
+        sendingTimeoutRef.current = null;
       }
+    }
+  };
 
-      sendingTimeoutRef.current = setTimeout(
-        () => {
-          setIsSending(false);
-          sendingTimeoutRef.current = null;
-        },
-        5 * 60 * 1000,
-      );
-
-      try {
-        const [providerID, modelID] = modelId?.split("/") ?? [];
-        const response = await opencodeClient.session.promptAsync({
-          sessionID: opencodeSessionId,
-          model: {
-            providerID,
-            modelID,
-          },
-          parts: [{ type: "text", text: content }],
-        });
-
-        if (response.error) {
-          throw new Error(`Failed to send message: ${JSON.stringify(response.error)}`);
-        }
-      } catch (error) {
-        const errorInstance = error instanceof Error ? error : new Error("Failed to send message");
-        setError(errorInstance);
-        setIsSending(false);
-        throw errorInstance;
-      } finally {
-        if (sendingTimeoutRef.current) {
-          clearTimeout(sendingTimeoutRef.current);
-          sendingTimeoutRef.current = null;
-        }
-      }
-    },
-    [opencodeSessionId, opencodeClient],
-  );
-
-  const abortSession = useCallback(async () => {
+  const abortSession = async () => {
     if (!currentOpencodeSessionRef.current || !opencodeClient) return;
 
     try {
@@ -324,7 +318,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
     } catch (error) {
       console.error("[useAgent] Abort failed:", error);
     }
-  }, [opencodeClient]);
+  };
 
   return {
     isLoading,

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
+import { createContext, use, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 type OrchestrationStatus = "thinking" | "delegating" | "starting";
@@ -47,22 +47,22 @@ type ProviderProps = {
 function OrchestrationProvider({ children }: ProviderProps) {
   const [items, setItems] = useState<OrchestrationItem[]>([]);
 
-  const add = useCallback((item?: Partial<Omit<OrchestrationItem, "id">>) => {
+  const add = (item?: Partial<Omit<OrchestrationItem, "id">>) => {
     const id = crypto.randomUUID();
     setItems((prev) => [...prev, { id, status: "thinking", ...item }]);
     return id;
-  }, []);
+  };
 
-  const update = useCallback((id: string, updates: Partial<Omit<OrchestrationItem, "id">>) => {
+  const update = (id: string, updates: Partial<Omit<OrchestrationItem, "id">>) => {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
-  }, []);
+  };
 
-  const remove = useCallback((id: string) => {
+  const remove = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
-  }, []);
+  };
 
-  const actions = useMemo(() => ({ add, update, remove }), [add, update, remove]);
-  const value = useMemo(() => ({ items, actions }), [items, actions]);
+  const actions = { add, update, remove };
+  const value = { items, actions };
 
   return <OrchestrationContext value={value}>{children}</OrchestrationContext>;
 }

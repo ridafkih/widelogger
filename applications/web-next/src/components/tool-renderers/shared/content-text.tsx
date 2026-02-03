@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 
 type ContentTextProps = {
   children: string;
@@ -11,7 +11,7 @@ type ContentTextProps = {
 function ContentText({ children, maxLines = 10, collapsible = true }: ContentTextProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const lines = useMemo(() => children.split("\n"), [children]);
+  const lines = children.split("\n");
   const totalLines = lines.length;
   const needsTruncation = collapsible && totalLines > maxLines;
   const visibleLines = expanded || !needsTruncation ? lines : lines.slice(0, maxLines);
