@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
-import { ArrowLeft } from "lucide-react";
 import { tv } from "tailwind-variants";
-import { Button, button } from "@/components/button";
+import { Button } from "@/components/button";
 import { FormInput } from "@/components/form-input";
 import { ContainerCard } from "@/components/settings/container-card";
 import { useProjects } from "@/lib/hooks";
@@ -90,12 +88,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   return (
     <div className="flex-1 overflow-y-auto p-3">
-      <div className="flex flex-col gap-1 max-w-sm">
-        <Link href="/settings/projects" className={button({ variant: "ghost" })}>
-          <ArrowLeft size={12} />
-          Back to projects
-        </Link>
-
+      <div className="flex flex-col gap-2 max-w-sm">
         <SettingsFormField>
           <FormInput.Label>Project Name</FormInput.Label>
           <FormInput.Text value={project.name} readOnly />

@@ -1,17 +1,7 @@
-import { ProjectsList } from "@/components/settings/projects-list";
-
-function SettingsPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex-1 overflow-y-auto p-3">
-      <div className="flex flex-col gap-1 max-w-sm">{children}</div>
-    </div>
-  );
-}
-
 export default function ProjectsSettingsPage() {
   return (
-    <SettingsPanel>
-      <ProjectsList />
-    </SettingsPanel>
+    <div className="h-full flex items-center justify-center p-3">
+      <span className="text-xs text-text-muted">Select a project to configure</span>
+    </div>
   );
 }

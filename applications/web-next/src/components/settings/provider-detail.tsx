@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { Check, ExternalLink } from "lucide-react";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { FormInput } from "@/components/form-input";
@@ -91,6 +91,7 @@ type ApiKeyFormProps = {
 };
 
 function ApiKeyForm({ providerId, refetch }: ApiKeyFormProps) {
+  const { mutate } = useSWRConfig();
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,8 +111,10 @@ function ApiKeyForm({ providerId, refetch }: ApiKeyFormProps) {
           key: apiKey,
         },
       });
+      await client.global.dispose();
       setApiKey("");
       refetch();
+      mutate("providers-list");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save API key");
     } finally {
@@ -214,6 +217,7 @@ type OAuthButtonProps = {
 };
 
 function OAuthButton({ providerId, authMethods, refetch }: OAuthButtonProps) {
+  const { mutate } = useSWRConfig();
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -241,6 +245,11 @@ function OAuthButton({ providerId, authMethods, refetch }: OAuthButtonProps) {
     setPolling(false);
   };
 
+  const refreshAll = () => {
+    refetch();
+    mutate("providers-list");
+  };
+
   const startPolling = () => {
     let attempts = 0;
     const maxAttempts = 60;
@@ -257,7 +266,7 @@ function OAuthButton({ providerId, authMethods, refetch }: OAuthButtonProps) {
 
         if (isConnected) {
           stopPolling();
-          refetch();
+          refreshAll();
           return;
         }
       } catch {

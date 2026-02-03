@@ -143,6 +143,8 @@ export function useAgent(labSessionId: string): UseAgentResult {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>({ type: "idle" });
   const currentOpencodeSessionRef = useRef<string | null>(null);
   const sendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streamedMessagesRef = useRef<MessageState[] | null>(null);
+  const sessionDataRef = useRef<SessionData | null>(null);
 
   const opencodeClient = useMemo(() => {
     if (!labSessionId) return null;
@@ -158,16 +160,21 @@ export function useAgent(labSessionId: string): UseAgentResult {
   );
 
   useEffect(() => {
+    sessionDataRef.current = sessionData ?? null;
     if (sessionData?.opencodeSessionId) {
       currentOpencodeSessionRef.current = sessionData.opencodeSessionId;
     }
-  }, [sessionData?.opencodeSessionId]);
+  }, [sessionData]);
 
   useEffect(() => {
     if (swrError) {
       setError(swrError instanceof Error ? swrError : new Error("Failed to initialize"));
     }
   }, [swrError]);
+
+  useEffect(() => {
+    streamedMessagesRef.current = streamedMessages;
+  }, [streamedMessages]);
 
   const messages = streamedMessages ?? sessionData?.messages ?? [];
   const opencodeSessionId = sessionData?.opencodeSessionId ?? null;
@@ -177,7 +184,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
 
     const handleMessageUpdated = (info: Message) => {
       setStreamedMessages((previous) => {
-        const base = previous ?? sessionData?.messages ?? [];
+        const base = previous ?? sessionDataRef.current?.messages ?? [];
         const existing = base.find((message) => message.id === info.id);
         if (existing) return base;
         return [...base, { id: info.id, role: info.role, parts: [] }];
@@ -186,7 +193,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
 
     const handleMessagePartUpdated = (part: Part) => {
       setStreamedMessages((previous) => {
-        const base = previous ?? sessionData?.messages ?? [];
+        const base = previous ?? sessionDataRef.current?.messages ?? [];
         return base.map((message) => {
           if (message.id !== part.messageID) return message;
           return { ...message, parts: sortPartsById(upsertPart(message.parts, part)) };
@@ -247,12 +254,17 @@ export function useAgent(labSessionId: string): UseAgentResult {
         setIsSending(false);
         setSessionStatus({ type: "idle" });
 
-        setStreamedMessages((current) => {
-          if (current) {
-            mutate(getAgentMessagesKey(labSessionId), { ...sessionData, messages: current }, false);
-          }
-          return null;
-        });
+        if (streamedMessagesRef.current) {
+          mutate(
+            getAgentMessagesKey(labSessionId),
+            (current: SessionData | null | undefined) => {
+              if (!current) return current;
+              return { ...current, messages: streamedMessagesRef.current! };
+            },
+            { revalidate: false },
+          );
+        }
+        setStreamedMessages(null);
       }
 
       if (event.type === "session.error") {
@@ -266,7 +278,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
     };
 
     return subscribe(processEvent);
-  }, [subscribe, opencodeSessionId, sessionData, mutate, labSessionId]);
+  }, [subscribe, opencodeSessionId, mutate, labSessionId]);
 
   const sendMessage = useCallback(
     async ({ content, modelId }: SendMessageOptions) => {
