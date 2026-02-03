@@ -235,8 +235,17 @@ function SessionInfoPaneLinkItem({ href }: { href: string }) {
 
 function SessionInfoPaneStream({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 bg-bg pt-2">
-      <div className={cn("px-3", text({ color: "secondary" }))}>Live Browser</div>
+    <div className="flex flex-col bg-bg pt-2">
+      <div className={cn("px-3 pb-2", text({ color: "secondary" }))}>Live Browser</div>
+      {children}
+    </div>
+  );
+}
+
+function SessionInfoPaneLogs({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col bg-bg pt-2">
+      <div className={cn("px-3 pb-1", text({ color: "secondary" }))}>Logs</div>
       {children}
     </div>
   );
@@ -295,6 +304,7 @@ const SessionInfoPane = {
   LinkItem: SessionInfoPaneLinkItem,
   Stream: SessionInfoPaneStream,
   StreamPlaceholder: SessionInfoPaneStreamPlaceholder,
+  Logs: SessionInfoPaneLogs,
   LogItem: SessionInfoPaneLogItem,
   ActionButton: SessionInfoPaneActionButton,
 };

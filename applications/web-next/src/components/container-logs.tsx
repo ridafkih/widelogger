@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { tv } from "tailwind-variants";
-import { Tabs } from "@/components/tabs";
+import { ChevronDown } from "lucide-react";
 import { useContainerLogs, type LogSource, type LogEntry } from "@/lib/use-container-logs";
 import { cn } from "@/lib/cn";
 
@@ -100,38 +100,92 @@ function ContainerLogsProvider({
 }
 
 function ContainerLogsRoot({ children }: { children: ReactNode }) {
-  const { state, actions } = useContainerLogsContext();
+  const { state } = useContainerLogsContext();
 
   if (state.sources.length === 0) {
     return <ContainerLogsEmpty>No running containers</ContainerLogsEmpty>;
   }
 
-  return (
-    <Tabs.Root
-      active={state.activeTab ?? state.sources[0]?.id ?? ""}
-      onActiveChange={(tab) => actions.setActiveTab(tab)}
-    >
-      <div className="flex flex-col gap-1 overflow-x-hidden">{children}</div>
-    </Tabs.Root>
-  );
+  return <div className="flex flex-col">{children}</div>;
 }
 
-function ContainerLogsTabs() {
-  const { state } = useContainerLogsContext();
+function ContainerLogsSelector() {
+  const { state, actions } = useContainerLogsContext();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const activeSource = state.sources.find((s) => s.id === state.activeTab);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
 
   if (state.sources.length === 0) return null;
 
+  if (state.sources.length === 1 && activeSource) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5">
+        <ContainerLogsStatusIndicator status={activeSource.status} />
+        <span className={cn("truncate", text({ color: "secondary" }))}>
+          {activeSource.hostname}
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <Tabs.List grow>
-      {state.sources.map((source) => (
-        <Tabs.Tab key={source.id} value={source.id}>
-          <div className="flex items-center gap-1.5 w-full overflow-x-hidden">
-            <ContainerLogsStatusIndicator status={source.status} />
-            <span className="truncate">{source.hostname}</span>
-          </div>
-        </Tabs.Tab>
-      ))}
-    </Tabs.List>
+    <div ref={dropdownRef} className="relative px-3 py-1.5">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn("flex items-center gap-1.5 w-full", text({ color: "secondary" }))}
+      >
+        {activeSource && (
+          <>
+            <ContainerLogsStatusIndicator status={activeSource.status} />
+            <span className="truncate flex-1 text-left">{activeSource.hostname}</span>
+          </>
+        )}
+        <ChevronDown
+          size={12}
+          className={cn("shrink-0 transition-transform", isOpen && "rotate-180")}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full z-10 mx-3 mt-1 bg-bg-muted border border-border rounded shadow-lg">
+          {state.sources.map((source) => (
+            <button
+              key={source.id}
+              type="button"
+              onClick={() => {
+                actions.setActiveTab(source.id);
+                setIsOpen(false);
+              }}
+              className={cn(
+                "flex items-center gap-1.5 w-full px-2 py-1.5 text-left hover:bg-border transition-colors",
+                text({ font: "sans" }),
+                source.id === state.activeTab
+                  ? text({ color: "default" })
+                  : text({ color: "secondary" }),
+              )}
+            >
+              <ContainerLogsStatusIndicator status={source.status} />
+              <span className="truncate">{source.hostname}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -183,21 +237,20 @@ function ContainerLogsContent({ className }: { className?: string }) {
     <div
       ref={meta.contentRef}
       onScroll={handleScroll}
-      className={cn(
-        "flex flex-col h-48 overflow-y-auto overflow-x-auto bg-bg-muted rounded px-2 py-1",
-        className,
-      )}
+      className={cn("flex flex-col h-48 overflow-y-auto overflow-x-auto", className)}
     >
       {containerLogs.map((entry, index) => (
-        <ContainerLogsLine key={`${entry.timestamp}-${index}`} entry={entry} />
+        <ContainerLogsLine key={`${entry.timestamp}-${index}`} entry={entry} index={index} />
       ))}
     </div>
   );
 }
 
-function ContainerLogsLine({ entry }: { entry: LogEntry }) {
+function ContainerLogsLine({ entry, index }: { entry: LogEntry; index: number }) {
+  const isEven = index % 2 === 0;
+
   return (
-    <div className={cn("py-px", text({ font: "mono" }))}>
+    <div className={cn("px-3 py-0.5", text({ font: "mono" }), isEven ? "bg-black" : "bg-bg-muted")}>
       <span
         className={cn(
           "whitespace-nowrap",
@@ -221,7 +274,7 @@ function ContainerLogsEmpty({ children }: { children: ReactNode }) {
 export const ContainerLogs = {
   Provider: ContainerLogsProvider,
   Root: ContainerLogsRoot,
-  Tabs: ContainerLogsTabs,
+  Selector: ContainerLogsSelector,
   StatusIndicator: ContainerLogsStatusIndicator,
   Content: ContainerLogsContent,
   Line: ContainerLogsLine,
@@ -233,7 +286,7 @@ export function DefaultContainerLogs({ sessionId }: { sessionId: string }) {
   return (
     <ContainerLogs.Provider sessionId={sessionId}>
       <ContainerLogs.Root>
-        <ContainerLogs.Tabs />
+        <ContainerLogs.Selector />
         <ContainerLogs.Content />
       </ContainerLogs.Root>
     </ContainerLogs.Provider>

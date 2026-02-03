@@ -100,10 +100,9 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
         <BrowserStreamView />
       </SessionInfoPane.Stream>
 
-      <SessionInfoPane.Section>
-        <SessionInfoPane.SectionHeader>Logs</SessionInfoPane.SectionHeader>
+      <SessionInfoPane.Logs>
         <DefaultContainerLogs sessionId={session.id} />
-      </SessionInfoPane.Section>
+      </SessionInfoPane.Logs>
 
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Controls</SessionInfoPane.SectionHeader>
