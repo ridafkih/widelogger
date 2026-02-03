@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
+
+type OpencodeClient = ReturnType<typeof createOpencodeClient>;
 
 interface UseQuestionsResult {
   isSubmitting: boolean;
@@ -24,8 +26,18 @@ function createSessionClient(labSessionId: string) {
 
 export function useQuestions(labSessionId: string): UseQuestionsResult {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const opencodeClientRef = useRef<{ client: OpencodeClient; sessionId: string } | null>(null);
 
-  const opencodeClient = labSessionId ? createSessionClient(labSessionId) : null;
+  if (labSessionId && opencodeClientRef.current?.sessionId !== labSessionId) {
+    opencodeClientRef.current = {
+      client: createSessionClient(labSessionId),
+      sessionId: labSessionId,
+    };
+  } else if (!labSessionId) {
+    opencodeClientRef.current = null;
+  }
+
+  const opencodeClient = opencodeClientRef.current?.client ?? null;
 
   const reply = async (requestId: string, answers: string[][]) => {
     if (!opencodeClient) {

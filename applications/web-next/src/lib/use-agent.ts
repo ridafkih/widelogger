@@ -6,6 +6,8 @@ import { createOpencodeClient, type Message, type Part } from "@opencode-ai/sdk/
 import { api } from "./api";
 import { useOpenCodeSession, type Event } from "./opencode-session";
 
+type OpencodeClient = ReturnType<typeof createOpencodeClient>;
+
 interface LoadedMessage {
   info: Message;
   parts: Part[];
@@ -128,6 +130,23 @@ function extractPendingQuestion(question: unknown): PendingQuestion | null {
   return { callID: question.tool.callID, requestID: question.id };
 }
 
+function extractQuestionAskedEvent(event: Event): { callID: string; requestID: string } | null {
+  if (!("properties" in event)) return null;
+  const properties = event.properties;
+  if (typeof properties !== "object" || properties === null) return null;
+  if (!("callID" in properties) || typeof properties.callID !== "string") return null;
+  if (!("requestID" in properties) || typeof properties.requestID !== "string") return null;
+  return { callID: properties.callID, requestID: properties.requestID };
+}
+
+function extractQuestionCallID(event: Event): string | null {
+  if (!("properties" in event)) return null;
+  const properties = event.properties;
+  if (typeof properties !== "object" || properties === null) return null;
+  if (!("callID" in properties) || typeof properties.callID !== "string") return null;
+  return properties.callID;
+}
+
 async function fetchPendingQuestions(labSessionId: string): Promise<PendingQuestion[]> {
   const client = createSessionClient(labSessionId);
   const response = await client.question.list();
@@ -146,8 +165,8 @@ async function fetchPendingQuestions(labSessionId: string): Promise<PendingQuest
 }
 
 async function fetchSessionData(labSessionId: string): Promise<SessionData | null> {
-  const labSession = await api.sessions.get(labSessionId);
   const client = createSessionClient(labSessionId);
+  const labSession = await api.sessions.get(labSessionId);
 
   let opencodeSessionId = labSession.opencodeSessionId;
 
@@ -189,8 +208,18 @@ export function useAgent(labSessionId: string): UseAgentResult {
   const sendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamedMessagesRef = useRef<MessageState[] | null>(null);
   const sessionDataRef = useRef<SessionData | null>(null);
+  const opencodeClientRef = useRef<{ client: OpencodeClient; sessionId: string } | null>(null);
 
-  const opencodeClient = labSessionId ? createSessionClient(labSessionId) : null;
+  if (labSessionId && opencodeClientRef.current?.sessionId !== labSessionId) {
+    opencodeClientRef.current = {
+      client: createSessionClient(labSessionId),
+      sessionId: labSessionId,
+    };
+  } else if (!labSessionId) {
+    opencodeClientRef.current = null;
+  }
+
+  const opencodeClient = opencodeClientRef.current?.client ?? null;
 
   const {
     data: sessionData,
@@ -200,33 +229,29 @@ export function useAgent(labSessionId: string): UseAgentResult {
     fetchSessionData(labSessionId),
   );
 
+  const { data: pendingQuestions } = useSWR(
+    labSessionId ? `pending-questions-${labSessionId}` : null,
+    () => fetchPendingQuestions(labSessionId),
+  );
+
   useEffect(() => {
     sessionDataRef.current = sessionData ?? null;
     if (sessionData?.opencodeSessionId) {
       currentOpencodeSessionRef.current = sessionData.opencodeSessionId;
     }
-  }, [sessionData]);
-
-  useEffect(() => {
-    if (!labSessionId) return;
-    fetchPendingQuestions(labSessionId).then((pendingQuestions) => {
-      if (pendingQuestions.length > 0) {
-        setQuestionRequests(
-          new Map(pendingQuestions.map((question) => [question.callID, question.requestID])),
-        );
-      }
-    });
-  }, [labSessionId]);
-
-  useEffect(() => {
+    streamedMessagesRef.current = streamedMessages;
     if (swrError) {
       setError(swrError instanceof Error ? swrError : new Error("Failed to initialize"));
     }
-  }, [swrError]);
+  }, [sessionData, streamedMessages, swrError]);
 
   useEffect(() => {
-    streamedMessagesRef.current = streamedMessages;
-  }, [streamedMessages]);
+    if (pendingQuestions && pendingQuestions.length > 0) {
+      setQuestionRequests(
+        new Map(pendingQuestions.map((question) => [question.callID, question.requestID])),
+      );
+    }
+  }, [pendingQuestions]);
 
   const messages = streamedMessages ?? sessionData?.messages ?? [];
   const opencodeSessionId = sessionData?.opencodeSessionId ?? null;
@@ -316,20 +341,19 @@ export function useAgent(labSessionId: string): UseAgentResult {
       }
 
       if (event.type === "question.asked") {
-        const props = event.properties as unknown as { callID?: string; requestID?: string };
-        const callID = props.callID;
-        const requestID = props.requestID;
-        if (callID && requestID) {
-          setQuestionRequests((prev) => new Map(prev).set(callID, requestID));
+        const extracted = extractQuestionAskedEvent(event);
+        if (extracted) {
+          setQuestionRequests((previous) =>
+            new Map(previous).set(extracted.callID, extracted.requestID),
+          );
         }
       }
 
       if (event.type === "question.replied" || event.type === "question.rejected") {
-        const props = event.properties as unknown as { callID?: string };
-        const callID = props.callID;
+        const callID = extractQuestionCallID(event);
         if (callID) {
-          setQuestionRequests((prev) => {
-            const next = new Map(prev);
+          setQuestionRequests((previous) => {
+            const next = new Map(previous);
             next.delete(callID);
             return next;
           });
