@@ -2,7 +2,6 @@ import { multiplayerClient } from "../clients/multiplayer";
 import { apiClient } from "../clients/api";
 import { getAdapter } from "../platforms";
 import { responseSubscriber } from "./response-subscriber";
-import type { PlatformType } from "../types/messages";
 
 interface SessionCompleteEvent {
   sessionId: string;
@@ -48,38 +47,38 @@ class CompletionListener {
     try {
       console.log(`[CompletionListener] Processing completion for session ${sessionId}`);
 
-      const result = await apiClient.generateSessionSummary(sessionId);
+      const subscriptions = responseSubscriber.getActiveSubscriptions();
+      const subscription = subscriptions.get(sessionId);
 
-      if (result.alreadySent) {
-        console.log(`[CompletionListener] Summary already sent for session ${sessionId}`);
+      if (!subscription) {
+        console.log(`[CompletionListener] No subscription found for session ${sessionId}`);
         return;
       }
 
-      if (!result.platformOrigin || !result.platformChatId) {
-        console.log(
-          `[CompletionListener] No platform info for session ${sessionId}, skipping notification`,
-        );
-        return;
-      }
+      const { platform, chatId } = subscription;
 
-      const adapter = getAdapter(result.platformOrigin as PlatformType);
+      const result = await apiClient.notifySessionComplete({
+        sessionId,
+        platformOrigin: platform,
+        platformChatId: chatId,
+      });
+
+      const adapter = getAdapter(platform);
       if (!adapter) {
-        console.warn(`[CompletionListener] No adapter for platform ${result.platformOrigin}`);
+        console.warn(`[CompletionListener] No adapter for platform ${platform}`);
         return;
       }
 
       const threadId = responseSubscriber.getThreadId(sessionId);
 
       await adapter.sendMessage({
-        platform: result.platformOrigin as PlatformType,
-        chatId: result.platformChatId,
-        content: result.summary,
+        platform,
+        chatId,
+        content: result.message,
         threadId,
       });
 
-      console.log(
-        `[CompletionListener] Sent summary to ${result.platformOrigin}:${result.platformChatId}`,
-      );
+      console.log(`[CompletionListener] Sent completion summary to ${platform}:${chatId}`);
     } catch (error) {
       console.error(`[CompletionListener] Error processing completion for ${sessionId}:`, error);
     } finally {

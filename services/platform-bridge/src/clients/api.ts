@@ -87,6 +87,27 @@ export class ApiClient {
 
     return response.json();
   }
+
+  async notifySessionComplete(request: {
+    sessionId: string;
+    platformOrigin: string;
+    platformChatId: string;
+  }): Promise<ChatResult> {
+    const response = await fetch(`${this.baseUrl}/orchestrate/chat/complete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(`Session complete notification failed: ${error.error || response.statusText}`);
+    }
+
+    return response.json();
+  }
 }
 
 export interface SummaryResult {
