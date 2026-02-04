@@ -219,9 +219,13 @@ function recordingStartHandler(): CommandNode["handler"] {
     const maxTimeout = 5 * 60 * 1000; // 5 minutes
     const clampedTimeout = Math.min(Math.max(timeout, 1000), maxTimeout);
 
+    // Generate unique recording path
+    const recordingPath = `/tmp/recordings/${ctx.sessionId}/${Date.now()}.webm`;
+
     const command: BrowserCommand = {
       id: ctx.generateCommandId(),
       action: "recording_start",
+      path: recordingPath,
       url: args.url,
       timeout: clampedTimeout,
     };
@@ -257,9 +261,13 @@ function recordingRestartHandler(): CommandNode["handler"] {
     const maxTimeout = 5 * 60 * 1000; // 5 minutes
     const clampedTimeout = Math.min(Math.max(timeout, 1000), maxTimeout);
 
+    // Generate unique recording path
+    const recordingPath = `/tmp/recordings/${ctx.sessionId}/${Date.now()}.webm`;
+
     const command: BrowserCommand = {
       id: ctx.generateCommandId(),
       action: "recording_restart",
+      path: recordingPath,
       url: args.url,
       timeout: clampedTimeout,
     };
