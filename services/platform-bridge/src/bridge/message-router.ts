@@ -1,65 +1,79 @@
 import { apiClient } from "../clients/api";
 import { sessionTracker } from "./session-tracker";
 import { responseSubscriber } from "./response-subscriber";
-import type { IncomingPlatformMessage } from "../types/messages";
-import { config } from "../config/environment";
+import type { IncomingPlatformMessage, MessagingMode, PlatformType } from "../types/messages";
+import { getAdapter } from "../platforms";
 
 export class MessageRouter {
   async handleIncomingMessage(message: IncomingPlatformMessage): Promise<void> {
-    const { platform, chatId, userId, content } = message;
+    const { platform, chatId, userId, messageId, content, timestamp, metadata } = message;
+    const conversationHistory = metadata?.conversationHistory;
 
     console.log(`[MessageRouter] Received message from ${platform}:${chatId}`);
 
-    const mapping = await sessionTracker.getMapping(platform, chatId);
-
-    if (mapping) {
-      const isActive = await apiClient.isSessionActive(mapping.sessionId);
-
-      if (isActive) {
-        console.log(`[MessageRouter] Routing to existing session ${mapping.sessionId}`);
-        await this.routeToExistingSession(mapping.sessionId, content);
-        await sessionTracker.touchMapping(platform, chatId);
-        return;
-      } else {
-        console.log(`[MessageRouter] Session ${mapping.sessionId} is not active, creating new`);
-      }
-    }
-
-    console.log(`[MessageRouter] Creating new session via orchestration`);
-    await this.routeToOrchestrator(platform, chatId, userId, content);
+    await this.routeToChatOrchestrator(
+      platform,
+      chatId,
+      userId,
+      messageId,
+      content,
+      conversationHistory,
+      timestamp,
+    );
   }
 
-  private async routeToExistingSession(sessionId: string, content: string): Promise<void> {
-    await apiClient.sendMessageToSession(sessionId, content);
-  }
-
-  private async routeToOrchestrator(
-    platform: string,
+  private async routeToChatOrchestrator(
+    platform: PlatformType,
     chatId: string,
     userId: string | undefined,
+    messageId: string | undefined,
     content: string,
+    conversationHistory: string[] | undefined,
+    timestamp: Date,
   ): Promise<void> {
-    const result = await apiClient.orchestrate({
+    const adapter = getAdapter(platform);
+    const messagingMode: MessagingMode = adapter?.messagingMode ?? "passive";
+
+    const mapping = await sessionTracker.getMapping(platform, chatId);
+    const currentSessionId = mapping ? await this.getActiveSessionId(mapping.sessionId) : undefined;
+
+    const result = await apiClient.chat({
       content,
-      modelId: config.imessageDefaultModelId,
+      platformOrigin: platform,
+      platformChatId: chatId,
+      conversationHistory,
+      timestamp: timestamp.toISOString(),
+      currentSessionId,
     });
 
-    await sessionTracker.setMapping(
-      platform as IncomingPlatformMessage["platform"],
-      chatId,
-      result.sessionId,
-      userId,
-    );
+    if (result.action === "created_session" && result.sessionId) {
+      await sessionTracker.setMapping(platform, chatId, result.sessionId, userId, messageId);
 
-    responseSubscriber.subscribeToSession(
-      result.sessionId,
-      platform as IncomingPlatformMessage["platform"],
-      chatId,
-    );
+      responseSubscriber.subscribeToSession(
+        result.sessionId,
+        platform,
+        chatId,
+        messageId,
+        messagingMode,
+      );
 
-    console.log(
-      `[MessageRouter] Created session ${result.sessionId} for project ${result.projectName}`,
-    );
+      console.log(
+        `[MessageRouter] Created session ${result.sessionId} for project ${result.projectName ?? "unknown"} (mode: ${messagingMode})`,
+      );
+    }
+
+    if (result.action === "forwarded_message" && result.sessionId) {
+      await sessionTracker.touchMapping(platform, chatId);
+      console.log(`[MessageRouter] Forwarded message to session ${result.sessionId}`);
+    }
+
+    if (adapter && result.message) {
+      await adapter.sendMessage({
+        platform,
+        chatId,
+        content: result.message,
+      });
+    }
   }
 }
 

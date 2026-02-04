@@ -277,6 +277,18 @@ export const schema = defineSchema({
         errorMessage: z.string().nullable().optional(),
       }),
     }),
+
+    sessionComplete: defineChannel({
+      path: "session/:uuid/complete",
+      snapshot: z.object({
+        completed: z.boolean(),
+      }),
+      default: { completed: false },
+      event: z.object({
+        sessionId: z.string(),
+        completedAt: z.number(),
+      }),
+    }),
   },
 
   clientMessages: z.discriminatedUnion("type", [

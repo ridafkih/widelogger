@@ -31,8 +31,13 @@ async function composeSystemPrompt(sessionId: string): Promise<string | undefine
   return text || undefined;
 }
 
+function getDefaultModelId(): string | undefined {
+  return process.env.DEFAULT_CONVERSATION_MODEL_ID;
+}
+
 export async function initiateConversation(options: InitiateConversationOptions): Promise<void> {
-  const { sessionId, task, modelId } = options;
+  const { sessionId, task } = options;
+  const modelId = options.modelId ?? getDefaultModelId();
   const workspacePath = await resolveWorkspacePathBySession(sessionId);
 
   const createResponse = await opencode.session.create({ directory: workspacePath });

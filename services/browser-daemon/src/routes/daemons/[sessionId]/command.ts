@@ -48,13 +48,9 @@ export const POST: RouteHandler = async (request, params, { daemonManager }) => 
   const command = body as Command;
 
   console.log(`[Command] ${sessionId} -> ${command.action}`);
-  let response = await daemonManager.executeCommand(sessionId, command);
+  const response = await daemonManager.executeCommand(sessionId, command);
 
-  if (command.action === "screenshot") {
-    response = await transformScreenshotResponse(response);
-  }
-
-  console.log(`[Command] ${sessionId} <- ${response.success ? "success" : "error"}`);
-
-  return Response.json(response);
+  if (command.action !== "screenshot") return Response.json(response);
+  const transformed = await transformScreenshotResponse(response);
+  return Response.json(transformed);
 };

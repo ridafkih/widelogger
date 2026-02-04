@@ -146,5 +146,6 @@ export function createSnapshotLoaders(
       sessionId: null,
       errorMessage: null,
     }),
+    sessionComplete: async () => ({ completed: false }),
   };
 }

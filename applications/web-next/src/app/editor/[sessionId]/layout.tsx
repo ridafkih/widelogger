@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { use, useEffect, useMemo } from "react";
+import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { BrowserStreamProvider } from "@/components/browser-stream";
@@ -57,6 +57,16 @@ export default function SessionLayout({ children, params }: SessionLayoutProps) 
   const { data: sessionData } = useSessionData(sessionId);
   const containers = useSessionContainers(sessionId);
 
+  const containerUrls = containers.flatMap((container) => container.urls.map(({ url }) => url));
+
+  const contextValue = {
+    sessionId,
+    session: sessionData?.session ?? null,
+    project: sessionData?.project ?? null,
+    containers,
+    containerUrls,
+  };
+
   useEffect(() => {
     if (sessionError) {
       router.replace("/editor");
@@ -66,19 +76,6 @@ export default function SessionLayout({ children, params }: SessionLayoutProps) 
   if (sessionError) {
     return null;
   }
-
-  const containerUrls = containers.flatMap((container) => container.urls.map(({ url }) => url));
-
-  const contextValue = useMemo(
-    () => ({
-      sessionId,
-      session: sessionData?.session ?? null,
-      project: sessionData?.project ?? null,
-      containers,
-      containerUrls,
-    }),
-    [sessionId, sessionData, containers, containerUrls],
-  );
 
   return (
     <BrowserStreamProvider sessionId={sessionId}>

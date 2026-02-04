@@ -64,7 +64,7 @@ services:
       - ./opencode.json:/root/.config/opencode/opencode.json:ro
       - session_workspaces:/workspaces
       - browser_sockets:/tmp/agent-browser-socket
-      - opencode_data:/root/.opencode
+      - opencode_data:/root/.local/share/opencode
     environment:
       AGENT_BROWSER_SOCKET_DIR: /tmp/agent-browser-socket
       BROWSER_DAEMON_HOST: browser
@@ -135,6 +135,10 @@ services:
       ORCHESTRATOR_MODEL_PROVIDER: $ORCHESTRATOR_MODEL_PROVIDER
       ORCHESTRATOR_MODEL_NAME: $ORCHESTRATOR_MODEL_NAME
       ORCHESTRATOR_MODEL_API_KEY: $ORCHESTRATOR_MODEL_API_KEY
+      CHAT_ORCHESTRATOR_MODEL_PROVIDER: $CHAT_ORCHESTRATOR_MODEL_PROVIDER
+      CHAT_ORCHESTRATOR_MODEL_NAME: $CHAT_ORCHESTRATOR_MODEL_NAME
+      CHAT_ORCHESTRATOR_MODEL_API_KEY: $CHAT_ORCHESTRATOR_MODEL_API_KEY
+      DEFAULT_CONVERSATION_MODEL_ID: $DEFAULT_CONVERSATION_MODEL_ID
       ENCRYPTION_KEY: $ENCRYPTION_KEY
       GITHUB_CLIENT_ID: $GITHUB_CLIENT_ID
       GITHUB_CLIENT_SECRET: $GITHUB_CLIENT_SECRET

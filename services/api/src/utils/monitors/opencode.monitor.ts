@@ -7,6 +7,8 @@ import { publisher } from "../../clients/publisher";
 import { setInferenceStatus, clearInferenceStatus } from "./inference-status-store";
 import { setLastMessage, clearLastMessage } from "./last-message-store";
 
+const COMPLETION_DEBOUNCE_MS = 5000;
+
 interface FileDiff {
   file: string;
   before: string;
@@ -106,6 +108,53 @@ function extractTextFromParts(parts: MessagePart[]): string | null {
   return textPart?.text ?? null;
 }
 
+class CompletionTimerManager {
+  private readonly timers = new Map<string, NodeJS.Timeout>();
+  private readonly completedSessions = new Set<string>();
+
+  scheduleCompletion(sessionId: string): void {
+    if (this.completedSessions.has(sessionId)) {
+      return;
+    }
+
+    this.cancelCompletion(sessionId);
+
+    const timer = setTimeout(() => {
+      this.timers.delete(sessionId);
+      this.completedSessions.add(sessionId);
+      this.publishCompletion(sessionId);
+    }, COMPLETION_DEBOUNCE_MS);
+
+    this.timers.set(sessionId, timer);
+  }
+
+  cancelCompletion(sessionId: string): void {
+    const existing = this.timers.get(sessionId);
+    if (existing) {
+      clearTimeout(existing);
+      this.timers.delete(sessionId);
+    }
+  }
+
+  clearSession(sessionId: string): void {
+    this.cancelCompletion(sessionId);
+    this.completedSessions.delete(sessionId);
+  }
+
+  private publishCompletion(sessionId: string): void {
+    console.log(
+      `[OpenCode Monitor] Session ${sessionId} completed after ${COMPLETION_DEBOUNCE_MS}ms idle`,
+    );
+    publisher.publishEvent(
+      "sessionComplete",
+      { uuid: sessionId },
+      { sessionId, completedAt: Date.now() },
+    );
+  }
+}
+
+const completionTimerManager = new CompletionTimerManager();
+
 function processSessionDiff(labSessionId: string, event: SessionDiffEvent): void {
   for (const diff of event.properties.diff) {
     publisher.publishDelta(
@@ -117,6 +166,7 @@ function processSessionDiff(labSessionId: string, event: SessionDiffEvent): void
 }
 
 function processMessageUpdated(labSessionId: string, event: MessageUpdatedEvent): void {
+  completionTimerManager.cancelCompletion(labSessionId);
   const text = extractTextFromParts(event.properties.parts);
   setInferenceStatus(labSessionId, "generating");
   if (text) {
@@ -139,6 +189,7 @@ function processMessageUpdated(labSessionId: string, event: MessageUpdatedEvent)
 }
 
 function processMessagePartUpdated(labSessionId: string, event: MessagePartUpdatedEvent): void {
+  completionTimerManager.cancelCompletion(labSessionId);
   const part = event.properties.part;
   if (part.type === "text" && part.text) {
     setInferenceStatus(labSessionId, "generating");
@@ -157,11 +208,13 @@ function processMessagePartUpdated(labSessionId: string, event: MessagePartUpdat
 function processSessionIdle(labSessionId: string): void {
   setInferenceStatus(labSessionId, "idle");
   publisher.publishDelta("sessionMetadata", { uuid: labSessionId }, { inferenceStatus: "idle" });
+  completionTimerManager.scheduleCompletion(labSessionId);
 }
 
 function processSessionError(labSessionId: string): void {
   setInferenceStatus(labSessionId, "idle");
   publisher.publishDelta("sessionMetadata", { uuid: labSessionId }, { inferenceStatus: "idle" });
+  completionTimerManager.scheduleCompletion(labSessionId);
 }
 
 function processEvent(labSessionId: string, event: unknown): void {
@@ -206,6 +259,7 @@ class SessionTracker {
     this.abortController.abort();
     clearInferenceStatus(this.labSessionId);
     clearLastMessage(this.labSessionId);
+    completionTimerManager.clearSession(this.labSessionId);
   }
 
   get isActive(): boolean {

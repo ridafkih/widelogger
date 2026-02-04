@@ -127,6 +127,20 @@
       "when": 1770119606352,
       "tag": "0017_careless_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1770161200805,
+      "tag": "0018_nice_cammi",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1770219684973,
+      "tag": "0019_chief_manta",
+      "breakpoints": true
     }
   ]
 }

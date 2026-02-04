@@ -201,15 +201,15 @@ function ChatTabs({
   children: ReactNode;
   defaultTab?: ChatTab;
 }) {
-  return <Tabs.Root<ChatTab> defaultTab={defaultTab}>{children}</Tabs.Root>;
+  return <Tabs.Root defaultTab={defaultTab}>{children}</Tabs.Root>;
 }
 
 function ChatTabItem({ value, children }: { value: ChatTab; children: ReactNode }) {
-  return <Tabs.Tab<ChatTab> value={value}>{children}</Tabs.Tab>;
+  return <Tabs.Tab value={value}>{children}</Tabs.Tab>;
 }
 
 function ChatTabContent({ value, children }: { value: ChatTab; children: ReactNode }) {
-  return <Tabs.Content<ChatTab> value={value}>{children}</Tabs.Content>;
+  return <Tabs.Content value={value}>{children}</Tabs.Content>;
 }
 
 const messageList = tv({

@@ -13,6 +13,12 @@ export const orchestrationRequests = pgTable("orchestration_requests", {
   resolutionReasoning: text("resolution_reasoning"),
   errorMessage: text("error_message"),
   modelId: text("model_id"),
+  platformOrigin: text("platform_origin"),
+  platformChatId: text("platform_chat_id"),
+  messagingMode: text("messaging_mode").default("passive"),
+  summaryStatus: text("summary_status").default("pending"),
+  summaryText: text("summary_text"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -27,3 +33,5 @@ export type OrchestrationStatus =
   | "complete"
   | "error";
 export type ResolutionConfidence = "high" | "medium" | "low";
+export type MessagingMode = "active" | "passive";
+export type SummaryStatus = "pending" | "generating" | "sent" | "failed";

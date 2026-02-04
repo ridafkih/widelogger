@@ -1,6 +1,6 @@
 {
-  "id": "019d2a61-0141-40e7-b298-283de65770e7",
-  "prevId": "724536ad-7749-422b-8543-a400cf8e8cc4",
+  "id": "22f54a29-f707-4fa4-ad34-d3a6409beab1",
+  "prevId": "019d2a61-0141-40e7-b298-283de65770e7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -610,6 +610,12 @@
         },
         "platform_user_id": {
           "name": "platform_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "thread_id": {
+          "name": "thread_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false

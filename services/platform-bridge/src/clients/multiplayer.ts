@@ -4,6 +4,34 @@ import type { SessionMessage } from "../types/messages";
 
 type MessageListener = (message: SessionMessage) => void;
 
+interface SessionCompleteEvent {
+  sessionId: string;
+  completedAt: number;
+}
+
+type SessionCompleteListener = (event: SessionCompleteEvent) => void;
+
+function isSessionCompleteEvent(value: unknown): value is SessionCompleteEvent {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("sessionId" in value) || typeof value.sessionId !== "string") return false;
+  if (!("completedAt" in value) || typeof value.completedAt !== "number") return false;
+  return true;
+}
+
+function isSessionMessage(value: unknown): value is SessionMessage {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("id" in value) || typeof value.id !== "string") return false;
+  if (!("role" in value) || (value.role !== "user" && value.role !== "assistant")) return false;
+  if (!("content" in value) || typeof value.content !== "string") return false;
+  if (!("timestamp" in value) || typeof value.timestamp !== "number") return false;
+  if (!("senderId" in value) || typeof value.senderId !== "string") return false;
+  return true;
+}
+
+function isSessionCompleteChannel(channel: string): boolean {
+  return channel.startsWith("session/") && channel.endsWith("/complete");
+}
+
 function isServerMessage(value: unknown): value is WireServerMessage {
   if (typeof value !== "object" || value === null) return false;
   if (!("type" in value)) return false;
@@ -30,6 +58,7 @@ export class MultiplayerClient {
   private ws: WebSocket | null = null;
   private url: string;
   private subscriptions = new Map<string, Set<MessageListener>>();
+  private sessionCompleteSubscriptions = new Map<string, Set<SessionCompleteListener>>();
   private messageQueue: WireClientMessage[] = [];
   private reconnectAttempt = 0;
   private maxReconnectAttempts = 10;
@@ -91,6 +120,28 @@ export class MultiplayerClient {
     };
   }
 
+  subscribeToSessionComplete(sessionId: string, listener: SessionCompleteListener): () => void {
+    const channel = `session/${sessionId}/complete`;
+
+    if (!this.sessionCompleteSubscriptions.has(channel)) {
+      this.sessionCompleteSubscriptions.set(channel, new Set());
+      this.send({ type: "subscribe", channel });
+    }
+
+    this.sessionCompleteSubscriptions.get(channel)!.add(listener);
+
+    return () => {
+      const listeners = this.sessionCompleteSubscriptions.get(channel);
+      if (listeners) {
+        listeners.delete(listener);
+        if (listeners.size === 0) {
+          this.sessionCompleteSubscriptions.delete(channel);
+          this.send({ type: "unsubscribe", channel });
+        }
+      }
+    };
+  }
+
   private send(message: WireClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
@@ -127,13 +178,26 @@ export class MultiplayerClient {
       if (!isServerMessage(parsed)) return;
       if (parsed.type === "pong") return;
 
-      if (parsed.type === "event" && "channel" in parsed && "data" in parsed) {
-        const listeners = this.subscriptions.get(parsed.channel);
+      if (parsed.type !== "event") return;
+      if (!("channel" in parsed) || typeof parsed.channel !== "string") return;
+      if (!("data" in parsed)) return;
+
+      const { channel, data } = parsed;
+
+      if (isSessionCompleteChannel(channel) && isSessionCompleteEvent(data)) {
+        const listeners = this.sessionCompleteSubscriptions.get(channel);
         if (listeners) {
-          const data = parsed.data as SessionMessage;
           for (const listener of listeners) {
             listener(data);
           }
+        }
+        return;
+      }
+
+      const listeners = this.subscriptions.get(channel);
+      if (listeners && isSessionMessage(data)) {
+        for (const listener of listeners) {
+          listener(data);
         }
       }
     } catch (error) {
@@ -151,6 +215,10 @@ export class MultiplayerClient {
 
   private resubscribeAll(): void {
     for (const channel of this.subscriptions.keys()) {
+      this.send({ type: "subscribe", channel });
+    }
+
+    for (const channel of this.sessionCompleteSubscriptions.keys()) {
       this.send({ type: "subscribe", channel });
     }
   }

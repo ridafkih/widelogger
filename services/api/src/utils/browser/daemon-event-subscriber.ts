@@ -1,6 +1,22 @@
-import type { DaemonEvent } from "@lab/browser-protocol";
+import type { DaemonEvent, DaemonEventType } from "@lab/browser-protocol";
 
 export type DaemonEventHandler = (event: DaemonEvent) => void;
+
+const validEventTypes: DaemonEventType[] = [
+  "daemon:started",
+  "daemon:ready",
+  "daemon:stopped",
+  "daemon:error",
+];
+
+function isDaemonEvent(value: unknown): value is DaemonEvent {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("type" in value) || !("sessionId" in value) || !("timestamp" in value)) return false;
+  if (typeof value.sessionId !== "string") return false;
+  if (typeof value.timestamp !== "number") return false;
+  if (!validEventTypes.includes(value.type as DaemonEventType)) return false;
+  return true;
+}
 
 export interface DaemonEventSubscriber {
   start(): void;
@@ -60,9 +76,9 @@ export const createDaemonEventSubscriber = (
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
-            const event = JSON.parse(line.slice(6)) as DaemonEvent;
-            if (event.type?.startsWith("daemon:")) {
-              emit(event);
+            const parsed: unknown = JSON.parse(line.slice(6));
+            if (isDaemonEvent(parsed)) {
+              emit(parsed);
             }
           } catch {
             // Ignore parse errors
@@ -70,7 +86,8 @@ export const createDaemonEventSubscriber = (
         }
       }
     } catch (error) {
-      if ((error as Error).name !== "AbortError") {
+      const isAbortError = error instanceof Error && error.name === "AbortError";
+      if (!isAbortError) {
         console.warn("[DaemonEventSubscriber] Connection error:", error);
       }
     } finally {

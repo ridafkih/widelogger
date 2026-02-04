@@ -4,10 +4,13 @@ import type {
   PlatformType,
 } from "../types/messages";
 
+export type MessagingMode = "active" | "passive";
+
 export type MessageHandler = (message: IncomingPlatformMessage) => Promise<void>;
 
 export interface PlatformAdapter {
   readonly platform: PlatformType;
+  readonly messagingMode: MessagingMode;
 
   initialize(): Promise<void>;
 

@@ -119,6 +119,17 @@ export function createWebSocketHandlers(browserService: BrowserService) {
     sessionBrowserInput: {
       getSnapshot: async () => ({}),
     },
+    orchestrationStatus: {
+      getSnapshot: async () => ({
+        status: "pending",
+        projectName: null,
+        sessionId: null,
+        errorMessage: null,
+      }),
+    },
+    sessionComplete: {
+      getSnapshot: async () => ({ completed: false }),
+    },
   };
 
   const options: HandlerOptions<AppSchema, Auth> = {

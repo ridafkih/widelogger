@@ -133,8 +133,12 @@ export function useCreateSession() {
 
       mutate(
         sessionsKey,
-        (current: Session[] = []) =>
-          current.map((existing) => (existing.id === optimisticId ? session : existing)),
+        (current: Session[] = []) => {
+          const withoutOptimistic = current.filter((existing) => existing.id !== optimisticId);
+          const alreadyExists = withoutOptimistic.some((existing) => existing.id === session.id);
+          if (alreadyExists) return withoutOptimistic;
+          return [...withoutOptimistic, session];
+        },
         false,
       );
 

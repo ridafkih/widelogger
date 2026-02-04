@@ -9,6 +9,7 @@ import { config } from "../config/environment";
 
 export interface ChatMapping {
   sessionId: string;
+  threadId: string | null;
   lastActivityAt: Date;
 }
 
@@ -17,6 +18,7 @@ export class SessionTracker {
     const [mapping] = await db
       .select({
         sessionId: platformChatMappings.sessionId,
+        threadId: platformChatMappings.threadId,
         lastActivityAt: platformChatMappings.lastActivityAt,
       })
       .from(platformChatMappings)
@@ -43,6 +45,7 @@ export class SessionTracker {
     chatId: string,
     sessionId: string,
     userId?: string,
+    threadId?: string,
   ): Promise<void> {
     await db
       .insert(platformChatMappings)
@@ -50,6 +53,7 @@ export class SessionTracker {
         platform,
         platformChatId: chatId,
         platformUserId: userId,
+        threadId,
         sessionId,
       })
       .onConflictDoUpdate({
@@ -57,6 +61,7 @@ export class SessionTracker {
         set: {
           sessionId,
           platformUserId: userId,
+          threadId,
           lastActivityAt: new Date(),
         },
       });

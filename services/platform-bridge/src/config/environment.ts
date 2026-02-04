@@ -53,7 +53,7 @@ export const config = {
 
   imessageEnabled: getOptionalEnvBool("IMESSAGE_ENABLED", true),
   imessageWatchedContacts: getOptionalEnvList("IMESSAGE_WATCHED_CONTACTS"),
-  imessageDefaultModelId: getOptionalEnv("IMESSAGE_DEFAULT_MODEL_ID", "anthropic/claude-sonnet"),
+  imessageContextMessages: getOptionalEnvInt("IMESSAGE_CONTEXT_MESSAGES", 20),
 
   staleSessionThresholdMs: getOptionalEnvInt("STALE_SESSION_THRESHOLD_MS", 86400000),
 };

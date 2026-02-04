@@ -2,6 +2,7 @@ import { db } from "@lab/database/client";
 import {
   orchestrationRequests,
   type OrchestrationStatus,
+  type MessagingMode,
 } from "@lab/database/schema/orchestration-requests";
 import { eq } from "drizzle-orm";
 import { publisher } from "../../clients/publisher";
@@ -9,12 +10,17 @@ import { findAllProjects } from "../repositories/project.repository";
 import { resolveProject, type ProjectResolutionResult } from "./project-resolver";
 import { spawnSession } from "./session-spawner";
 import { initiateConversation } from "./conversation-initiator";
+import { sendMessageToSession } from "./message-sender";
+import { findSessionById } from "../repositories/session.repository";
 import type { BrowserService } from "../browser/browser-service";
 
 export interface OrchestrationInput {
   content: string;
   channelId?: string;
   modelId?: string;
+  platformOrigin?: string;
+  platformChatId?: string;
+  messagingMode?: MessagingMode;
   browserService: BrowserService;
 }
 
@@ -36,6 +42,9 @@ async function createOrchestrationRecord(input: {
   content: string;
   channelId?: string;
   modelId?: string;
+  platformOrigin?: string;
+  platformChatId?: string;
+  messagingMode?: MessagingMode;
 }): Promise<string> {
   const [record] = await db
     .insert(orchestrationRequests)
@@ -43,6 +52,9 @@ async function createOrchestrationRecord(input: {
       content: input.content,
       channelId: input.channelId,
       modelId: input.modelId,
+      platformOrigin: input.platformOrigin,
+      platformChatId: input.platformChatId,
+      messagingMode: input.messagingMode ?? "passive",
       status: "pending",
     })
     .returning({ id: orchestrationRequests.id });
@@ -163,10 +175,35 @@ async function markFailed(orchestrationId: string, error: unknown): Promise<void
 }
 
 export async function orchestrate(input: OrchestrationInput): Promise<OrchestrationResult> {
+  // Check if this is a message to an existing session
+  if (input.channelId) {
+    const existingSession = await findSessionById(input.channelId);
+    if (existingSession && existingSession.opencodeSessionId) {
+      // Route to existing session
+      await sendMessageToSession({
+        sessionId: input.channelId,
+        opencodeSessionId: existingSession.opencodeSessionId,
+        content: input.content,
+        modelId: input.modelId,
+      });
+
+      return {
+        orchestrationId: "", // No new orchestration created for existing session messages
+        sessionId: input.channelId,
+        projectId: existingSession.projectId,
+        projectName: existingSession.title ?? "Unknown",
+      };
+    }
+  }
+
+  // Create new orchestration for new sessions
   const orchestrationId = await createOrchestrationRecord({
     content: input.content,
     channelId: input.channelId,
     modelId: input.modelId,
+    platformOrigin: input.platformOrigin,
+    platformChatId: input.platformChatId,
+    messagingMode: input.messagingMode,
   });
 
   initializeStatusChannel(orchestrationId);

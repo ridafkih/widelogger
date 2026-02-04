@@ -1,5 +1,10 @@
 import { config } from "../config/environment";
-import type { OrchestrationRequest, OrchestrationResult } from "../types/messages";
+import type {
+  OrchestrationRequest,
+  OrchestrationResult,
+  ChatRequest,
+  ChatResult,
+} from "../types/messages";
 
 export class ApiClient {
   private baseUrl: string;
@@ -49,19 +54,49 @@ export class ApiClient {
     return session !== null && session.status === "running";
   }
 
-  async sendMessageToSession(sessionId: string, content: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {
+  async generateSessionSummary(sessionId: string): Promise<SummaryResult> {
+    const response = await fetch(`${this.baseUrl}/internal/sessions/${sessionId}/summary`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to send message: ${response.statusText}`);
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(`Summary generation failed: ${error.error || response.statusText}`);
     }
+
+    return response.json();
   }
+
+  async chat(request: ChatRequest): Promise<ChatResult> {
+    const response = await fetch(`${this.baseUrl}/orchestrate/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(`Chat orchestration failed: ${error.error || response.statusText}`);
+    }
+
+    return response.json();
+  }
+}
+
+export interface SummaryResult {
+  success: boolean;
+  outcome?: string;
+  summary: string;
+  orchestrationId?: string;
+  platformOrigin?: string;
+  platformChatId?: string;
+  alreadySent?: boolean;
 }
 
 export const apiClient = new ApiClient();

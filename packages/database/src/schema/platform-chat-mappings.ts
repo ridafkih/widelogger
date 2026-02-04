@@ -8,6 +8,7 @@ export const platformChatMappings = pgTable(
     platform: text("platform").notNull(),
     platformChatId: text("platform_chat_id").notNull(),
     platformUserId: text("platform_user_id"),
+    threadId: text("thread_id"),
     sessionId: uuid("session_id")
       .notNull()
       .references(() => sessions.id, { onDelete: "cascade" }),

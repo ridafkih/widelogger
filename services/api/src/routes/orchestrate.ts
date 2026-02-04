@@ -6,6 +6,9 @@ const orchestrationRequestSchema = z.object({
   content: z.string().min(1),
   channelId: z.string().optional(),
   modelId: z.string().optional(),
+  platformOrigin: z.string().optional(),
+  platformChatId: z.string().optional(),
+  messagingMode: z.enum(["active", "passive"]).optional(),
 });
 
 const POST: RouteHandler = async (request, _params, context) => {
@@ -16,7 +19,7 @@ const POST: RouteHandler = async (request, _params, context) => {
     return Response.json(
       {
         error:
-          "Invalid request body. Required: { content: string, channelId?: string, modelId?: string }",
+          "Invalid request body. Required: { content: string, channelId?: string, modelId?: string, platformOrigin?: string, platformChatId?: string, messagingMode?: 'active' | 'passive' }",
       },
       { status: 400 },
     );
@@ -29,6 +32,9 @@ const POST: RouteHandler = async (request, _params, context) => {
       content: body.content.trim(),
       channelId: body.channelId,
       modelId: body.modelId,
+      platformOrigin: body.platformOrigin,
+      platformChatId: body.platformChatId,
+      messagingMode: body.messagingMode,
       browserService: context.browserService,
     });
 

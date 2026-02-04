@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
+    "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
     "types": "tsc --noEmit",
     "lint": "oxlint",
@@ -12,7 +12,7 @@
   "dependencies": {
     "@lab/database": "workspace:*",
     "@lab/multiplayer-sdk": "workspace:*",
-    "@photon-ai/imessage-kit": "^2.1.2",
+    "@photon-ai/imessage-kit": "^1.0.0",
     "drizzle-orm": "^0.38.0",
     "zod": "^4.3.6"
   },

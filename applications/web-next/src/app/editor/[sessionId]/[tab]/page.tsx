@@ -85,7 +85,7 @@ function TabContent({ tab }: { tab: TabValue }) {
     case "stream":
       return (
         <Chat.Provider key={`stream-${sessionId}`} onSubmit={sendMessage} onAbort={abortSession}>
-          <StreamTabContent messages={messages} sessionStatus={sessionStatus} />
+          <StreamTabContent />
         </Chat.Provider>
       );
     default:
