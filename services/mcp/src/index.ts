@@ -7,6 +7,9 @@ import { bash } from "./tools/bash";
 import { browser } from "./tools/browser";
 import { container } from "./tools/container";
 import { github } from "./tools/github";
+import { initializeBucket } from "./utils/rustfs";
+
+await initializeBucket();
 
 const docker = new DockerClient();
 

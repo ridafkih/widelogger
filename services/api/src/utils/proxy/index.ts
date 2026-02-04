@@ -1,108 +1,63 @@
-import { DockerClient } from "@lab/sandbox-docker";
-import { CaddyProxyManager } from "./manager";
-import { findActiveSessionsForReconciliation } from "../repositories/session.repository";
-import { getSessionContainersForReconciliation } from "../repositories/container.repository";
-import { formatNetworkName, formatUniqueHostname } from "../../types/session";
+import type { RouteInfo } from "../../types/proxy";
+import { config } from "../../config/environment";
 
-const { CADDY_ADMIN_URL, PROXY_BASE_DOMAIN, CADDY_CONTAINER_NAME } = process.env;
+const { PROXY_BASE_DOMAIN } = process.env;
 
-if (!CADDY_ADMIN_URL) throw new Error("CADDY_ADMIN_URL must be defined");
 if (!PROXY_BASE_DOMAIN) throw new Error("PROXY_BASE_DOMAIN must be defined");
-if (!CADDY_CONTAINER_NAME) throw new Error("CADDY_CONTAINER_NAME must be defined");
 
-const docker = new DockerClient();
+interface ClusterRegistration {
+  networkName: string;
+  routes: RouteInfo[];
+}
 
-export const proxyManager = new CaddyProxyManager({
-  docker,
-  adminUrl: CADDY_ADMIN_URL,
-  baseDomain: PROXY_BASE_DOMAIN,
-  caddyContainerName: CADDY_CONTAINER_NAME,
-});
+const clusters = new Map<string, ClusterRegistration>();
+
+export const proxyManager = {
+  async registerCluster(
+    clusterId: string,
+    networkName: string,
+    containers: { containerId: string; hostname: string; ports: Record<number, number> }[],
+  ): Promise<RouteInfo[]> {
+    const routes: RouteInfo[] = [];
+
+    for (const container of containers) {
+      for (const portStr of Object.keys(container.ports)) {
+        const port = parseInt(portStr, 10);
+        const subdomain = `${clusterId}--${port}`;
+        routes.push({
+          containerPort: port,
+          url: `http://${subdomain}.${config.proxyBaseDomain}`,
+        });
+      }
+    }
+
+    clusters.set(clusterId, { networkName, routes });
+    console.log(`[Proxy] Registered cluster ${clusterId} with ${routes.length} routes`);
+    return routes;
+  },
+
+  async unregisterCluster(clusterId: string): Promise<void> {
+    clusters.delete(clusterId);
+    console.log(`[Proxy] Unregistered cluster ${clusterId}`);
+  },
+
+  getUrls(clusterId: string): RouteInfo[] {
+    const registration = clusters.get(clusterId);
+    if (!registration) {
+      return [];
+    }
+    return registration.routes;
+  },
+};
 
 let initialized = false;
 
-async function reconcileRoutes(): Promise<void> {
-  const activeSessions = await findActiveSessionsForReconciliation();
-
-  for (const { id: sessionId } of activeSessions) {
-    const containerData = await getSessionContainersForReconciliation(sessionId);
-    if (containerData.length === 0) continue;
-
-    // Group ports by containerId and check if Docker container is running
-    const containerMap = new Map<string, { hostname: string; ports: Record<number, number> }>();
-
-    for (const { containerId, dockerId, port } of containerData) {
-      if (!dockerId) {
-        console.warn(`[Reconcile] Skipping container ${containerId} - no docker_id`);
-        continue;
-      }
-
-      try {
-        const info = await docker.inspectContainer(dockerId);
-        if (info.state !== "running") continue;
-      } catch {
-        // Container doesn't exist in Docker, skip
-        continue;
-      }
-
-      if (!containerMap.has(containerId)) {
-        containerMap.set(containerId, {
-          hostname: formatUniqueHostname(sessionId, containerId),
-          ports: {},
-        });
-      }
-      const container = containerMap.get(containerId);
-      if (container) {
-        container.ports[port] = port;
-      }
-    }
-
-    if (containerMap.size === 0) continue;
-
-    const clusterContainers = Array.from(containerMap.entries()).map(
-      ([containerId, { hostname, ports }]) => ({
-        containerId,
-        hostname,
-        ports,
-      }),
-    );
-
-    const networkName = formatNetworkName(sessionId);
-
-    try {
-      await proxyManager.registerCluster(sessionId, networkName, clusterContainers);
-      console.log(`Reconciled routes for session ${sessionId}`);
-    } catch (error) {
-      console.warn(`Failed to reconcile routes for session ${sessionId}:`, error);
-    }
-  }
-}
-
 export async function ensureProxyInitialized(): Promise<void> {
   if (initialized) return;
-  await proxyManager.initialize();
-  await reconcileRoutes();
   initialized = true;
+  console.log("[Proxy] Initialized (Bun proxy service handles routing)");
 }
 
 export function isProxyInitialized(): boolean {
   return initialized;
-}
-
-export async function ensureCaddyRoutesExist(): Promise<void> {
-  if (!initialized) return;
-
-  try {
-    const config = (await proxyManager.getConfig()) as {
-      apps?: { http?: { servers?: { srv0?: { routes?: unknown[] } } } };
-    };
-    const routes = config?.apps?.http?.servers?.srv0?.routes ?? [];
-
-    if (routes.length === 0) {
-      console.log("[Proxy] Caddy has no routes, running reconciliation...");
-      await reconcileRoutes();
-    }
-  } catch (error) {
-    console.warn("[Proxy] Failed to check Caddy routes:", error);
-  }
 }

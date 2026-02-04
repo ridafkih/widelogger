@@ -248,6 +248,19 @@
         "typescript": "^5",
       },
     },
+    "services/proxy": {
+      "name": "@lab/proxy",
+      "version": "0.0.1",
+      "dependencies": {
+        "@lab/database": "workspace:*",
+        "@lab/sandbox-docker": "workspace:*",
+        "drizzle-orm": "^0.38.0",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.7.3",
+      },
+    },
   },
   "trustedDependencies": [
     "sharp",
@@ -557,6 +570,8 @@
     "@lab/multiplayer-server": ["@lab/multiplayer-server@workspace:packages/multiplayer-server"],
 
     "@lab/platform-bridge": ["@lab/platform-bridge@workspace:services/platform-bridge"],
+
+    "@lab/proxy": ["@lab/proxy@workspace:services/proxy"],
 
     "@lab/sandbox-docker": ["@lab/sandbox-docker@workspace:packages/sandbox-docker"],
 

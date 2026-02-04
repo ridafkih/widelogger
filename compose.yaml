@@ -3,7 +3,6 @@ services:
     image: caddy:2-alpine
     container_name: lab-caddy-proxy
     ports:
-      - "8080:80"
       - "8443:443"
       - "2019:2019"
     command: caddy run --config /etc/caddy/caddy.json
@@ -147,7 +146,6 @@ services:
     depends_on:
       - postgres
       - opencode
-      - caddy
       - browser
 
   browser:
@@ -198,22 +196,27 @@ services:
     volumes:
       - rustfs_data:/data
 
-  rustfs-init:
-    image: minio/mc
-    depends_on:
-      rustfs:
-        condition: service_healthy
+  proxy:
+    build:
+      context: .
+      dockerfile: services/proxy/Dockerfile
+    container_name: $PROXY_CONTAINER_NAME
+    ports:
+      - "$PROXY_PORT:$PROXY_PORT"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      RUSTFS_ACCESS_KEY: $RUSTFS_ACCESS_KEY
-      RUSTFS_SECRET_KEY: $RUSTFS_SECRET_KEY
-      RUSTFS_BUCKET: $RUSTFS_BUCKET
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set rustfs http://rustfs:9000 $$RUSTFS_ACCESS_KEY $$RUSTFS_SECRET_KEY;
-      mc mb rustfs/$$RUSTFS_BUCKET --ignore-existing;
-      mc anonymous set download rustfs/$$RUSTFS_BUCKET;
-      exit 0;
-      "
+      DATABASE_URL: $DATABASE_URL
+      PROXY_PORT: $PROXY_PORT
+      PROXY_CONTAINER_NAME: $PROXY_CONTAINER_NAME
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:

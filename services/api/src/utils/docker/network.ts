@@ -65,14 +65,6 @@ export async function createSessionNetwork(sessionId: string): Promise<string> {
 export async function cleanupSessionNetwork(sessionId: string): Promise<void> {
   const networkName = formatNetworkName(sessionId);
 
-  if (config.caddyContainerName) {
-    try {
-      await disconnectContainerFromNetworkIfConnected(config.caddyContainerName, networkName);
-    } catch (error) {
-      console.warn(`[Network] Failed to disconnect caddy from network ${networkName}:`, error);
-    }
-  }
-
   if (config.browserContainerName) {
     try {
       await disconnectContainerFromNetworkIfConnected(config.browserContainerName, networkName);
