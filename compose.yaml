@@ -72,6 +72,12 @@ services:
         condition: service_started
       browser:
         condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/opencode
+        - action: rebuild
+          path: ./opencode.json
 
   mcp:
     build:
@@ -100,6 +106,20 @@ services:
         condition: service_healthy
       rustfs:
         condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/mcp
+        - action: rebuild
+          path: ./packages/sandbox-sdk
+        - action: rebuild
+          path: ./packages/sandbox-docker
+        - action: rebuild
+          path: ./packages/browser-protocol
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./bun.lock
 
   api:
     build:
@@ -160,6 +180,42 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/api
+        - action: rebuild
+          path: ./packages/browser-protocol
+        - action: rebuild
+          path: ./packages/context
+        - action: rebuild
+          path: ./packages/database
+        - action: rebuild
+          path: ./packages/entry-point
+        - action: rebuild
+          path: ./packages/ffmpeg
+        - action: rebuild
+          path: ./packages/http-utilities
+        - action: rebuild
+          path: ./packages/multiplayer-sdk
+        - action: rebuild
+          path: ./packages/multiplayer-server
+        - action: rebuild
+          path: ./packages/prompts-sdk
+        - action: rebuild
+          path: ./packages/router
+        - action: rebuild
+          path: ./packages/sandbox-docker
+        - action: rebuild
+          path: ./packages/sandbox-sdk
+        - action: rebuild
+          path: ./packages/subagents
+        - action: rebuild
+          path: ./packages/widelogger
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./bun.lock
 
   browser:
     build:
@@ -186,6 +242,20 @@ services:
       DATABASE_URL: "postgresql://lab:lab@postgres:5432/lab"
     ports:
       - "9223-9300:9223-9300"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/browser-daemon
+        - action: rebuild
+          path: ./packages/browser-protocol
+        - action: rebuild
+          path: ./packages/http-utilities
+        - action: rebuild
+          path: ./packages/router
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./bun.lock
 
   rustfs:
     image: rustfs/rustfs
@@ -230,6 +300,16 @@ services:
       PROXY_CONTAINER_NAME: $PROXY_CONTAINER_NAME
     depends_on:
       - postgres
+    develop:
+      watch:
+        - action: rebuild
+          path: ./services/proxy
+        - action: rebuild
+          path: ./packages/database
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./bun.lock
 
 volumes:
   redis_data:

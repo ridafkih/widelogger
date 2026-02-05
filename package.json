@@ -13,7 +13,7 @@
   "scripts": {
     "clean": "rimraf --glob **/.turbo/",
     "dev": "turbo run dev //#dev:root --ui=stream",
-    "dev:root": "docker compose up --build",
+    "dev:root": "docker compose up --build --watch",
     "types": "turbo run types",
     "build": "turbo run build",
     "lint": "turbo run lint",
