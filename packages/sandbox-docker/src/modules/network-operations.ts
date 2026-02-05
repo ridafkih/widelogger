@@ -1,6 +1,6 @@
 import type Dockerode from "dockerode";
 import type { NetworkCreateOptions, NetworkInfo } from "@lab/sandbox-sdk";
-import { isNotFoundError } from "../utils/error-handling";
+import { hasStatusCode, isNotFoundError } from "../utils/error-handling";
 
 interface NetworkContainer {
   Name?: string;
@@ -37,6 +37,23 @@ function isContainerMatch(
   );
 }
 
+function isActiveEndpointsError(error: unknown): boolean {
+  if (!hasStatusCode(error) || error.statusCode !== 403) {
+    return false;
+  }
+
+  if (typeof error !== "object" || error === null || !("json" in error)) {
+    return false;
+  }
+
+  const payload = error.json;
+  if (typeof payload !== "object" || payload === null || !("message" in payload)) {
+    return false;
+  }
+
+  return typeof payload.message === "string" && payload.message.includes("active endpoints");
+}
+
 export class NetworkOperations {
   constructor(private readonly docker: Dockerode) {}
 
@@ -55,7 +72,21 @@ export class NetworkOperations {
       if (isNotFoundError(error)) {
         return;
       }
-      throw error;
+
+      if (!isActiveEndpointsError(error)) {
+        throw error;
+      }
+
+      await this.disconnectAllNetworkEndpoints(name);
+
+      try {
+        await this.docker.getNetwork(name).remove();
+      } catch (retryError) {
+        if (isNotFoundError(retryError)) {
+          return;
+        }
+        throw retryError;
+      }
     }
   }
 
@@ -105,6 +136,24 @@ export class NetworkOperations {
       if (isNotFoundError(error)) return;
       throw error;
     }
+  }
+
+  private async disconnectAllNetworkEndpoints(networkName: string): Promise<void> {
+    const networkInfo = await this.docker.getNetwork(networkName).inspect();
+    const connectedContainers = networkInfo.Containers ?? {};
+
+    await Promise.all(
+      Object.keys(connectedContainers).map(async (containerId) => {
+        try {
+          await this.docker
+            .getNetwork(networkName)
+            .disconnect({ Container: containerId, Force: true } as any);
+        } catch (error) {
+          if (isNotFoundError(error)) return;
+          throw error;
+        }
+      }),
+    );
   }
 
   async listNetworks(options?: { labels?: string[] }): Promise<NetworkInfo[]> {
