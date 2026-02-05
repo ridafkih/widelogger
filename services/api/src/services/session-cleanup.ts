@@ -2,9 +2,9 @@ import { findSessionContainersBySessionId } from "../repositories/container-sess
 import {
   deleteSession,
   findSessionById,
-  markSessionDeleting,
   updateSessionStatus,
 } from "../repositories/session.repository";
+import { SESSION_STATUS } from "../types/session";
 import { clearAllSessionState } from "../state/state.service";
 import type { BrowserService } from "../browser/browser-service";
 import type { Sandbox, Publisher } from "../types/dependencies";
@@ -71,7 +71,7 @@ export async function cleanupSessionResources(
 
   // Mark status
   if (markStatus === "deleting") {
-    await markSessionDeleting(sessionId);
+    await updateSessionStatus(sessionId, SESSION_STATUS.DELETING);
   } else if (markStatus === "error") {
     await updateSessionStatus(sessionId, markStatus);
   }

@@ -32,36 +32,6 @@ export async function createSession(projectId: string, title?: string): Promise<
   return session;
 }
 
-export async function updateSessionOpencodeId(
-  sessionId: string,
-  opencodeSessionId: string,
-  workspaceDirectory?: string,
-): Promise<Session | null> {
-  return db.transaction(async (tx) => {
-    await tx
-      .update(sessions)
-      .set({
-        opencodeSessionId,
-        ...(workspaceDirectory && { workspaceDirectory }),
-        updatedAt: new Date(),
-      })
-      .where(and(eq(sessions.id, sessionId), isNull(sessions.opencodeSessionId)));
-
-    if (workspaceDirectory) {
-      await tx
-        .update(sessions)
-        .set({
-          workspaceDirectory,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(sessions.id, sessionId), isNull(sessions.workspaceDirectory)));
-    }
-
-    const [session] = await tx.select().from(sessions).where(eq(sessions.id, sessionId));
-    return session ?? null;
-  });
-}
-
 export async function updateSessionFields(
   sessionId: string,
   fields: { opencodeSessionId?: string; workspaceDirectory?: string; title?: string },
@@ -113,13 +83,6 @@ export async function updateSessionTitle(
   await db.update(sessions).set({ title, updatedAt: new Date() }).where(eq(sessions.id, sessionId));
 
   return findSessionById(sessionId);
-}
-
-export async function markSessionDeleting(sessionId: string): Promise<void> {
-  await db
-    .update(sessions)
-    .set({ status: SESSION_STATUS.DELETING, updatedAt: new Date() })
-    .where(eq(sessions.id, sessionId));
 }
 
 export async function updateSessionStatus(sessionId: string, status: string): Promise<void> {

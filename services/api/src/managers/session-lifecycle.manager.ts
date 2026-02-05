@@ -1,8 +1,5 @@
-import {
-  initializeSessionContainers,
-  type InitializeSessionContainersDeps,
-} from "../docker/containers";
-import { cleanupSession, type CleanupSessionDeps } from "../services/session-cleanup";
+import { initializeSessionContainers } from "../docker/containers";
+import { cleanupSession } from "../services/session-cleanup";
 import {
   cleanupSessionNetwork,
   cleanupOrphanedNetworks,
@@ -27,20 +24,11 @@ export class SessionLifecycleManager {
     private readonly deferredPublisher: DeferredPublisher,
   ) {}
 
-  private getContainerDeps(): InitializeSessionContainersDeps {
+  private getDeps() {
     const { containerNames, browserSocketVolume } = this.config;
     return {
       containerNames,
       browserSocketVolume,
-      sandbox: this.sandbox,
-      publisher: this.deferredPublisher.get(),
-      proxyManager: this.proxyManager,
-    };
-  }
-
-  private getCleanupDeps(): CleanupSessionDeps {
-    const { containerNames } = this.config;
-    return {
       sandbox: this.sandbox,
       publisher: this.deferredPublisher.get(),
       proxyManager: this.proxyManager,
@@ -58,11 +46,11 @@ export class SessionLifecycleManager {
       sessionId,
       projectId,
       this.browserServiceManager.service,
-      this.getContainerDeps(),
+      this.getDeps(),
     );
   }
 
   async cleanupSession(sessionId: string): Promise<void> {
-    await cleanupSession(sessionId, this.browserServiceManager.service, this.getCleanupDeps());
+    await cleanupSession(sessionId, this.browserServiceManager.service, this.getDeps());
   }
 }

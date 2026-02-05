@@ -1,7 +1,7 @@
 import { CORS_HEADERS, buildSseResponse } from "@lab/http-utilities";
 import { createPromptContext } from "../prompts/context";
 import type { PromptService } from "../types/prompt";
-import { findSessionById, updateSessionOpencodeId } from "../repositories/session.repository";
+import { findSessionById, updateSessionFields } from "../repositories/session.repository";
 import { getProjectSystemPrompt } from "../repositories/project.repository";
 import { resolveWorkspacePathBySession } from "../shared/path-resolver";
 import { setLastMessage } from "../state/last-message-store";
@@ -97,7 +97,10 @@ async function handleSessionCreateResponse(
   const opencodeSessionId = responseBody?.id;
 
   if (opencodeSessionId) {
-    await updateSessionOpencodeId(labSessionId, opencodeSessionId, workspacePath);
+    await updateSessionFields(labSessionId, {
+      opencodeSessionId,
+      workspaceDirectory: workspacePath,
+    });
   }
 
   const responseHeaders = new Headers(proxyResponse.headers);

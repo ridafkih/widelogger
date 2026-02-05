@@ -1,4 +1,4 @@
-import { findSessionById, updateSessionOpencodeId } from "../repositories/session.repository";
+import { findSessionById, updateSessionFields } from "../repositories/session.repository";
 import { getProjectSystemPrompt } from "../repositories/project.repository";
 import { resolveWorkspacePathBySession } from "../shared/path-resolver";
 import { setLastMessage } from "../state/last-message-store";
@@ -47,7 +47,7 @@ export async function initiateConversation(options: InitiateConversationOptions)
   }
 
   const opencodeSessionId = createResponse.data.id;
-  await updateSessionOpencodeId(sessionId, opencodeSessionId, workspacePath);
+  await updateSessionFields(sessionId, { opencodeSessionId, workspaceDirectory: workspacePath });
 
   const [providerID, modelID] = modelId?.split("/") ?? [];
   const system = await composeSystemPrompt(sessionId);

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { tool } from "ai";
 import { findSessionById } from "../../repositories/session.repository";
 import { sendMessageToSession } from "../message-sender";
+import { getErrorMessage } from "../../shared/errors";
 import type { OpencodeClient, Publisher } from "../../types/dependencies";
 
 const inputSchema = z.object({
@@ -43,8 +44,8 @@ export function createSendMessageToSessionTool(context: SendMessageToolContext) 
 
         return { success: true, sessionId };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        return { success: false, error: errorMessage };
+        console.error("[SendMessageToSession] Operation failed:", error);
+        return { success: false, error: getErrorMessage(error) };
       }
     },
   });

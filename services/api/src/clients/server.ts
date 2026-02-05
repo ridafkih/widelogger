@@ -14,6 +14,7 @@ import type { RouteContext } from "../types/route";
 import { join } from "node:path";
 import type { PromptService } from "../types/prompt";
 import type { Sandbox, OpencodeClient, Publisher, Widelog } from "../types/dependencies";
+import { AppError } from "../shared/errors";
 import type { BrowserServiceManager } from "../managers/browser-service.manager";
 import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
 import {
@@ -154,7 +155,9 @@ export class ApiServer {
       },
     });
 
-    reconcileNetworkConnections(containerNames, sandbox).catch(() => {});
+    reconcileNetworkConnections(containerNames, sandbox).catch((error) =>
+      console.warn("[ApiServer] Network reconciliation failed:", error),
+    );
 
     return this.publisher;
   }
@@ -218,16 +221,15 @@ export class ApiServer {
         corsResponse.headers.set("X-Request-Id", requestId);
         return corsResponse;
       } catch (error) {
-        const hasStatusCode = typeof error === "object" && error !== null && "statusCode" in error;
-        const status =
-          hasStatusCode && typeof (error as any).statusCode === "number"
-            ? (error as any).statusCode
-            : 500;
+        const status = error instanceof AppError ? error.statusCode : 500;
         const message =
           error instanceof Error && status < 500 ? error.message : "Internal server error";
 
         widelog.set("status", status);
         widelog.set("error", error instanceof Error ? error.message : "Unknown error");
+        if (error instanceof AppError) {
+          widelog.set("errorCode", error.code);
+        }
 
         if (status >= 500) console.error(`[${match?.name ?? "unknown"}]`, error);
 

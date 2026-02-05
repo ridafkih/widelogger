@@ -4,6 +4,7 @@ import type { LanguageModel } from "ai";
 import type { DaemonController } from "@lab/browser-protocol";
 import { executeBrowserTask, type BrowserAgentContext } from "@lab/subagents/browser";
 import { ImageStore } from "@lab/context";
+import { getErrorMessage } from "../../shared/errors";
 
 export interface RunBrowserTaskToolContext {
   daemonController: DaemonController;
@@ -81,10 +82,10 @@ export function createRunBrowserTaskTool(toolContext: RunBrowserTaskToolContext)
           trace: result.trace,
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("[RunBrowserTask] Operation failed:", error);
         return {
           success: false,
-          error: `Browser task failed: ${message}`,
+          error: `Browser task failed: ${getErrorMessage(error)}`,
           stepsExecuted: 0,
           hasScreenshot: false,
           trace: [],

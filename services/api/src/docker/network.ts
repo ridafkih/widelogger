@@ -89,7 +89,9 @@ export async function cleanupOrphanedNetworks(
 
   await Promise.all(
     orphanedSessionIds.map((sessionId) =>
-      cleanupSessionNetwork(sessionId, containerNames, sandbox).catch(() => {}),
+      cleanupSessionNetwork(sessionId, containerNames, sandbox).catch((error) =>
+        console.warn("[Network] Session network cleanup failed:", error),
+      ),
     ),
   );
 

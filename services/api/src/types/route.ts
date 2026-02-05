@@ -1,4 +1,4 @@
-import type { RouteHandler as BaseRouteHandler, RouteModule as BaseRouteModule } from "@lab/router";
+import type { RouteHandler, RouteModule as BaseRouteModule } from "@lab/router";
 import type {
   BrowserContext,
   SessionContext,
@@ -31,7 +31,5 @@ export interface RouteContext
     ProxyContext,
     PromptContext {}
 
-export type Handler<TContext = unknown> = BaseRouteHandler<TContext>;
-/** @deprecated Use Handler<SomeContext & AnotherContext> */
-export type RouteHandler = BaseRouteHandler<RouteContext>;
+export type Handler<TContext = unknown> = RouteHandler<TContext>;
 export type RouteModule = BaseRouteModule<RouteContext>;
