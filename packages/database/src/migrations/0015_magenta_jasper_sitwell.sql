@@ -1,1 +1,0 @@
-ALTER TABLE "sessions" ADD COLUMN "workspace_directory" text;

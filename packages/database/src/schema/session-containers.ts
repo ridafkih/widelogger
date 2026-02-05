@@ -10,7 +10,7 @@ export const sessionContainers = pgTable("session_containers", {
   containerId: uuid("container_id")
     .notNull()
     .references(() => containers.id, { onDelete: "cascade" }),
-  dockerId: text("docker_id").notNull(),
+  runtimeId: text("runtime_id").notNull(),
   status: text("status").notNull().default("starting"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

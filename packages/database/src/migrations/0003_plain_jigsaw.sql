@@ -1,1 +1,0 @@
-DROP TABLE "provider_api_keys" CASCADE;

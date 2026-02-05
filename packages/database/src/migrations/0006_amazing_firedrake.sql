@@ -1,1 +1,0 @@
-ALTER TABLE "browser_sessions" ADD COLUMN "last_url" text;
