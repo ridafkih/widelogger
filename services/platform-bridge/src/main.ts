@@ -15,7 +15,7 @@ type MainOptions = {
 type MainFunction = (options: MainOptions) => unknown;
 
 export const main = (async ({ extras }) => {
-  const { config, adapters } = extras;
+  const { adapters } = extras;
 
   multiplayerClient.connect();
 

@@ -56,7 +56,7 @@ export class SessionCleanupService {
         const containers = await findSessionContainersBySessionId(sessionId);
         const runtimeIds = containers.filter((c) => c.runtimeId).map((c) => c.runtimeId);
 
-        await this.stopAndRemoveContainers(runtimeIds, sandbox.provider, sessionId);
+        await this.stopAndRemoveContainers(runtimeIds, sandbox.provider);
         await browserService.forceStopBrowser(sessionId);
 
         try {
@@ -106,7 +106,7 @@ export class SessionCleanupService {
       const { sandbox, proxyManager, cleanupSessionNetwork } = this.deps;
 
       try {
-        await this.stopAndRemoveContainers(runtimeIds, sandbox.provider, sessionId);
+        await this.stopAndRemoveContainers(runtimeIds, sandbox.provider);
         await browserService.forceStopBrowser(sessionId);
 
         try {
@@ -162,7 +162,7 @@ export class SessionCleanupService {
           session: { id: sessionId, projectId, title: null },
         });
 
-        await this.stopAndRemoveContainers(runtimeIds, sandbox.provider, sessionId);
+        await this.stopAndRemoveContainers(runtimeIds, sandbox.provider);
         await browserService.forceStopBrowser(sessionId);
 
         try {
@@ -190,7 +190,6 @@ export class SessionCleanupService {
   private async stopAndRemoveContainers(
     runtimeIds: string[],
     provider: Sandbox["provider"],
-    sessionId: string,
   ): Promise<void> {
     const cleanupResults = await Promise.allSettled(
       runtimeIds.map(async (runtimeId) => {

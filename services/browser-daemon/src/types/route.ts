@@ -1,4 +1,4 @@
-import type { RouteHandler as BaseRouteHandler, RouteModule as BaseRouteModule } from "@lab/router";
+import type { RouteHandler as BaseRouteHandler } from "@lab/router";
 import type { widelogger } from "@lab/widelogger";
 import type { DaemonManager } from "./daemon";
 
@@ -10,4 +10,3 @@ export interface RouteContext {
 }
 
 export type RouteHandler = BaseRouteHandler<RouteContext>;
-type RouteModule = BaseRouteModule<RouteContext>;

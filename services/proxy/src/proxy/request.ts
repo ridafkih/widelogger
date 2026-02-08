@@ -38,7 +38,7 @@ export async function proxyRequest(
       statusText: response.statusText,
       headers,
     });
-  } catch (error) {
+  } catch {
     if (retries > 0) {
       await new Promise((resolve) => setTimeout(resolve, TIMING.RETRY_DELAY_MS));
       return proxyRequest(request, upstream, retries - 1);

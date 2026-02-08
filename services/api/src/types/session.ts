@@ -4,5 +4,3 @@ export const SESSION_STATUS = {
   DELETING: "deleting",
   ERROR: "error",
 } as const;
-
-type SessionStatus = (typeof SESSION_STATUS)[keyof typeof SESSION_STATUS];

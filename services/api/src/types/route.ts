@@ -1,4 +1,4 @@
-import type { RouteHandler, RouteModule as BaseRouteModule } from "@lab/router";
+import type { RouteHandler } from "@lab/router";
 import type {
   BrowserContext,
   SessionContext,
@@ -42,4 +42,3 @@ export type RouteContextFor<TKeys extends ContextKey> = UnionToIntersection<Rout
 export type NoRouteContext = Record<string, never>;
 
 export type Handler<TContext> = RouteHandler<TContext>;
-type RouteModule = BaseRouteModule<RouteContext>;

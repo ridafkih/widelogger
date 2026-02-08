@@ -61,13 +61,13 @@ export class PoolManager {
     const session = await claimFromDb(projectId);
 
     if (session) {
-      this.triggerReconcileInBackground(projectId, "claim");
+      this.triggerReconcileInBackground(projectId);
     }
 
     return session;
   }
 
-  triggerReconcileInBackground(projectId: string, reason: string): void {
+  triggerReconcileInBackground(projectId: string): void {
     this.reconcilePool(projectId).catch(() => {});
   }
 

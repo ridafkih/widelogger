@@ -187,7 +187,7 @@ class MultiplayerClient {
     });
   }
 
-  private handleError(event: Event): void {
+  private handleError(): void {
     widelog.context(() => {
       widelog.set("event_name", "multiplayer.websocket_error");
       widelog.set("url", this.url);

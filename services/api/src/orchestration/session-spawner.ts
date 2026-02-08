@@ -117,7 +117,7 @@ function scheduleBackgroundWork(
       widelog.flush();
     });
   });
-  poolManager.triggerReconcileInBackground(projectId, "session_spawn");
+  poolManager.triggerReconcileInBackground(projectId);
 }
 
 async function claimAndPreparePooledSession(
