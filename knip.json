@@ -1,20 +1,12 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": [
-    "**/dist/**",
-    "**/.next/**",
-    "**/.turbo/**"
-  ],
+  "ignore": ["**/dist/**", "**/.next/**", "**/.turbo/**", "containers/**"],
   "workspaces": {
     "packages/*": {
       "project": ["src/**/*.{ts,tsx}"]
     },
     "packages/ui": {
-      "entry": [
-        "src/components/*.tsx",
-        "src/utils/*.ts",
-        "src/hooks/*.ts"
-      ],
+      "entry": ["src/components/*.tsx", "src/utils/*.ts", "src/hooks/*.ts"],
       "project": ["src/**/*.{ts,tsx,css}"]
     },
     "packages/database": {
@@ -39,20 +31,30 @@
       "entry": ["src/*.ts"],
       "project": ["src/**/*.ts"]
     },
+    "packages/typescript-config": {
+      "entry": [],
+      "project": []
+    },
     "services/api": {
+      "entry": ["src/routes/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "services/browser-daemon": {
+      "entry": ["src/routes/**/*.ts"],
       "project": ["src/**/*.ts"]
     },
     "services/mcp": {
+      "entry": ["src/tools/*.ts"],
       "project": ["src/**/*.ts"]
     },
-    "applications/web": {
-      "entry": [
-        "src/app/**/page.tsx",
-        "src/app/**/layout.tsx"
-      ],
+    "services/platform-bridge": {
+      "project": ["src/**/*.ts"]
+    },
+    "services/proxy": {
+      "project": ["src/**/*.ts"]
+    },
+    "applications/web-next": {
+      "entry": ["src/app/**/page.tsx", "src/app/**/layout.tsx"],
       "project": ["src/**/*.{ts,tsx,css}", "*.config.{ts,mjs}"],
       "ignore": ["**/.next/**"]
     }
