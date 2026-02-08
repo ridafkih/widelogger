@@ -22,10 +22,10 @@ import {
   DockerSessionManager,
 } from "@lab/sandbox-docker";
 import { Sandbox } from "@lab/sandbox-sdk";
-import type { env } from "./env"
+import type { env } from "./env";
 
 type SetupOptions = {
-  env: typeof env["inferOut"];
+  env: (typeof env)["inferOut"];
 };
 
 type SetupFunction = (options: SetupOptions) => void;
@@ -134,4 +134,4 @@ export const setup = (({ env }) => {
       env.OPENCODE_CONTAINER_NAME,
     ]),
   };
-}) satisfies SetupFunction
+}) satisfies SetupFunction;

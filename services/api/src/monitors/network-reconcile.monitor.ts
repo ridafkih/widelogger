@@ -92,7 +92,10 @@ export class NetworkReconcileMonitor {
     reason: "startup" | "start" | "restart",
   ): Promise<void> {
     try {
-      const result = await ensureSharedContainerConnectedToActiveSessions(containerName, this.sandbox);
+      const result = await ensureSharedContainerConnectedToActiveSessions(
+        containerName,
+        this.sandbox,
+      );
       logger.info({
         event_name: "network_reconcile_monitor.container_connectivity_checked",
         container_name: containerName,

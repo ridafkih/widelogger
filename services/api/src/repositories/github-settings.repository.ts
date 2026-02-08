@@ -73,7 +73,10 @@ export async function getGitHubCredentials(): Promise<GitHubCredentials | null> 
       token = decrypt(settings.accessTokenEncrypted, settings.accessTokenNonce);
     } catch (error) {
       widelog.set("github.oauth_token_decrypt_failed", true);
-      widelog.errorFields(error, { prefix: "github.oauth_token_decrypt_error", includeStack: false });
+      widelog.errorFields(error, {
+        prefix: "github.oauth_token_decrypt_error",
+        includeStack: false,
+      });
     }
   }
 

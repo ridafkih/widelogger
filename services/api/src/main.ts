@@ -5,7 +5,7 @@ import type { env } from "./env";
 type MainOptions = {
   env: typeof env.inferOut;
   extras: ReturnType<typeof setup>;
-}
+};
 
 type MainFunction = (options: MainOptions) => unknown;
 
