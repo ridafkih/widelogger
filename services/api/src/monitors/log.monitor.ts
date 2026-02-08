@@ -4,7 +4,7 @@ import { CircularBuffer } from "../shared/circular-buffer";
 import { RateLimiter } from "../shared/rate-limiter";
 import type { Sandbox, Publisher } from "../types/dependencies";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 
 type LogChunk = {
   stream: "stdout" | "stderr";
@@ -49,15 +49,7 @@ class LogStreamTracker {
     this.abortController = new AbortController();
     this.isStreaming = true;
 
-    this.runStreamLoop().catch((error) => {
-      logger.error({
-        event_name: "log_monitor.stream_error",
-        container_id: this.containerId,
-        session_id: this.sessionId,
-        runtime_id: this.runtimeId,
-        error,
-      });
-    });
+    this.runStreamLoop().catch(() => {});
   }
 
   stop(): void {
@@ -80,26 +72,39 @@ class LogStreamTracker {
   }
 
   private async runStreamLoop(): Promise<void> {
-    try {
-      for await (const chunk of this.sandbox.provider.streamLogs(this.runtimeId, { tail: 100 })) {
-        if (!this.isStreaming) break;
+    return widelog.context(async () => {
+      widelog.set("event_name", "log_monitor.stream");
+      widelog.set("container_id", this.containerId);
+      widelog.set("session_id", this.sessionId);
+      widelog.set("runtime_id", this.runtimeId);
+      widelog.time.start("duration_ms");
 
-        const lines = this.parseChunk(chunk);
-        for (const line of lines) {
-          this.processLogLine(line.stream, line.text);
+      try {
+        for await (const chunk of this.sandbox.provider.streamLogs(this.runtimeId, { tail: 100 })) {
+          if (!this.isStreaming) break;
+
+          const lines = this.parseChunk(chunk);
+          for (const line of lines) {
+            this.processLogLine(line.stream, line.text);
+          }
         }
+
+        widelog.set("outcome", "success");
+      } catch (error) {
+        if (this.isStreaming) {
+          this.updateStatus("error");
+        }
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        if (this.isStreaming) {
+          this.isStreaming = false;
+          this.updateStatus("stopped");
+        }
+        widelog.time.stop("duration_ms");
+        widelog.flush();
       }
-    } catch (error) {
-      if (this.isStreaming) {
-        this.updateStatus("error");
-      }
-      throw error;
-    } finally {
-      if (this.isStreaming) {
-        this.isStreaming = false;
-        this.updateStatus("stopped");
-      }
-    }
+    });
   }
 
   private parseChunk(chunk: LogChunk): { stream: "stdout" | "stderr"; text: string }[] {
@@ -162,28 +167,32 @@ export class LogMonitor {
   ) {}
 
   async start(): Promise<void> {
-    try {
-      const runningContainers = await findAllRunningSessionContainers();
+    return widelog.context(async () => {
+      widelog.set("event_name", "log_monitor.start");
+      widelog.time.start("duration_ms");
 
-      for (const container of runningContainers) {
-        this.onContainerStarted({
-          sessionId: container.sessionId,
-          containerId: container.id,
-          runtimeId: container.runtimeId,
-          hostname: container.hostname,
-        });
+      try {
+        const runningContainers = await findAllRunningSessionContainers();
+
+        for (const container of runningContainers) {
+          this.onContainerStarted({
+            sessionId: container.sessionId,
+            containerId: container.id,
+            runtimeId: container.runtimeId,
+            hostname: container.hostname,
+          });
+        }
+
+        widelog.set("running_container_count", runningContainers.length);
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
       }
-
-      logger.info({
-        event_name: "log_monitor.start",
-        running_container_count: runningContainers.length,
-      });
-    } catch (error) {
-      logger.error({
-        event_name: "log_monitor.start",
-        error,
-      });
-    }
+    });
   }
 
   onContainerStarted(event: ContainerStartedEvent): void {
@@ -219,12 +228,6 @@ export class LogMonitor {
     );
 
     tracker.start();
-    logger.info({
-      event_name: "log_monitor.tracker_started",
-      container_id: containerId,
-      session_id: sessionId,
-      runtime_id: runtimeId,
-    });
   }
 
   onContainerStopped(event: ContainerStoppedEvent): void {
@@ -256,11 +259,6 @@ export class LogMonitor {
         status: "stopped",
       },
     );
-    logger.info({
-      event_name: "log_monitor.tracker_stopped",
-      container_id: containerId,
-      session_id: sessionId,
-    });
   }
 
   getSessionSnapshot(sessionId: string): {
@@ -299,10 +297,6 @@ export class LogMonitor {
     }
 
     this.sessionTrackers.delete(sessionId);
-    logger.info({
-      event_name: "log_monitor.session_cleanup",
-      session_id: sessionId,
-    });
   }
 
   stop(): void {
@@ -311,8 +305,5 @@ export class LogMonitor {
     }
     this.trackers.clear();
     this.sessionTrackers.clear();
-    logger.info({
-      event_name: "log_monitor.stop",
-    });
   }
 }

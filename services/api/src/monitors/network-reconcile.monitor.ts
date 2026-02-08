@@ -2,7 +2,7 @@ import type { ContainerEvent } from "@lab/sandbox-sdk";
 import { TIMING } from "../config/constants";
 import { ensureSharedContainerConnectedToActiveSessions } from "../runtime/network";
 import type { Sandbox } from "../types/dependencies";
-import { logger, widelog } from "../logging";
+import { widelog } from "../logging";
 
 function calculateNextRetryDelay(currentDelay: number): number {
   return Math.min(currentDelay * 2, TIMING.CONTAINER_MONITOR_MAX_RETRY_MS);
@@ -27,12 +27,23 @@ export class NetworkReconcileMonitor {
   }
 
   async start(): Promise<void> {
-    logger.info({
-      event_name: "network_reconcile_monitor.start",
-      watched_containers: Array.from(this.watchedContainerNames),
+    await widelog.context(async () => {
+      widelog.set("event_name", "network_reconcile_monitor.start");
+      widelog.set("watched_containers", Array.from(this.watchedContainerNames).join(","));
+      widelog.time.start("duration_ms");
+
+      try {
+        await this.reconcileAllWatchedContainers("startup");
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
     });
 
-    await this.reconcileAllWatchedContainers("startup");
     this.runMonitorLoop();
   }
 
@@ -99,11 +110,15 @@ export class NetworkReconcileMonitor {
         if (this.abortController.signal.aborted) {
           return;
         }
-        logger.error({
-          event_name: "network_reconcile_monitor.event_stream_error",
-          retry_delay_ms: retryDelay,
-          error,
+        widelog.context(() => {
+          widelog.set("event_name", "network_reconcile_monitor.event_stream_error");
+          widelog.set("watched_containers", Array.from(this.watchedContainerNames).join(","));
+          widelog.set("retry_delay_ms", retryDelay);
+          widelog.set("outcome", "error");
+          widelog.errorFields(error);
+          widelog.flush();
         });
+
         await sleep(retryDelay);
         retryDelay = calculateNextRetryDelay(retryDelay);
       }

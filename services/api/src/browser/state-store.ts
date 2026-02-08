@@ -9,7 +9,7 @@ import {
   CurrentState,
   BrowserError,
 } from "@lab/browser-protocol";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 
 const mapDbToState = (session: typeof browserSessions.$inferSelect): BrowserSessionState => ({
   sessionId: session.sessionId,
@@ -199,21 +199,33 @@ export const setLastUrl = async (sessionId: string, url: string | null): Promise
 };
 
 export const cleanupOrphanedSessions = async (): Promise<number> => {
-  const orphanedSessions = await db
-    .select({ sessionId: browserSessions.sessionId })
-    .from(browserSessions)
-    .leftJoin(sessions, eq(sessions.id, browserSessions.sessionId))
-    .where(isNull(sessions.id));
+  return widelog.context(async () => {
+    widelog.set("event_name", "browser.state_store.orphaned_sessions_cleaned");
+    widelog.time.start("duration_ms");
 
-  const orphanedIds = orphanedSessions.map(({ sessionId }) => sessionId);
+    try {
+      const orphanedSessions = await db
+        .select({ sessionId: browserSessions.sessionId })
+        .from(browserSessions)
+        .leftJoin(sessions, eq(sessions.id, browserSessions.sessionId))
+        .where(isNull(sessions.id));
 
-  if (orphanedIds.length > 0) {
-    await db.delete(browserSessions).where(inArray(browserSessions.sessionId, orphanedIds));
-    logger.info({
-      event_name: "browser.state_store.orphaned_sessions_cleaned",
-      orphaned_count: orphanedIds.length,
-    });
-  }
+      const orphanedIds = orphanedSessions.map(({ sessionId }) => sessionId);
 
-  return orphanedIds.length;
+      if (orphanedIds.length > 0) {
+        await db.delete(browserSessions).where(inArray(browserSessions.sessionId, orphanedIds));
+      }
+
+      widelog.set("orphaned_count", orphanedIds.length);
+      widelog.set("outcome", "success");
+      return orphanedIds.length;
+    } catch (error) {
+      widelog.set("outcome", "error");
+      widelog.errorFields(error);
+      throw error;
+    } finally {
+      widelog.time.stop("duration_ms");
+      widelog.flush();
+    }
+  });
 };

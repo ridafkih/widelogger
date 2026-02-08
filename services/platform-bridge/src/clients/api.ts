@@ -1,4 +1,4 @@
-import { logger } from "../logging";
+import { widelog } from "../logging";
 import { config } from "../config/environment";
 import type {
   OrchestrationRequest,
@@ -126,57 +126,65 @@ export class ApiClient {
     response: Response,
     onChunk: (text: string) => Promise<void>,
   ): Promise<ChatResult> {
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let finalResult: ChatResult | null = null;
-    let currentEvent: string | null = null;
+    return widelog.context(async () => {
+      widelog.set("event_name", "api_client.consume_sse_stream");
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: ChatResult | null = null;
+      let currentEvent: string | null = null;
+      let parseErrors = 0;
 
-      buffer += decoder.decode(value, { stream: true });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      // Process complete lines from the buffer
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || ""; // Keep incomplete line in buffer
+        buffer += decoder.decode(value, { stream: true });
 
-      for (const line of lines) {
-        if (line.startsWith("event: ")) {
-          currentEvent = line.slice(7).trim();
-        } else if (line.startsWith("data: ")) {
-          const data = line.slice(6);
-          try {
-            const parsed = JSON.parse(data);
+        // Process complete lines from the buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
-            if (currentEvent === "chunk" && parsed.text) {
-              await onChunk(parsed.text);
-            } else if (currentEvent === "done") {
-              finalResult = parsed;
-            } else if (currentEvent === "error") {
-              throw new Error(parsed.error || "SSE stream error");
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            try {
+              const parsed = JSON.parse(data);
+
+              if (currentEvent === "chunk" && parsed.text) {
+                await onChunk(parsed.text);
+              } else if (currentEvent === "done") {
+                finalResult = parsed;
+              } else if (currentEvent === "error") {
+                throw new Error(parsed.error || "SSE stream error");
+              }
+            } catch (parseError) {
+              if (parseError instanceof SyntaxError) {
+                parseErrors++;
+                widelog.set("sse_parse_errors", parseErrors);
+              } else {
+                throw parseError;
+              }
             }
-          } catch (parseError) {
-            if (parseError instanceof SyntaxError) {
-              logger.error({
-                event_name: "api_client.sse_parse_error",
-                data,
-              });
-            } else {
-              throw parseError;
-            }
+            currentEvent = null;
           }
-          currentEvent = null;
         }
       }
-    }
 
-    if (!finalResult) {
-      throw new Error("SSE stream ended without final result");
-    }
+      if (!finalResult) {
+        widelog.set("outcome", "error");
+        widelog.set("error_message", "SSE stream ended without final result");
+        widelog.flush();
+        throw new Error("SSE stream ended without final result");
+      }
 
-    return finalResult;
+      widelog.set("outcome", "success");
+      widelog.flush();
+      return finalResult;
+    });
   }
 
   async notifySessionComplete(request: {

@@ -1,4 +1,4 @@
-import { logger } from "./logging";
+import { widelog } from "./logging";
 import type { setup } from "./setup";
 import type { env } from "./env";
 
@@ -14,13 +14,17 @@ export const main = (({ env, extras }) => {
 
   server.start(env.BROWSER_API_PORT);
 
-  logger.info({
-    event_name: "browser_daemon.startup",
-    port: env.BROWSER_API_PORT,
+  widelog.context(() => {
+    widelog.set("event_name", "browser_daemon.startup");
+    widelog.set("port", env.BROWSER_API_PORT);
+    widelog.flush();
   });
 
   return () => {
-    logger.info({ event_name: "browser_daemon.shutdown" });
+    widelog.context(() => {
+      widelog.set("event_name", "browser_daemon.shutdown");
+      widelog.flush();
+    });
     server.shutdown();
   };
 }) satisfies MainFunction;

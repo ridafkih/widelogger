@@ -1,4 +1,4 @@
-import { logger } from "./logging";
+import { widelog } from "./logging";
 import type { setup } from "./setup";
 import type { env } from "./env";
 
@@ -10,22 +10,27 @@ type MainOptions = {
 type MainFunction = (options: MainOptions) => unknown;
 
 export const main = (async ({ env, extras }) => {
-  const { server, transport } = extras;
+  return widelog.context(async () => {
+    widelog.set("event_name", "mcp.startup");
+    widelog.set("port", env.MCP_PORT);
 
-  await server.connect(transport);
+    const { server, transport } = extras;
 
-  const httpServer = Bun.serve({
-    port: env.MCP_PORT,
-    fetch: (request) => transport.handleRequest(request),
+    await server.connect(transport);
+
+    const httpServer = Bun.serve({
+      port: env.MCP_PORT,
+      fetch: (request) => transport.handleRequest(request),
+    });
+
+    widelog.flush();
+
+    return () => {
+      widelog.context(() => {
+        widelog.set("event_name", "mcp.shutdown");
+        httpServer.stop(true);
+        widelog.flush();
+      });
+    };
   });
-
-  logger.info({
-    event_name: "mcp.startup",
-    port: env.MCP_PORT,
-  });
-
-  return () => {
-    logger.info({ event_name: "mcp.shutdown" });
-    httpServer.stop(true);
-  };
 }) satisfies MainFunction;

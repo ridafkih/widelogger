@@ -19,7 +19,7 @@ import {
 } from "../snapshots/snapshot-loaders";
 import { MESSAGE_ROLE } from "../types/message";
 import { ValidationError } from "../shared/errors";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 
 export { type Auth } from "../types/websocket";
 
@@ -89,46 +89,81 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
         return browserService.getBrowserSnapshot(params.uuid);
       },
       onSubscribe: ({ params, ws }) => {
-        const sessionId = params.uuid;
-        if (!sessionId) return;
+        widelog.context(async () => {
+          const sessionId = params.uuid;
+          widelog.set("event_name", "websocket.browser_subscribe");
+          widelog.set("session_id", sessionId ?? "unknown");
 
-        if (!sessionSubscribers.has(sessionId)) {
-          sessionSubscribers.set(sessionId, new Set());
-        }
-        const subscribers = sessionSubscribers.get(sessionId);
-        if (!subscribers) return;
+          if (!sessionId) {
+            widelog.set("outcome", "skipped");
+            widelog.flush();
+            return;
+          }
 
-        if (subscribers.has(ws)) return;
+          if (!sessionSubscribers.has(sessionId)) {
+            sessionSubscribers.set(sessionId, new Set());
+          }
+          const subscribers = sessionSubscribers.get(sessionId);
+          if (!subscribers) {
+            widelog.set("outcome", "skipped");
+            widelog.flush();
+            return;
+          }
 
-        subscribers.add(ws);
-        browserService.subscribeBrowser(sessionId).catch((error) => {
-          logger.error({
-            event_name: "websocket.subscribe_browser.failed",
-            session_id: sessionId,
-            error,
-          });
+          if (subscribers.has(ws)) {
+            widelog.set("outcome", "already_subscribed");
+            widelog.flush();
+            return;
+          }
+
+          subscribers.add(ws);
+
+          try {
+            await browserService.subscribeBrowser(sessionId);
+            widelog.set("outcome", "success");
+          } catch (error) {
+            widelog.set("outcome", "error");
+            widelog.errorFields(error);
+          }
+
+          widelog.flush();
         });
       },
       onUnsubscribe: ({ params, ws }) => {
-        const sessionId = params.uuid;
-        if (!sessionId) return;
+        widelog.context(async () => {
+          const sessionId = params.uuid;
+          widelog.set("event_name", "websocket.browser_unsubscribe");
+          widelog.set("session_id", sessionId ?? "unknown");
 
-        const subscribers = sessionSubscribers.get(sessionId);
+          if (!sessionId) {
+            widelog.set("outcome", "skipped");
+            widelog.flush();
+            return;
+          }
 
-        if (!subscribers || !subscribers.has(ws)) return;
+          const subscribers = sessionSubscribers.get(sessionId);
 
-        subscribers.delete(ws);
+          if (!subscribers || !subscribers.has(ws)) {
+            widelog.set("outcome", "not_subscribed");
+            widelog.flush();
+            return;
+          }
 
-        if (subscribers.size === 0) {
-          sessionSubscribers.delete(sessionId);
-        }
+          subscribers.delete(ws);
 
-        browserService.unsubscribeBrowser(sessionId).catch((error) => {
-          logger.error({
-            event_name: "websocket.unsubscribe_browser.failed",
-            session_id: sessionId,
-            error,
-          });
+          if (subscribers.size === 0) {
+            sessionSubscribers.delete(sessionId);
+          }
+
+          try {
+            await browserService.unsubscribeBrowser(sessionId);
+            widelog.set("outcome", "success");
+          } catch (error) {
+            widelog.set("outcome", "error");
+            widelog.errorFields(error);
+          }
+
+          widelog.flush();
         });
       },
     },

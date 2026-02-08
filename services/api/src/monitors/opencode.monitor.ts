@@ -10,7 +10,7 @@ import {
 import { INFERENCE_STATUS, type SessionStateStore } from "../state/session-state-store";
 import type { OpencodeClient, Publisher } from "../types/dependencies";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 
 class CompletionTimerManager {
   private readonly timers = new Map<string, NodeJS.Timeout>();
@@ -26,14 +26,17 @@ class CompletionTimerManager {
     this.cancelCompletion(sessionId);
 
     const timer = setTimeout(() => {
-      this.timers.delete(sessionId);
-      this.completedSessions.add(sessionId);
-      logger.info({
-        event_name: "opencode_monitor.session_completion_scheduled",
-        session_id: sessionId,
-        debounce_ms: TIMING.COMPLETION_DEBOUNCE_MS,
+      widelog.context(() => {
+        widelog.set("event_name", "opencode_monitor.session_completion");
+        widelog.set("session_id", sessionId);
+        widelog.set("debounce_ms", TIMING.COMPLETION_DEBOUNCE_MS);
+
+        this.timers.delete(sessionId);
+        this.completedSessions.add(sessionId);
+        publishSessionCompletion(this.getPublisher(), sessionId);
+
+        widelog.flush();
       });
-      publishSessionCompletion(this.getPublisher(), sessionId);
     }, TIMING.COMPLETION_DEBOUNCE_MS);
 
     this.timers.set(sessionId, timer);
@@ -77,26 +80,38 @@ class SessionTracker {
   }
 
   private async syncInitialStatus(directory: string): Promise<void> {
-    try {
-      const session = await findSessionById(this.labSessionId);
-      if (!session?.opencodeSessionId) return;
+    return widelog.context(async () => {
+      widelog.set("event_name", "opencode_monitor.sync_initial_status");
+      widelog.set("session_id", this.labSessionId);
 
-      const result = await this.opencode.session.status({ directory });
-      if (!result.data) return;
+      try {
+        const session = await findSessionById(this.labSessionId);
+        if (!session?.opencodeSessionId) {
+          widelog.set("outcome", "skipped");
+          return;
+        }
 
-      const status = result.data[session.opencodeSessionId];
-      const inferenceStatus =
-        status?.type === "busy" ? INFERENCE_STATUS.GENERATING : INFERENCE_STATUS.IDLE;
+        const result = await this.opencode.session.status({ directory });
+        if (!result.data) {
+          widelog.set("outcome", "no_data");
+          return;
+        }
 
-      await this.sessionStateStore.setInferenceStatus(this.labSessionId, inferenceStatus);
-      publishInferenceStatus(this.getPublisher(), this.labSessionId, inferenceStatus);
-    } catch (error) {
-      logger.error({
-        event_name: "opencode_monitor.sync_initial_status_failed",
-        session_id: this.labSessionId,
-        error,
-      });
-    }
+        const status = result.data[session.opencodeSessionId];
+        const inferenceStatus =
+          status?.type === "busy" ? INFERENCE_STATUS.GENERATING : INFERENCE_STATUS.IDLE;
+
+        await this.sessionStateStore.setInferenceStatus(this.labSessionId, inferenceStatus);
+        publishInferenceStatus(this.getPublisher(), this.labSessionId, inferenceStatus);
+        widelog.set("inference_status", inferenceStatus);
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        widelog.flush();
+      }
+    });
   }
 
   private async monitor(): Promise<void> {
@@ -118,11 +133,15 @@ class SessionTracker {
         }
       } catch (error) {
         if (!this.isActive) return;
-        logger.error({
-          event_name: "opencode_monitor.session_tracker_error",
-          session_id: this.labSessionId,
-          error,
+        widelog.context(() => {
+          widelog.set("event_name", "opencode_monitor.session_tracker_error");
+          widelog.set("session_id", this.labSessionId);
+          widelog.set("retry_delay_ms", TIMING.OPENCODE_MONITOR_RETRY_MS);
+          widelog.set("outcome", "error");
+          widelog.errorFields(error);
+          widelog.flush();
         });
+
         await new Promise((resolve) => setTimeout(resolve, TIMING.OPENCODE_MONITOR_RETRY_MS));
       }
     }
@@ -189,26 +208,26 @@ export class OpenCodeMonitor {
   ) {}
 
   async start(): Promise<void> {
-    logger.info({
-      event_name: "opencode_monitor.start",
-    });
+    await widelog.context(async () => {
+      widelog.set("event_name", "opencode_monitor.start");
+      widelog.time.start("duration_ms");
 
-    try {
-      await this.syncSessions();
-    } catch (error) {
-      logger.error({
-        event_name: "opencode_monitor.initial_sync_failed",
-        error,
-      });
-    }
+      try {
+        await this.syncSessions();
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
+    });
 
     this.runSyncLoop();
   }
 
   stop(): void {
-    logger.info({
-      event_name: "opencode_monitor.stop",
-    });
     this.abortController.abort();
 
     for (const tracker of this.trackers.values()) {
@@ -225,9 +244,13 @@ export class OpenCodeMonitor {
       try {
         await this.syncSessions();
       } catch (error) {
-        logger.error({
-          event_name: "opencode_monitor.sync_failed",
-          error,
+        widelog.context(() => {
+          widelog.set("event_name", "opencode_monitor.sync_failed");
+          widelog.set("active_trackers", this.trackers.size);
+          widelog.set("sync_interval_ms", TIMING.OPENCODE_SYNC_INTERVAL_MS);
+          widelog.set("outcome", "error");
+          widelog.errorFields(error);
+          widelog.flush();
         });
       }
     }

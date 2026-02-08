@@ -2,7 +2,7 @@ import { cleanupSocket, getSocketDir, getPidFile } from "agent-browser";
 import type { Command, Response } from "agent-browser/dist/types.js";
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 import { getErrorMessage } from "../shared/errors";
 import { TIMING } from "../config/constants";
 
@@ -86,11 +86,21 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
 
     if (event.data.type === "log") {
       const { level, ...logData } = event.data.data as { level: string; [key: string]: unknown };
-      if (level === "error") {
-        logger.error(logData);
-      } else {
-        logger.info(logData);
-      }
+      widelog.context(() => {
+        for (const [key, value] of Object.entries(logData)) {
+          if (
+            typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean"
+          ) {
+            widelog.set(key, value);
+          }
+        }
+        if (level === "error") {
+          widelog.set("outcome", "error");
+        }
+        widelog.flush();
+      });
       return;
     }
 
@@ -109,21 +119,22 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
     for (const handler of messageHandlers) {
       try {
         handler(event.data);
-      } catch (error) {
-        logger.error({
-          event_name: "daemon.message_handler_error",
-          session_id: sessionId,
-          error_message: getErrorMessage(error),
-        });
+      } catch {
+        // Message handler errors are non-critical
       }
     }
   };
 
   worker.onerror = (error) => {
-    logger.error({
-      event_name: "daemon.worker_error",
-      session_id: sessionId,
-      error_message: getErrorMessage(error),
+    widelog.context(() => {
+      widelog.set("event_name", "daemon.worker_error");
+      widelog.set("session_id", sessionId);
+      widelog.set("stream_port", config.streamPort);
+      widelog.set("cdp_port", config.cdpPort);
+      widelog.set("pending_commands", pendingCommands.size);
+      widelog.set("outcome", "error");
+      widelog.set("error_message", getErrorMessage(error));
+      widelog.flush();
     });
   };
 
@@ -132,12 +143,8 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
     for (const handler of closeHandlers) {
       try {
         handler(code);
-      } catch (error) {
-        logger.error({
-          event_name: "daemon.close_handler_error",
-          session_id: sessionId,
-          error_message: getErrorMessage(error),
-        });
+      } catch {
+        // Close handler errors are non-critical
       }
     }
   });
@@ -179,35 +186,49 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
 }
 
 export function killByPidFile(sessionId: string): boolean {
-  try {
-    const pidFile = getPidFile(sessionId);
-    if (!existsSync(pidFile)) return false;
-
-    const pid = parseInt(readFileSync(pidFile, "utf-8").trim(), 10);
-    if (isNaN(pid)) return false;
-
-    if (pid === process.pid || pid === process.ppid) {
-      logger.error({ event_name: "daemon.refused_self_kill", session_id: sessionId, pid });
-      cleanupSocket(sessionId);
-      return false;
-    }
+  return widelog.context(() => {
+    widelog.set("event_name", "daemon.kill_by_pid_file");
+    widelog.set("session_id", sessionId);
 
     try {
-      process.kill(pid, 0);
-    } catch {
-      cleanupSocket(sessionId);
-      return false;
-    }
+      const pidFile = getPidFile(sessionId);
+      if (!existsSync(pidFile)) {
+        widelog.set("outcome", "not_found");
+        return false;
+      }
 
-    process.kill(pid, "SIGTERM");
-    cleanupSocket(sessionId);
-    return true;
-  } catch (error) {
-    logger.error({
-      event_name: "daemon.kill_failed",
-      session_id: sessionId,
-      error_message: getErrorMessage(error),
-    });
-    return false;
-  }
+      const pid = parseInt(readFileSync(pidFile, "utf-8").trim(), 10);
+      widelog.set("pid", pid);
+
+      if (isNaN(pid)) {
+        widelog.set("outcome", "invalid_pid");
+        return false;
+      }
+
+      if (pid === process.pid || pid === process.ppid) {
+        widelog.set("outcome", "refused_self_kill");
+        cleanupSocket(sessionId);
+        return false;
+      }
+
+      try {
+        process.kill(pid, 0);
+      } catch {
+        widelog.set("outcome", "process_not_running");
+        cleanupSocket(sessionId);
+        return false;
+      }
+
+      process.kill(pid, "SIGTERM");
+      cleanupSocket(sessionId);
+      widelog.set("outcome", "success");
+      return true;
+    } catch (error) {
+      widelog.set("outcome", "error");
+      widelog.set("error_message", getErrorMessage(error));
+      return false;
+    } finally {
+      widelog.flush();
+    }
+  });
 }

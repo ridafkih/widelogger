@@ -1,4 +1,4 @@
-import { logger } from "./logging";
+import { widelog } from "./logging";
 import { messageRouter } from "./bridge/message-router";
 import { responseSubscriber } from "./bridge/response-subscriber";
 import { sessionTracker } from "./bridge/session-tracker";
@@ -19,55 +19,62 @@ export const main = (async ({ extras }) => {
 
   multiplayerClient.connect();
 
-  for (const adapter of adapters) {
-    try {
-      await adapter.initialize();
-      await adapter.startListening((message) => messageRouter.handleIncomingMessage(message));
-      logger.info({
-        event_name: "platform_bridge.adapter_started",
-        platform: adapter.platform,
-      });
-    } catch (error) {
-      logger.error({
-        event_name: "platform_bridge.adapter_start_failed",
-        platform: adapter.platform,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  await widelog.context(async () => {
+    widelog.set("event_name", "platform_bridge.startup");
+    widelog.set("adapter_count", adapters.length);
+    widelog.time.start("duration_ms");
 
-  const cleanupInterval = setInterval(async () => {
-    try {
-      const cleaned = await sessionTracker.cleanupStaleMappings();
-      if (cleaned > 0) {
-        logger.info({
-          event_name: "platform_bridge.stale_mappings_cleaned",
-          count: cleaned,
-        });
+    let started = 0;
+    let failed = 0;
+
+    for (const adapter of adapters) {
+      try {
+        await adapter.initialize();
+        await adapter.startListening((message) => messageRouter.handleIncomingMessage(message));
+        started++;
+      } catch (error) {
+        failed++;
+        widelog.set(
+          `adapter_error.${adapter.platform}`,
+          error instanceof Error ? error.message : String(error),
+        );
       }
-    } catch (error) {
-      logger.error({
-        event_name: "platform_bridge.cleanup_error",
-        error: error instanceof Error ? error.message : String(error),
-      });
     }
+
+    widelog.set("adapters_started", started);
+    widelog.set("adapters_failed", failed);
+    widelog.set("outcome", failed > 0 ? "completed_with_errors" : "success");
+    widelog.time.stop("duration_ms");
+    widelog.flush();
+  });
+
+  const cleanupInterval = setInterval(() => {
+    widelog.context(async () => {
+      widelog.set("event_name", "platform_bridge.stale_cleanup");
+      widelog.time.start("duration_ms");
+
+      try {
+        const cleaned = await sessionTracker.cleanupStaleMappings();
+        widelog.set("cleaned_count", cleaned);
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.set("error_message", error instanceof Error ? error.message : String(error));
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
+    });
   }, 3600000);
 
-  logger.info({ event_name: "platform_bridge.startup" });
-
   return () => {
-    logger.info({ event_name: "platform_bridge.shutdown" });
     clearInterval(cleanupInterval);
 
     for (const adapter of getAllAdapters()) {
       try {
         adapter.stopListening();
-      } catch (error) {
-        logger.error({
-          event_name: "platform_bridge.adapter_stop_failed",
-          platform: adapter.platform,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      } catch {
+        // Adapter stop errors are non-critical during shutdown
       }
     }
 

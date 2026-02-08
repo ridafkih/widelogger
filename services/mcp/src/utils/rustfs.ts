@@ -5,7 +5,7 @@ import {
   HeadBucketCommand,
 } from "@aws-sdk/client-s3";
 import { S3 } from "../config/constants";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 import type { Config } from "../types/tool";
 
 function createS3Client(config: Config): S3Client {
@@ -21,39 +21,51 @@ function createS3Client(config: Config): S3Client {
 }
 
 export async function initializeBucket(config: Config): Promise<void> {
-  const s3 = createS3Client(config);
-  const bucket = config.RUSTFS_BUCKET;
+  return widelog.context(async () => {
+    widelog.set("event_name", "rustfs.bucket_initialized");
+    widelog.set("bucket", config.RUSTFS_BUCKET);
+    widelog.time.start("duration_ms");
 
-  try {
-    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
-    logger.info({ event_name: "rustfs.bucket_exists", bucket });
-  } catch (error: unknown) {
-    if (error && typeof error === "object" && "name" in error && error.name === "NotFound") {
-      logger.info({ event_name: "rustfs.bucket_creating", bucket });
-      await s3.send(new CreateBucketCommand({ Bucket: bucket }));
-    } else {
-      throw error;
+    const s3 = createS3Client(config);
+    const bucket = config.RUSTFS_BUCKET;
+
+    try {
+      await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+      widelog.set("bucket_existed", true);
+    } catch (error: unknown) {
+      if (error && typeof error === "object" && "name" in error && error.name === "NotFound") {
+        widelog.set("bucket_existed", false);
+        await s3.send(new CreateBucketCommand({ Bucket: bucket }));
+      } else {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+        throw error;
+      }
     }
-  }
 
-  const policy = {
-    Version: "2012-10-17",
-    Statement: [
-      {
-        Effect: "Allow",
-        Principal: "*",
-        Action: ["s3:GetObject"],
-        Resource: [`arn:aws:s3:::${bucket}/*`],
-      },
-    ],
-  };
+    const policy = {
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Principal: "*",
+          Action: ["s3:GetObject"],
+          Resource: [`arn:aws:s3:::${bucket}/*`],
+        },
+      ],
+    };
 
-  await s3.send(
-    new PutBucketPolicyCommand({
-      Bucket: bucket,
-      Policy: JSON.stringify(policy),
-    }),
-  );
+    await s3.send(
+      new PutBucketPolicyCommand({
+        Bucket: bucket,
+        Policy: JSON.stringify(policy),
+      }),
+    );
 
-  logger.info({ event_name: "rustfs.bucket_initialized", bucket });
+    widelog.set("outcome", "success");
+    widelog.time.stop("duration_ms");
+    widelog.flush();
+  });
 }

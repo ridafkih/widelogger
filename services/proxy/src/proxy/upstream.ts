@@ -4,7 +4,6 @@ import { sessionContainers } from "@lab/database/schema/session-containers";
 import { containers } from "@lab/database/schema/containers";
 import { containerPorts } from "@lab/database/schema/container-ports";
 import { eq, and } from "drizzle-orm";
-import { logger } from "../logging";
 import type { UpstreamInfo } from "../types/proxy";
 
 export function formatUniqueHostname(sessionId: string, containerId: string): string {

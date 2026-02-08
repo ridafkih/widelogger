@@ -10,7 +10,7 @@ import {
 import type { Sandbox } from "../types/dependencies";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
 import type { LogMonitor } from "./log.monitor";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 
 function mapEventToStatus(event: ContainerEvent): ContainerStatus | null {
   switch (event.action) {
@@ -51,46 +51,47 @@ export class ContainerMonitor {
 
   async start(logMonitor: LogMonitor): Promise<void> {
     this.logMonitor = logMonitor;
-    logger.info({
-      event_name: "container_monitor.start",
+    await widelog.context(async () => {
+      widelog.set("event_name", "container_monitor.start");
+      widelog.time.start("duration_ms");
+
+      try {
+        await this.syncContainerStatuses();
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
     });
-    await this.syncContainerStatuses();
     this.runMonitorLoop();
   }
 
   private async syncContainerStatuses(): Promise<void> {
-    try {
-      const activeContainers = await findAllActiveSessionContainers();
+    const activeContainers = await findAllActiveSessionContainers();
 
-      for (const container of activeContainers) {
-        const isRunning = await this.sandbox.provider.containerExists(container.runtimeId);
-        const actualStatus: ContainerStatus = isRunning
-          ? CONTAINER_STATUS.RUNNING
-          : CONTAINER_STATUS.STOPPED;
+    for (const container of activeContainers) {
+      const isRunning = await this.sandbox.provider.containerExists(container.runtimeId);
+      const actualStatus: ContainerStatus = isRunning
+        ? CONTAINER_STATUS.RUNNING
+        : CONTAINER_STATUS.STOPPED;
 
-        if (actualStatus !== container.status) {
-          await updateSessionContainerStatus(container.id, actualStatus);
-          this.deferredPublisher
-            .get()
-            .publishDelta(
-              "sessionContainers",
-              { uuid: container.sessionId },
-              { type: "update", container: { id: container.id, status: actualStatus } },
-            );
-        }
+      if (actualStatus !== container.status) {
+        await updateSessionContainerStatus(container.id, actualStatus);
+        this.deferredPublisher
+          .get()
+          .publishDelta(
+            "sessionContainers",
+            { uuid: container.sessionId },
+            { type: "update", container: { id: container.id, status: actualStatus } },
+          );
       }
-    } catch (error) {
-      logger.error({
-        event_name: "container_monitor.sync_statuses_failed",
-        error,
-      });
     }
   }
 
   stop(): void {
-    logger.info({
-      event_name: "container_monitor.stop",
-    });
     this.abortController.abort();
   }
 
@@ -110,11 +111,14 @@ export class ContainerMonitor {
       } catch (error) {
         if (this.abortController.signal.aborted) return;
 
-        logger.error({
-          event_name: "container_monitor.event_stream_error",
-          retry_delay_ms: retryDelay,
-          error,
+        widelog.context(() => {
+          widelog.set("event_name", "container_monitor.event_stream_error");
+          widelog.set("retry_delay_ms", retryDelay);
+          widelog.set("outcome", "error");
+          widelog.errorFields(error);
+          widelog.flush();
         });
+
         await sleep(retryDelay);
         retryDelay = calculateNextRetryDelay(retryDelay);
       }

@@ -1,4 +1,4 @@
-import { logger } from "../logging";
+import { widelog } from "../logging";
 import type { WireClientMessage, WireServerMessage } from "@lab/multiplayer-sdk";
 import { config } from "../config/environment";
 import type { SessionMessage } from "../types/messages";
@@ -75,25 +75,28 @@ export class MultiplayerClient {
     if (this.ws?.readyState === WebSocket.OPEN || this.isConnecting) return;
 
     this.isConnecting = true;
-    logger.info({
-      event_name: "multiplayer.connecting",
-      url: this.url,
-    });
 
-    try {
-      this.ws = new WebSocket(this.url);
-      this.ws.addEventListener("open", this.handleOpen.bind(this));
-      this.ws.addEventListener("close", this.handleClose.bind(this));
-      this.ws.addEventListener("error", this.handleError.bind(this));
-      this.ws.addEventListener("message", this.handleMessage.bind(this));
-    } catch (error) {
-      logger.error({
-        event_name: "multiplayer.connection_error",
-        error: error instanceof Error ? error.message : String(error),
-      });
-      this.isConnecting = false;
-      this.scheduleReconnect();
-    }
+    widelog.context(() => {
+      widelog.set("event_name", "multiplayer.connect_attempt");
+      widelog.set("url", this.url);
+      widelog.set("attempt", this.reconnectAttempt);
+
+      try {
+        this.ws = new WebSocket(this.url);
+        this.ws.addEventListener("open", this.handleOpen.bind(this));
+        this.ws.addEventListener("close", this.handleClose.bind(this));
+        this.ws.addEventListener("error", this.handleError.bind(this));
+        this.ws.addEventListener("message", this.handleMessage.bind(this));
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.set("error_message", error instanceof Error ? error.message : String(error));
+        this.isConnecting = false;
+        this.scheduleReconnect();
+      }
+
+      widelog.flush();
+    });
   }
 
   disconnect(): void {
@@ -158,63 +161,80 @@ export class MultiplayerClient {
   }
 
   private handleOpen(): void {
-    logger.info({ event_name: "multiplayer.connected" });
-    this.isConnecting = false;
-    this.reconnectAttempt = 0;
-    this.flushQueue();
-    this.resubscribeAll();
-    this.startHeartbeat();
+    widelog.context(() => {
+      widelog.set("event_name", "multiplayer.connected");
+
+      this.isConnecting = false;
+      this.reconnectAttempt = 0;
+      this.flushQueue();
+      this.resubscribeAll();
+      this.startHeartbeat();
+
+      widelog.flush();
+    });
   }
 
   private handleClose(): void {
-    logger.info({ event_name: "multiplayer.disconnected" });
-    this.isConnecting = false;
-    this.clearHeartbeat();
-    this.ws = null;
-    this.scheduleReconnect();
+    widelog.context(() => {
+      widelog.set("event_name", "multiplayer.disconnected");
+
+      this.isConnecting = false;
+      this.clearHeartbeat();
+      this.ws = null;
+      this.scheduleReconnect();
+
+      widelog.flush();
+    });
   }
 
   private handleError(event: Event): void {
-    logger.error({
-      event_name: "multiplayer.websocket_error",
+    widelog.context(() => {
+      widelog.set("event_name", "multiplayer.websocket_error");
+      widelog.set("url", this.url);
+      widelog.set("attempt", this.reconnectAttempt);
+      widelog.set("active_subscriptions", this.subscriptions.size);
+      widelog.set("queued_messages", this.messageQueue.length);
+      widelog.set("outcome", "error");
+      widelog.flush();
     });
   }
 
   private handleMessage(event: MessageEvent): void {
-    try {
-      const parsed: unknown = JSON.parse(event.data);
+    widelog.context(() => {
+      try {
+        const parsed: unknown = JSON.parse(event.data);
 
-      if (!isServerMessage(parsed)) return;
-      if (parsed.type === "pong") return;
+        if (!isServerMessage(parsed)) return;
+        if (parsed.type === "pong") return;
+        if (parsed.type !== "event") return;
+        if (!("channel" in parsed) || typeof parsed.channel !== "string") return;
+        if (!("data" in parsed)) return;
 
-      if (parsed.type !== "event") return;
-      if (!("channel" in parsed) || typeof parsed.channel !== "string") return;
-      if (!("data" in parsed)) return;
+        const { channel, data } = parsed;
 
-      const { channel, data } = parsed;
+        if (isSessionCompleteChannel(channel) && isSessionCompleteEvent(data)) {
+          const listeners = this.sessionCompleteSubscriptions.get(channel);
+          if (listeners) {
+            for (const listener of listeners) {
+              listener(data);
+            }
+          }
+          return;
+        }
 
-      if (isSessionCompleteChannel(channel) && isSessionCompleteEvent(data)) {
-        const listeners = this.sessionCompleteSubscriptions.get(channel);
-        if (listeners) {
+        const listeners = this.subscriptions.get(channel);
+        if (listeners && isSessionMessage(data)) {
           for (const listener of listeners) {
             listener(data);
           }
         }
-        return;
+      } catch (error) {
+        widelog.set("event_name", "multiplayer.malformed_message");
+        widelog.set("outcome", "error");
+        widelog.set("error_message", error instanceof Error ? error.message : String(error));
+        widelog.flush();
       }
-
-      const listeners = this.subscriptions.get(channel);
-      if (listeners && isSessionMessage(data)) {
-        for (const listener of listeners) {
-          listener(data);
-        }
-      }
-    } catch (error) {
-      logger.error({
-        event_name: "multiplayer.malformed_message",
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    });
   }
 
   private flushQueue(): void {
@@ -236,19 +256,25 @@ export class MultiplayerClient {
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnectAttempt >= this.maxReconnectAttempts) {
-      logger.error({ event_name: "multiplayer.max_reconnect_attempts" });
-      return;
-    }
+    widelog.context(() => {
+      widelog.set("event_name", "multiplayer.reconnect_scheduled");
 
-    this.reconnectAttempt++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempt - 1), 30000);
-    logger.info({
-      event_name: "multiplayer.reconnecting",
-      delay_ms: delay,
-      attempt: this.reconnectAttempt,
+      if (this.reconnectAttempt >= this.maxReconnectAttempts) {
+        widelog.set("outcome", "max_attempts_reached");
+        widelog.set("max_attempts", this.maxReconnectAttempts);
+        widelog.flush();
+        return;
+      }
+
+      this.reconnectAttempt++;
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempt - 1), 30000);
+      widelog.set("delay_ms", delay);
+      widelog.set("attempt", this.reconnectAttempt);
+
+      this.reconnectTimeout = setTimeout(() => this.connect(), delay);
+
+      widelog.flush();
     });
-    this.reconnectTimeout = setTimeout(() => this.connect(), delay);
   }
 
   private startHeartbeat(): void {

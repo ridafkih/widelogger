@@ -1,4 +1,4 @@
-import { logger } from "../../logging";
+import { widelog } from "../../logging";
 import { IMessageSDK, type Message } from "@photon-ai/imessage-kit";
 import { writeFile, unlink, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -20,102 +20,181 @@ export class IMessageAdapter implements PlatformAdapter {
   }
 
   async initialize(): Promise<void> {
-    if (!config.imessageEnabled) {
-      logger.info({ event_name: "imessage.adapter_disabled" });
-      return;
-    }
+    return widelog.context(async () => {
+      widelog.set("event_name", "imessage.initialized");
+      widelog.time.start("duration_ms");
 
-    this.sdk = new IMessageSDK();
-    logger.info({ event_name: "imessage.adapter_initialized" });
+      try {
+        if (!config.imessageEnabled) {
+          widelog.set("enabled", false);
+          widelog.set("outcome", "skipped");
+          return;
+        }
+
+        this.sdk = new IMessageSDK();
+        widelog.set("enabled", true);
+        widelog.set("outcome", "success");
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
+    });
   }
 
   async startListening(handler: MessageHandler): Promise<void> {
-    if (!this.sdk) {
-      logger.error({ event_name: "imessage.start_listening_failed_not_initialized" });
-      return;
-    }
+    return widelog.context(async () => {
+      widelog.set("event_name", "imessage.start_listening");
+      widelog.time.start("duration_ms");
 
-    this.handler = handler;
+      try {
+        if (!this.sdk) {
+          widelog.set("outcome", "error");
+          widelog.set("error_message", "not_initialized");
+          return;
+        }
 
-    await this.sdk.startWatching({
-      onNewMessage: async (message: Message) => {
-        logger.info({
-          event_name: "imessage.message_received",
-          guid: message.guid,
-          text_preview: message.text?.slice(0, 50),
-        });
+        this.handler = handler;
 
-        if (message.isFromMe) return;
-        if (!this.shouldMonitor(message.chatId)) return;
-        if (!this.handler) return;
-        if (!message.text) return;
+        await this.sdk.startWatching({
+          onNewMessage: async (message: Message) => {
+            return widelog.context(async () => {
+              widelog.set("event_name", "imessage.message_received");
+              widelog.set("guid", message.guid);
+              widelog.set("text_preview", message.text?.slice(0, 50) ?? "");
+              widelog.set("is_from_me", message.isFromMe);
+              widelog.set("chat_id", message.chatId);
 
-        const history = await this.getConversationHistory(message.chatId);
+              if (message.isFromMe) {
+                widelog.set("outcome", "skipped_from_me");
+                widelog.flush();
+                return;
+              }
+              if (!this.shouldMonitor(message.chatId)) {
+                widelog.set("outcome", "skipped_not_monitored");
+                widelog.flush();
+                return;
+              }
+              if (!this.handler) {
+                widelog.set("outcome", "skipped_no_handler");
+                widelog.flush();
+                return;
+              }
+              if (!message.text) {
+                widelog.set("outcome", "skipped_no_text");
+                widelog.flush();
+                return;
+              }
 
-        await this.handler({
-          platform: "imessage",
-          chatId: message.chatId,
-          userId: message.sender,
-          messageId: message.guid,
-          content: message.text,
-          timestamp: new Date(message.date),
-          metadata: {
-            isGroupChat: message.isGroupChat,
-            senderName: message.sender,
-            conversationHistory: history,
+              try {
+                const history = await this.getConversationHistory(message.chatId);
+
+                await this.handler({
+                  platform: "imessage",
+                  chatId: message.chatId,
+                  userId: message.sender,
+                  messageId: message.guid,
+                  content: message.text,
+                  timestamp: new Date(message.date),
+                  metadata: {
+                    isGroupChat: message.isGroupChat,
+                    senderName: message.sender,
+                    conversationHistory: history,
+                  },
+                });
+
+                widelog.set("outcome", "success");
+              } catch (error) {
+                widelog.set("outcome", "error");
+                widelog.errorFields(error);
+              } finally {
+                widelog.flush();
+              }
+            });
+          },
+          onGroupMessage: async (message: Message) => {
+            return widelog.context(async () => {
+              widelog.set("event_name", "imessage.group_message_received");
+              widelog.set("guid", message.guid);
+              widelog.set("text_preview", message.text?.slice(0, 50) ?? "");
+              widelog.set("is_from_me", message.isFromMe);
+              widelog.set("chat_id", message.chatId);
+
+              if (message.isFromMe) {
+                widelog.set("outcome", "skipped_from_me");
+                widelog.flush();
+                return;
+              }
+              if (!this.shouldMonitor(message.chatId)) {
+                widelog.set("outcome", "skipped_not_monitored");
+                widelog.flush();
+                return;
+              }
+              if (!this.handler) {
+                widelog.set("outcome", "skipped_no_handler");
+                widelog.flush();
+                return;
+              }
+              if (!message.text) {
+                widelog.set("outcome", "skipped_no_text");
+                widelog.flush();
+                return;
+              }
+
+              try {
+                const history = await this.getConversationHistory(message.chatId);
+
+                await this.handler({
+                  platform: "imessage",
+                  chatId: message.chatId,
+                  userId: message.sender,
+                  messageId: message.guid,
+                  content: message.text,
+                  timestamp: new Date(message.date),
+                  metadata: {
+                    isGroupChat: message.isGroupChat,
+                    senderName: message.sender,
+                    conversationHistory: history,
+                  },
+                });
+
+                widelog.set("outcome", "success");
+              } catch (error) {
+                widelog.set("outcome", "error");
+                widelog.errorFields(error);
+              } finally {
+                widelog.flush();
+              }
+            });
+          },
+          onError: (error: Error) => {
+            widelog.context(() => {
+              widelog.set("event_name", "imessage.sdk_error");
+              widelog.set("platform", this.platform);
+              widelog.set("watched_contacts", this.watchedContacts.size);
+              widelog.set("has_handler", !!this.handler);
+              widelog.set("outcome", "error");
+              widelog.set("error_message", error.message);
+              widelog.flush();
+            });
           },
         });
-      },
-      onGroupMessage: async (message: Message) => {
-        logger.info({
-          event_name: "imessage.group_message_received",
-          guid: message.guid,
-          text_preview: message.text?.slice(0, 50),
-        });
 
-        if (message.isFromMe) return;
-        if (!this.shouldMonitor(message.chatId)) return;
-        if (!this.handler) return;
-        if (!message.text) return;
-
-        const history = await this.getConversationHistory(message.chatId);
-
-        await this.handler({
-          platform: "imessage",
-          chatId: message.chatId,
-          userId: message.sender,
-          messageId: message.guid,
-          content: message.text,
-          timestamp: new Date(message.date),
-          metadata: {
-            isGroupChat: message.isGroupChat,
-            senderName: message.sender,
-            conversationHistory: history,
-          },
-        });
-      },
-      onError: (error: Error) => {
-        logger.error({
-          event_name: "imessage.sdk_error",
-          error: error.message,
-        });
-      },
+        widelog.set("outcome", "success");
+        if (this.watchedContacts.size > 0) {
+          widelog.set("filtering_contacts", true);
+          widelog.set("contacts", Array.from(this.watchedContacts).join(","));
+        }
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
     });
-
-    logger.info({ event_name: "imessage.started_listening" });
-    if (this.watchedContacts.size > 0) {
-      logger.info({
-        event_name: "imessage.filtering_contacts",
-        contacts: Array.from(this.watchedContacts),
-      });
-    }
   }
 
   async stopListening(): Promise<void> {
     if (this.sdk) {
       this.sdk.stopWatching();
       await this.sdk.close();
-      logger.info({ event_name: "imessage.stopped_listening" });
     }
     this.handler = null;
   }
@@ -125,41 +204,48 @@ export class IMessageAdapter implements PlatformAdapter {
       throw new Error("iMessage adapter not initialized");
     }
 
-    const attachmentPaths: string[] = [];
+    return widelog.context(async () => {
+      widelog.set("event_name", "imessage.message_sent");
+      widelog.set("chat_id", message.chatId);
+      widelog.time.start("duration_ms");
 
-    try {
-      if (message.attachments && message.attachments.length > 0) {
-        for (const attachment of message.attachments) {
-          const filePath = await this.writeAttachmentToTempFile(attachment);
-          attachmentPaths.push(filePath);
+      const attachmentPaths: string[] = [];
+
+      try {
+        if (message.attachments && message.attachments.length > 0) {
+          for (const attachment of message.attachments) {
+            const filePath = await this.writeAttachmentToTempFile(attachment);
+            attachmentPaths.push(filePath);
+          }
+          widelog.set("attachment_count", attachmentPaths.length);
         }
-      }
 
-      if (attachmentPaths.length > 0) {
-        await this.sdk.send(message.chatId, {
-          text: message.content || undefined,
-          images: attachmentPaths,
-        });
-      } else {
-        await this.sdk.send(message.chatId, message.content);
-      }
-
-      logger.info({
-        event_name: "imessage.message_sent",
-        chat_id: message.chatId,
-      });
-    } finally {
-      for (const filePath of attachmentPaths) {
-        try {
-          await unlink(filePath);
-        } catch {
-          logger.error({
-            event_name: "imessage.temp_file_cleanup_failed",
-            file_path: filePath,
+        if (attachmentPaths.length > 0) {
+          await this.sdk!.send(message.chatId, {
+            text: message.content || undefined,
+            images: attachmentPaths,
           });
+        } else {
+          await this.sdk!.send(message.chatId, message.content);
         }
+
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+        throw error;
+      } finally {
+        for (const filePath of attachmentPaths) {
+          try {
+            await unlink(filePath);
+          } catch {
+            widelog.set("temp_file_cleanup_failed", true);
+          }
+        }
+        widelog.time.stop("duration_ms");
+        widelog.flush();
       }
-    }
+    });
   }
 
   private async writeAttachmentToTempFile(attachment: MessageAttachment): Promise<string> {

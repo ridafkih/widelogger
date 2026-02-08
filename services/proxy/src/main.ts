@@ -1,4 +1,4 @@
-import { logger, widelog } from "./logging";
+import { widelog } from "./logging";
 import { TIMING } from "./config/constants";
 import { resolveUpstream, parseSubdomain } from "./proxy/upstream";
 import { proxyRequest, corsHeaders } from "./proxy/request";
@@ -131,8 +131,16 @@ export const main = (({ extras }) => {
         };
 
         upstreamWs.onerror = (error) => {
-          logger.error({ event_name: "proxy.upstream_ws_error", error });
-          ws.close();
+          widelog.context(() => {
+            widelog.set("event_name", "proxy.upstream_ws_error");
+            widelog.set("upstream_host", upstream.hostname);
+            widelog.set("upstream_port", upstream.port);
+            widelog.set("path", path);
+            widelog.set("outcome", "error");
+            widelog.errorFields(error);
+            ws.close();
+            widelog.flush();
+          });
         };
       },
       message(ws, message) {
@@ -152,13 +160,17 @@ export const main = (({ extras }) => {
     },
   });
 
-  logger.info({
-    event_name: "proxy.startup",
-    port: server.port,
+  widelog.context(() => {
+    widelog.set("event_name", "proxy.startup");
+    if (server.port) widelog.set("port", server.port);
+    widelog.flush();
   });
 
   return () => {
-    logger.info({ event_name: "proxy.shutdown" });
+    widelog.context(() => {
+      widelog.set("event_name", "proxy.shutdown");
+      widelog.flush();
+    });
     server.stop(true);
   };
 }) satisfies MainFunction;

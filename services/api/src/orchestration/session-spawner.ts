@@ -14,7 +14,7 @@ import { generateSessionTitle } from "../generators/title.generator";
 import type { Publisher } from "../types/dependencies";
 import { CONTAINER_STATUS, isContainerStatus, type ContainerStatus } from "../types/container";
 import { InternalError, ValidationError } from "../shared/errors";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 
 export interface SpawnSessionOptions {
   projectId: string;
@@ -98,20 +98,24 @@ function scheduleBackgroundWork(
   publisher: Publisher,
 ): void {
   sessionLifecycle.scheduleInitializeSession(sessionId, projectId).catch((error) => {
-    logger.error({
-      event_name: "orchestration.session_spawner.background_initialization_failed",
-      session_id: sessionId,
-      project_id: projectId,
-      error,
+    widelog.context(() => {
+      widelog.set("event_name", "orchestration.session_spawner.background_initialization_failed");
+      widelog.set("session_id", sessionId);
+      widelog.set("project_id", projectId);
+      widelog.set("outcome", "error");
+      widelog.errorFields(error);
+
+      publisher.publishDelta(
+        "sessionMetadata",
+        { uuid: sessionId },
+        {
+          initializationError:
+            error instanceof Error ? `${error.name}: ${error.message}` : "Initialization failed",
+        },
+      );
+
+      widelog.flush();
     });
-    publisher.publishDelta(
-      "sessionMetadata",
-      { uuid: sessionId },
-      {
-        initializationError:
-          error instanceof Error ? `${error.name}: ${error.message}` : "Initialization failed",
-      },
-    );
   });
   poolManager.triggerReconcileInBackground(projectId, "session_spawn");
 }
@@ -219,11 +223,5 @@ function scheduleBackgroundTitleGeneration(
     userMessage,
     fallbackTitle: userMessage.slice(0, 50).trim(),
     publisher,
-  }).catch((error) => {
-    logger.error({
-      event_name: "orchestration.session_spawner.title_generation_failed",
-      session_id: sessionId,
-      error,
-    });
-  });
+  }).catch(() => {});
 }

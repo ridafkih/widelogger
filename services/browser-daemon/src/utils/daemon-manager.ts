@@ -8,8 +8,8 @@ import type {
   StopResult,
 } from "../types/daemon";
 import type { DaemonEvent, DaemonEventHandler } from "../types/events";
-import { logger } from "../logging";
-import { getErrorMessage } from "../shared/errors";
+import { widelog } from "../logging";
+
 import { spawnDaemon, killByPidFile, type DaemonWorkerHandle } from "./daemon-process";
 import { recoverSession, discoverExistingSessions } from "./daemon-recovery";
 
@@ -44,11 +44,8 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
     for (const handler of eventHandlers) {
       try {
         handler(event);
-      } catch (error) {
-        logger.error({
-          event_name: "daemon.event_handler_error",
-          error_message: getErrorMessage(error),
-        });
+      } catch {
+        // Event handler errors are non-critical
       }
     }
   };
@@ -104,57 +101,73 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
       });
 
       handle.onMessage((message) => {
-        switch (message.type) {
-          case "daemon:started":
-            logger.info({ event_name: "daemon.browser_started", session_id: sessionId });
-            break;
+        widelog.context(() => {
+          widelog.set("event_name", "daemon.worker_message");
+          widelog.set("session_id", sessionId);
+          widelog.set("message_type", message.type);
 
-          case "daemon:ready":
-            logger.info({ event_name: "daemon.browser_ready", session_id: sessionId });
-            emit({
-              type: "daemon:ready",
-              sessionId,
-              timestamp: Date.now(),
-              data: { port: streamPort, cdpPort },
-            });
-            break;
+          switch (message.type) {
+            case "daemon:started":
+              break;
 
-          case "daemon:error":
-            logger.error({
-              event_name: "daemon.browser_error",
-              session_id: sessionId,
-              error_message: message.error,
-            });
-            daemonWorkers.delete(sessionId);
-            activeSessions.delete(sessionId);
-            emit({
-              type: "daemon:error",
-              sessionId,
-              timestamp: Date.now(),
-              data: { error: message.error },
-            });
-            break;
+            case "daemon:ready":
+              emit({
+                type: "daemon:ready",
+                sessionId,
+                timestamp: Date.now(),
+                data: { port: streamPort, cdpPort },
+              });
+              break;
 
-          case "browser:navigated": {
-            const data = message.data;
-            if (data && typeof data === "object" && "url" in data && typeof data.url === "string") {
-              sessionUrls.set(sessionId, data.url);
+            case "daemon:error":
+              widelog.set("outcome", "error");
+              if (message.error) widelog.set("error_message", message.error);
+              daemonWorkers.delete(sessionId);
+              activeSessions.delete(sessionId);
+              emit({
+                type: "daemon:error",
+                sessionId,
+                timestamp: Date.now(),
+                data: { error: message.error },
+              });
+              break;
+
+            case "browser:navigated": {
+              const data = message.data;
+              if (
+                data &&
+                typeof data === "object" &&
+                "url" in data &&
+                typeof data.url === "string"
+              ) {
+                sessionUrls.set(sessionId, data.url);
+                widelog.set("navigated_url", data.url);
+              }
+              break;
             }
-            break;
           }
-        }
+
+          widelog.flush();
+        });
       });
 
       handle.onClose((code) => {
-        logger.info({ event_name: "daemon.worker_closed", session_id: sessionId, exit_code: code });
-        daemonWorkers.delete(sessionId);
-        activeSessions.delete(sessionId);
-        sessionUrls.delete(sessionId);
-        emit({
-          type: "daemon:stopped",
-          sessionId,
-          timestamp: Date.now(),
-          data: { exitCode: code },
+        widelog.context(() => {
+          widelog.set("event_name", "daemon.worker_closed");
+          widelog.set("session_id", sessionId);
+          widelog.set("exit_code", code);
+
+          daemonWorkers.delete(sessionId);
+          activeSessions.delete(sessionId);
+          sessionUrls.delete(sessionId);
+          emit({
+            type: "daemon:stopped",
+            sessionId,
+            timestamp: Date.now(),
+            data: { exitCode: code },
+          });
+
+          widelog.flush();
         });
       });
 

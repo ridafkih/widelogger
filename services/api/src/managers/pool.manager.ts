@@ -12,7 +12,7 @@ import { createSessionContainer } from "../repositories/container-session.reposi
 import type { BrowserServiceManager } from "./browser-service.manager";
 import type { SessionLifecycleManager } from "./session-lifecycle.manager";
 import type { Session } from "@lab/database/schema/sessions";
-import { logger, widelog } from "../logging";
+import { widelog } from "../logging";
 
 interface PoolStats {
   available: number;
@@ -68,14 +68,7 @@ export class PoolManager {
   }
 
   triggerReconcileInBackground(projectId: string, reason: string): void {
-    this.reconcilePool(projectId).catch((error) => {
-      logger.error({
-        event_name: "pool_manager.reconcile_background_failed",
-        project_id: projectId,
-        reason,
-        error,
-      });
-    });
+    this.reconcilePool(projectId).catch(() => {});
   }
 
   async createPooledSession(projectId: string): Promise<Session | null> {
@@ -132,14 +125,6 @@ export class PoolManager {
   async reconcilePool(projectId: string): Promise<void> {
     const existing = this.reconcileLocks.get(projectId);
     if (existing) {
-      const startedAt = this.reconcileStartedAt.get(projectId);
-      if (startedAt && Date.now() - startedAt > TIMING.POOL_RECONCILIATION_TIMEOUT_MS) {
-        logger.info({
-          event_name: "pool_manager.reconcile_waiting_on_long_running_lock",
-          project_id: projectId,
-          lock_age_ms: Date.now() - startedAt,
-        });
-      }
       return existing;
     }
 
@@ -167,29 +152,14 @@ export class PoolManager {
     for (const project of projects) {
       try {
         await this.reconcilePool(project.id);
-      } catch (error) {
-        logger.error({
-          event_name: "pool_manager.reconcile_project_failed",
-          project_id: project.id,
-          error,
-        });
+      } catch {
+        // Errors are captured in doReconcile's wide event context
       }
     }
   }
 
   initialize(): void {
-    logger.info({
-      event_name: "pool_manager.initialize",
-      target_size: this.getTargetPoolSize(),
-    });
-    this.reconcileAllPools().catch((error) =>
-      logger.error({
-        event_name: "pool_manager.initialize",
-        target_size: this.getTargetPoolSize(),
-        initial_reconciliation_failed: true,
-        error,
-      }),
-    );
+    this.reconcileAllPools().catch(() => {});
   }
 
   /**

@@ -9,7 +9,7 @@ import {
   createFrameReceiver,
   createDaemonEventSubscriber,
 } from "@lab/browser-protocol";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 
 export interface BrowserServiceConfig {
   browserWsHost: string;
@@ -57,31 +57,49 @@ export const createBrowserService = async (
     port: number,
     orchestrator: Orchestrator,
   ) => {
-    if (frameReceivers.has(sessionId)) return;
+    return widelog.context(async () => {
+      widelog.set("event_name", "browser.frame_receiver.connect");
+      widelog.set("session_id", sessionId);
+      widelog.set("stream_port", port);
+      widelog.time.start("duration_ms");
 
-    const status = await daemonController.getStatus(sessionId);
-    if (!status?.running) {
-      logger.info({
-        event_name: "browser.frame_receiver.daemon_not_running",
-        session_id: sessionId,
-      });
-      await stateStore.setCurrentState(sessionId, "stopped", { streamPort: null });
-      return;
-    }
+      try {
+        if (frameReceivers.has(sessionId)) {
+          widelog.set("outcome", "already_connected");
+          return;
+        }
 
-    await daemonController.launch(sessionId);
+        const status = await daemonController.getStatus(sessionId);
+        if (!status?.running) {
+          widelog.set("daemon_running", false);
+          widelog.set("outcome", "skipped");
+          await stateStore.setCurrentState(sessionId, "stopped", { streamPort: null });
+          return;
+        }
 
-    const receiver = createFrameReceiver(
-      port,
-      (frame, timestamp) => {
-        orchestrator.setCachedFrame(sessionId, frame);
-        publishFrame(sessionId, frame, timestamp);
-      },
-      () => frameReceivers.delete(sessionId),
-      { wsHost: browserWsHost },
-    );
+        widelog.set("daemon_running", true);
+        await daemonController.launch(sessionId);
 
-    frameReceivers.set(sessionId, receiver);
+        const receiver = createFrameReceiver(
+          port,
+          (frame, timestamp) => {
+            orchestrator.setCachedFrame(sessionId, frame);
+            publishFrame(sessionId, frame, timestamp);
+          },
+          () => frameReceivers.delete(sessionId),
+          { wsHost: browserWsHost },
+        );
+
+        frameReceivers.set(sessionId, receiver);
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
+    });
   };
 
   const disconnectFrameReceiver = (sessionId: string) => {
@@ -99,34 +117,49 @@ export const createBrowserService = async (
   });
 
   orchestrator.onStateChange((sessionId: string, state: BrowserSessionState) => {
-    publishStateChange(sessionId, state);
+    widelog.context(async () => {
+      widelog.set("event_name", "browser.state_change");
+      widelog.set("session_id", sessionId);
+      widelog.set("current_state", state.currentState);
+      if (state.streamPort) widelog.set("stream_port", state.streamPort);
 
-    if (state.currentState === "running" && state.streamPort) {
-      connectFrameReceiver(sessionId, state.streamPort, orchestrator).catch((error) =>
-        logger.error({
-          event_name: "browser.frame_receiver.connect_failed",
-          session_id: sessionId,
-          error,
-        }),
-      );
-    } else {
-      disconnectFrameReceiver(sessionId);
-    }
+      publishStateChange(sessionId, state);
+
+      if (state.currentState === "running" && state.streamPort) {
+        await connectFrameReceiver(sessionId, state.streamPort, orchestrator);
+      } else {
+        disconnectFrameReceiver(sessionId);
+      }
+
+      widelog.flush();
+    });
   });
 
   orchestrator.onError((error: unknown) => {
-    logger.error({
-      event_name: "browser.orchestrator.reconciliation_error",
-      error,
+    widelog.context(() => {
+      widelog.set("event_name", "browser.orchestrator.reconciliation_error");
+      widelog.set("active_frame_receivers", frameReceivers.size);
+      widelog.set("reconcile_interval_ms", reconcileIntervalMs);
+      widelog.set("max_retries", maxRetries);
+      widelog.set("outcome", "error");
+      widelog.errorFields(error);
+      widelog.flush();
     });
   });
 
   eventSubscriber.onEvent((event) => {
-    orchestrator.handleDaemonEvent(event).catch((error) => {
-      logger.error({
-        event_name: "browser.orchestrator.handle_daemon_event_failed",
-        error,
-      });
+    widelog.context(async () => {
+      widelog.set("event_name", "browser.handle_daemon_event");
+
+      try {
+        await orchestrator.handleDaemonEvent(event);
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      }
+
+      widelog.flush();
     });
   });
 

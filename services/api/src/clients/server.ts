@@ -2,7 +2,7 @@ import { createPublisher, type WebSocketData } from "@lab/multiplayer-server";
 import { schema } from "@lab/multiplayer-sdk";
 import type { Server as BunServer } from "bun";
 import type { ImageStore } from "@lab/context";
-import { logger } from "../logging";
+import { widelog } from "../logging";
 import { SERVER } from "../config/constants";
 import { createWebSocketHandlers, type Auth } from "../websocket/websocket-handler";
 import { createOpenCodeProxyHandler } from "../opencode/handler";
@@ -178,10 +178,13 @@ export class ApiServer {
     reconcileNetworkConnections(sandbox).catch((error) => {
       const statusCode = error instanceof AppError ? error.statusCode : 500;
 
-      logger.error({
-        event_name: "api.server.network_reconciliation_failed",
-        status_code: statusCode,
-        ...setErrorPayload(error),
+      widelog.context(() => {
+        widelog.set("event_name", "api.server.network_reconciliation_failed");
+        widelog.set("status_code", statusCode);
+        widelog.set("port", port);
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+        widelog.flush();
       });
     });
 
@@ -301,26 +304,4 @@ export class ApiServer {
     this.publisher = null;
     this.services.browserService.shutdown();
   }
-}
-
-function setErrorPayload(error: unknown): Record<string, string | undefined> {
-  if (error instanceof Error) {
-    return {
-      error_name: error.name,
-      error_message: error.message,
-      error_stack: error.stack,
-    };
-  }
-
-  if (typeof error === "string") {
-    return {
-      error_name: "Error",
-      error_message: error,
-    };
-  }
-
-  return {
-    error_name: "UnknownError",
-    error_message: "Unknown error",
-  };
 }
