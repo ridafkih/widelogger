@@ -26,6 +26,7 @@
     "@opencode-ai/sdk": "^1.1.53",
     "ai": "^6.0.77",
     "arktype": "^2.1.29",
+    "better-auth": "^1.4.18",
     "drizzle-orm": "^0.45.1",
     "zod": "^4.3.6"
   },

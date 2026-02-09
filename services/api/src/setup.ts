@@ -9,6 +9,7 @@ import {
 import { Sandbox } from "@lab/sandbox-sdk";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { RedisClient } from "bun";
+import { createAuth } from "./auth";
 import { ApiServer } from "./clients/server";
 import type { env } from "./env";
 import { widelog } from "./logging";
@@ -104,6 +105,15 @@ export const setup = (({ env }) => {
     sessionLifecycle
   );
 
+  const trustedOrigins = env.FRONTEND_URL ? [env.FRONTEND_URL] : [];
+  const auth = createAuth({
+    secret: env.BETTER_AUTH_SECRET,
+    baseURL: env.BETTER_AUTH_URL,
+    githubClientId: env.AUTH_GITHUB_CLIENT_ID,
+    githubClientSecret: env.AUTH_GITHUB_CLIENT_SECRET,
+    trustedOrigins,
+  });
+
   const server = new ApiServer(
     {
       proxyBaseUrl: env.PROXY_BASE_URL,
@@ -114,6 +124,7 @@ export const setup = (({ env }) => {
         callbackUrl: env.GITHUB_CALLBACK_URL,
       },
       frontendUrl: env.FRONTEND_URL,
+      auth,
     },
     {
       browserService,

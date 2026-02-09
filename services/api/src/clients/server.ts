@@ -13,6 +13,7 @@ import { schema } from "@lab/multiplayer-sdk";
 import { createPublisher, type WebSocketData } from "@lab/multiplayer-server";
 import { isHttpMethod, isRouteModule } from "@lab/router";
 import { type Server as BunServer, FileSystemRouter, serve } from "bun";
+import type { Auth as BetterAuthInstance } from "../auth";
 import { SERVER } from "../config/constants";
 import { widelog } from "../logging";
 import type { BrowserServiceManager } from "../managers/browser-service.manager";
@@ -46,6 +47,7 @@ interface ApiServerConfig {
     callbackUrl?: string;
   };
   frontendUrl?: string;
+  auth: BetterAuthInstance;
 }
 
 interface ApiServerServices {
@@ -88,7 +90,8 @@ export class ApiServer {
   }
 
   start(port: string): Promise<Publisher> {
-    const { proxyBaseUrl, opencodeUrl, github, frontendUrl } = this.config;
+    const { proxyBaseUrl, opencodeUrl, github, frontendUrl, auth } =
+      this.config;
     const {
       browserService,
       sessionLifecycle,
@@ -150,11 +153,37 @@ export class ApiServer {
       idleTimeout: SERVER.IDLE_TIMEOUT_SECONDS,
       websocket: websocketHandler,
       fetch: (request): Promise<Response | undefined> => {
-        if (request.method === "OPTIONS") {
-          return Promise.resolve(optionsResponse());
+        const url = new URL(request.url);
+
+        if (url.pathname.startsWith("/api/auth")) {
+          const origin = request.headers.get("Origin");
+          if (request.method === "OPTIONS") {
+            return Promise.resolve(
+              new Response(null, {
+                status: 204,
+                headers: {
+                  "Access-Control-Allow-Origin": origin ?? "",
+                  "Access-Control-Allow-Methods":
+                    "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                  "Access-Control-Allow-Credentials": "true",
+                },
+              })
+            );
+          }
+          return auth.handler(request).then((response) => {
+            if (origin) {
+              response.headers.set("Access-Control-Allow-Origin", origin);
+              response.headers.set("Access-Control-Allow-Credentials", "true");
+            }
+            return response;
+          });
         }
 
-        const url = new URL(request.url);
+        if (request.method === "OPTIONS") {
+          const origin = request.headers.get("Origin") ?? undefined;
+          return Promise.resolve(optionsResponse(origin));
+        }
 
         if (url.pathname === "/ws") {
           return Promise.resolve(upgrade(request, this.getServer()));
@@ -178,8 +207,10 @@ export class ApiServer {
           return this.handleRequestWithWideEvent(request, url, async () => {
             this.services.widelog.set("route", "channel_snapshot");
             this.services.widelog.set("channel_id", channel);
+            const origin = request.headers.get("Origin") ?? undefined;
             return withCors(
-              await handleChannelRequest(channel, url.searchParams)
+              await handleChannelRequest(channel, url.searchParams),
+              origin
             );
           });
         }
@@ -211,11 +242,27 @@ export class ApiServer {
   ): Promise<Response> {
     return this.handleRequestWithWideEvent(request, url, async () => {
       const { widelog } = this.services;
+      const { auth } = this.config;
+      const origin = request.headers.get("Origin") ?? undefined;
       const match = this.router.match(request);
 
       if (!match) {
         widelog.set("route", "route_not_found");
-        return withCors(notFoundResponse());
+        return withCors(notFoundResponse(), origin);
+      }
+
+      if (!match.name.startsWith("/internal/")) {
+        const session = await auth.api.getSession({
+          headers: request.headers,
+        });
+        if (!session) {
+          widelog.set("auth", "unauthorized");
+          return withCors(
+            Response.json({ error: "Unauthorized" }, { status: 401 }),
+            origin
+          );
+        }
+        widelog.set("auth.user_id", session.user.id);
       }
 
       widelog.set("route", match.name);
@@ -228,22 +275,23 @@ export class ApiServer {
       const module: unknown = await import(match.filePath);
       if (!isRouteModule(module)) {
         widelog.set("route_module_valid", false);
-        return withCors(errorResponse());
+        return withCors(errorResponse(), origin);
       }
 
       if (!isHttpMethod(request.method)) {
         widelog.set("method_supported", false);
-        return withCors(methodNotAllowedResponse());
+        return withCors(methodNotAllowedResponse(), origin);
       }
 
       const handler = module[request.method];
       if (!handler) {
         widelog.set("method_implemented", false);
-        return withCors(methodNotAllowedResponse());
+        return withCors(methodNotAllowedResponse(), origin);
       }
 
       return withCors(
-        await handler({ request, params: match.params, context: routeContext })
+        await handler({ request, params: match.params, context: routeContext }),
+        origin
       );
     });
   }
@@ -287,8 +335,10 @@ export class ApiServer {
           widelog.set("error.code", error.code);
         }
 
+        const origin = request.headers.get("Origin") ?? undefined;
         const response = withCors(
-          Response.json({ error: message, requestId }, { status })
+          Response.json({ error: message, requestId }, { status }),
+          origin
         );
         response.headers.set("X-Request-Id", requestId);
         return response;

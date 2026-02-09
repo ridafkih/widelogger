@@ -10,7 +10,7 @@ interface MainOptions {
 type MainFunction = (options: MainOptions) => unknown;
 
 export const main = (({ env, extras }) => {
-  const { server } = extras;
+  const { server, daemonManager } = extras;
 
   server.start(env.BROWSER_API_PORT);
 
@@ -25,6 +25,7 @@ export const main = (({ env, extras }) => {
       widelog.set("event_name", "browser_daemon.shutdown");
       widelog.flush();
     });
+    daemonManager.stopAll();
     server.shutdown();
   };
 }) satisfies MainFunction;

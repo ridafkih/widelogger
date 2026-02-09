@@ -70,6 +70,10 @@
     "./schema/orchestrator-messages": {
       "types": "./src/schema/orchestrator-messages.ts",
       "default": "./src/schema/orchestrator-messages.ts"
+    },
+    "./schema/auth": {
+      "types": "./src/schema/auth.ts",
+      "default": "./src/schema/auth.ts"
     }
   },
   "scripts": {

@@ -20,5 +20,9 @@ export const env = type({
   GITHUB_CLIENT_SECRET: "string?",
   GITHUB_CALLBACK_URL: "string?",
   FRONTEND_URL: "string?",
+  BETTER_AUTH_SECRET: "string",
+  BETTER_AUTH_URL: "string",
+  AUTH_GITHUB_CLIENT_ID: "string",
+  AUTH_GITHUB_CLIENT_SECRET: "string",
   REDIS_URL: "string = 'redis://localhost:6379'",
 });

@@ -32,13 +32,11 @@ async function entry<EnvType extends Type>(
 ): Promise<MaybeCleanupFunction> {
   const env = options.env?.assert(process.env);
 
-  if ("setup" in options) {
-    const extras = await options.setup({ env });
-    await options.main({ env, extras });
-    return;
-  }
+  const cleanup =
+    "setup" in options
+      ? await options.main({ env, extras: await options.setup({ env }) })
+      : await options.main({ env });
 
-  const cleanup = await options.main({ env });
   if (!cleanup) {
     return;
   }

@@ -24,11 +24,23 @@ export const CORS_HEADERS = {
 
 /**
  * Adds CORS headers to an existing Response.
+ * When an origin is provided, uses credentialed CORS instead of wildcard.
  */
-export function withCors(response: Response): Response {
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    response.headers.set(key, value);
+export function withCors(response: Response, origin?: string): Response {
+  if (origin) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  } else {
+    response.headers.set("Access-Control-Allow-Origin", "*");
   }
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    CORS_HEADERS["Access-Control-Allow-Methods"]
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    CORS_HEADERS["Access-Control-Allow-Headers"]
+  );
   return response;
 }
 
@@ -80,12 +92,11 @@ export function serviceUnavailableResponse(
 
 /**
  * Creates an OPTIONS response with CORS headers.
+ * When an origin is provided, uses credentialed CORS instead of wildcard.
  */
-export function optionsResponse(): Response {
-  return new Response(null, {
-    status: HTTP_STATUS.NO_CONTENT,
-    headers: CORS_HEADERS,
-  });
+export function optionsResponse(origin?: string): Response {
+  const response = new Response(null, { status: HTTP_STATUS.NO_CONTENT });
+  return withCors(response, origin);
 }
 
 /**

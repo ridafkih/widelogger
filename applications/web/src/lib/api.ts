@@ -14,7 +14,8 @@ export async function fetchChannelSnapshot<T>(
   sessionId: string
 ): Promise<T> {
   const response = await fetch(
-    `${API_BASE}/channels/${channel}/snapshot?session=${sessionId}`
+    `${API_BASE}/channels/${channel}/snapshot?session=${sessionId}`,
+    { credentials: "include" }
   );
   if (!response.ok) {
     throw new Error(`Failed to fetch ${channel} snapshot`);
@@ -58,7 +59,9 @@ interface GitHubSettingsResponse {
 }
 
 export async function getGitHubSettings(): Promise<GitHubSettingsResponse> {
-  const response = await fetch(`${API_BASE}/github/settings`);
+  const response = await fetch(`${API_BASE}/github/settings`, {
+    credentials: "include",
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch GitHub settings");
   }
@@ -70,6 +73,7 @@ export async function saveGitHubSettings(
 ): Promise<GitHubSettingsResponse> {
   const response = await fetch(`${API_BASE}/github/settings`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),
   });
@@ -82,6 +86,7 @@ export async function saveGitHubSettings(
 export async function disconnectGitHub(): Promise<void> {
   const response = await fetch(`${API_BASE}/github/disconnect`, {
     method: "POST",
+    credentials: "include",
   });
   if (!response.ok) {
     throw new Error("Failed to disconnect GitHub");

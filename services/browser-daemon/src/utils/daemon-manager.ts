@@ -263,6 +263,14 @@ export function createDaemonManager(
       return sessionUrls.get(sessionId) ?? null;
     },
 
+    stopAll(): void {
+      for (const sessionId of [...activeSessions.keys()]) {
+        killDaemonWorker(sessionId);
+        activeSessions.delete(sessionId);
+        sessionUrls.delete(sessionId);
+      }
+    },
+
     onEvent(handler: DaemonEventHandler): () => void {
       eventHandlers.add(handler);
       return () => {

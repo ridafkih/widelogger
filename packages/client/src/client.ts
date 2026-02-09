@@ -12,6 +12,7 @@ import type {
 
 export interface ClientConfig {
   baseUrl: string;
+  headers?: Record<string, string>;
 }
 
 export function createClient(config: ClientConfig) {
@@ -20,8 +21,10 @@ export function createClient(config: ClientConfig) {
   async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${baseUrl}${path}`, {
       ...options,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
+        ...config.headers,
         ...options?.headers,
       },
     });

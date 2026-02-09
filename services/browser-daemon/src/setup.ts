@@ -17,5 +17,5 @@ export const setup = (({ env }) => {
 
   const server = new BrowserDaemonServer({ daemonManager, widelog });
 
-  return { server };
+  return { server, daemonManager };
 }) satisfies SetupFunction;
