@@ -3,14 +3,19 @@ import { TIMING } from "../config/constants";
 import type { RouteHandler } from "../types/route";
 
 export const GET: RouteHandler = ({ context: { daemonManager } }) => {
-  const state = { unsubscribe: null as (() => void) | null, pingInterval: null as Timer | null };
+  const state = {
+    unsubscribe: null as (() => void) | null,
+    pingInterval: null as Timer | null,
+  };
 
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
 
       const send = (data: string) => {
-        if (controller.desiredSize === null) return;
+        if (controller.desiredSize === null) {
+          return;
+        }
         controller.enqueue(encoder.encode(`data: ${data}\n\n`));
       };
 
@@ -26,7 +31,9 @@ export const GET: RouteHandler = ({ context: { daemonManager } }) => {
     },
     cancel() {
       state.unsubscribe?.();
-      if (state.pingInterval) clearInterval(state.pingInterval);
+      if (state.pingInterval) {
+        clearInterval(state.pingInterval);
+      }
     },
   });
 

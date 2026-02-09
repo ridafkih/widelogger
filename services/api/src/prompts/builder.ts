@@ -1,5 +1,9 @@
 import { PromptBuilder as BasePromptBuilder } from "@lab/prompts-sdk";
-import type { PromptContext, PromptFragment, PromptService } from "../types/prompt";
+import type {
+  PromptContext,
+  PromptFragment,
+  PromptService,
+} from "../types/prompt";
 import { agentContextFragment } from "./fragments/agent-context";
 import { projectPromptFragment } from "./fragments/project-prompt";
 
@@ -19,7 +23,10 @@ class PromptBuilder {
 
   static defaults(): PromptBuilder {
     return new PromptBuilder(
-      BasePromptBuilder.from<PromptContext>([agentContextFragment, projectPromptFragment]),
+      BasePromptBuilder.from<PromptContext>([
+        agentContextFragment,
+        projectPromptFragment,
+      ])
     );
   }
 

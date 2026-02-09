@@ -1,7 +1,7 @@
-import { formatProxyUrl } from "../shared/naming";
-import type { RouteInfo } from "../types/proxy";
 import type { RedisClient } from "bun";
 import { widelog } from "../logging";
+import { formatProxyUrl } from "../shared/naming";
+import type { RouteInfo } from "../types/proxy";
 
 interface ClusterRegistration {
   routes: RouteInfo[];
@@ -10,12 +10,16 @@ interface ClusterRegistration {
 export class ProxyManager {
   constructor(
     private readonly proxyBaseDomain: string,
-    private readonly redis: RedisClient,
+    private readonly redis: RedisClient
   ) {}
 
   async registerCluster(
     clusterId: string,
-    containers: { containerId: string; hostname: string; ports: Record<number, number> }[],
+    containers: {
+      containerId: string;
+      hostname: string;
+      ports: Record<number, number>;
+    }[]
   ): Promise<RouteInfo[]> {
     return widelog.context(async () => {
       widelog.set("event_name", "proxy.cluster.registered");
@@ -28,7 +32,7 @@ export class ProxyManager {
 
         for (const container of containers) {
           for (const portStr of Object.keys(container.ports)) {
-            const port = parseInt(portStr, 10);
+            const port = Number.parseInt(portStr, 10);
             routes.push({
               containerPort: port,
               url: formatProxyUrl(clusterId, port, this.proxyBaseDomain),
@@ -37,7 +41,10 @@ export class ProxyManager {
         }
 
         const registration: ClusterRegistration = { routes };
-        await this.redis.set(`proxy:cluster:${clusterId}`, JSON.stringify(registration));
+        await this.redis.set(
+          `proxy:cluster:${clusterId}`,
+          JSON.stringify(registration)
+        );
         await this.redis.sadd("proxy:clusters", clusterId);
 
         widelog.set("route_count", routes.length);

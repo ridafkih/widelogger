@@ -16,8 +16,12 @@ export const githubSettings = pgTable("github_settings", {
   authorName: text("author_name"),
   authorEmail: text("author_email"),
   attributeAgent: boolean("attribute_agent").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type GitHubSettings = typeof githubSettings.$inferSelect;

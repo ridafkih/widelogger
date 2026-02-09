@@ -1,24 +1,27 @@
+import { noContentResponse } from "@lab/http-utilities";
+import { z } from "zod";
+import { widelog } from "../../../logging";
 import {
-  findProjectByIdOrThrow,
   deleteProject,
+  findProjectByIdOrThrow,
   updateProject,
 } from "../../../repositories/project.repository";
-import { noContentResponse } from "@lab/http-utilities";
-import { parseRequestBody } from "../../../shared/validation";
 import { withParams } from "../../../shared/route-helpers";
-import { widelog } from "../../../logging";
-import { z } from "zod";
+import { parseRequestBody } from "../../../shared/validation";
 
 const updateProjectSchema = z.object({
   description: z.string().optional(),
   systemPrompt: z.string().optional(),
 });
 
-const GET = withParams<{ projectId: string }>(["projectId"], async ({ params: { projectId } }) => {
-  widelog.set("project.id", projectId);
-  const project = await findProjectByIdOrThrow(projectId);
-  return Response.json(project);
-});
+const GET = withParams<{ projectId: string }>(
+  ["projectId"],
+  async ({ params: { projectId } }) => {
+    widelog.set("project.id", projectId);
+    const project = await findProjectByIdOrThrow(projectId);
+    return Response.json(project);
+  }
+);
 
 const PATCH = withParams<{ projectId: string }>(
   ["projectId"],
@@ -32,7 +35,7 @@ const PATCH = withParams<{ projectId: string }>(
       systemPrompt: body.systemPrompt,
     });
     return Response.json(project);
-  },
+  }
 );
 
 const DELETE = withParams<{ projectId: string }>(
@@ -41,7 +44,7 @@ const DELETE = withParams<{ projectId: string }>(
     widelog.set("project.id", projectId);
     await deleteProject(projectId);
     return noContentResponse();
-  },
+  }
 );
 
 export { DELETE, GET, PATCH };

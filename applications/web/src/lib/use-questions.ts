@@ -26,7 +26,9 @@ export function useQuestions(labSessionId: string): UseQuestionsResult {
         answers,
       });
       if (response.error) {
-        throw new Error(`Failed to reply to question: ${JSON.stringify(response.error)}`);
+        throw new Error(
+          `Failed to reply to question: ${JSON.stringify(response.error)}`
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -45,7 +47,9 @@ export function useQuestions(labSessionId: string): UseQuestionsResult {
         requestID: requestId,
       });
       if (response.error) {
-        throw new Error(`Failed to reject question: ${JSON.stringify(response.error)}`);
+        throw new Error(
+          `Failed to reject question: ${JSON.stringify(response.error)}`
+        );
       }
     } finally {
       setIsSubmitting(false);

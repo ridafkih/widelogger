@@ -1,13 +1,13 @@
 import { z } from "zod";
-import type { Handler, RouteContextFor } from "../../../types/route";
+import { widelog } from "../../../logging";
 import { chatOrchestrate } from "../../../orchestration/chat-orchestrator";
 import {
-  saveOrchestratorMessage,
   getConversationHistory,
+  saveOrchestratorMessage,
 } from "../../../repositories/orchestrator-message.repository";
 import { parseRequestBody } from "../../../shared/validation";
 import { MESSAGE_ROLE } from "../../../types/message";
-import { widelog } from "../../../logging";
+import type { Handler, RouteContextFor } from "../../../types/route";
 
 const completeRequestSchema = z.object({
   sessionId: z.string(),
@@ -20,7 +20,7 @@ type OrchestrationContext = RouteContextFor<"browser" | "session" | "infra">;
 const POST: Handler<OrchestrationContext> = async ({ request, context }) => {
   const { sessionId, platformOrigin, platformChatId } = await parseRequestBody(
     request,
-    completeRequestSchema,
+    completeRequestSchema
   );
 
   widelog.set("session.id", sessionId);

@@ -14,14 +14,10 @@
     "./next.json": "./next.json"
   },
   "scripts": {
-    "types": "tsc --noEmit -p tsconfig.json",
-    "lint": "oxlint",
-    "format": "oxfmt ."
+    "types": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@types/bun": "^1.3.8",
-    "oxfmt": "0.28.0",
-    "oxlint": "1.43.0",
     "typescript": "^5"
   }
 }

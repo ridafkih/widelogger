@@ -1,8 +1,8 @@
 import type { env } from "./env";
 
-type SetupOptions = {
+interface SetupOptions {
   env: (typeof env)["inferOut"];
-};
+}
 
 type SetupFunction = (options: SetupOptions) => unknown;
 

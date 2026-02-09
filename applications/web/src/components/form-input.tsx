@@ -1,38 +1,51 @@
 "use client";
 
+import { ChevronDown, Eye, EyeOff } from "lucide-react";
 import {
-  useState,
-  type ReactNode,
   type InputHTMLAttributes,
+  type ReactNode,
   type TextareaHTMLAttributes,
+  useState,
 } from "react";
 import { tv } from "tailwind-variants";
-import { Eye, EyeOff, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const label = tv({
-  base: "text-xs text-text-secondary",
+  base: "text-text-secondary text-xs",
 });
 
-function FormInputLabel({ children, required }: { children: ReactNode; required?: boolean }) {
+function FormInputLabel({
+  children,
+  required,
+}: {
+  children: ReactNode;
+  required?: boolean;
+}) {
   return (
     <label className={label()}>
       {children}
-      {required && <span className="text-text-muted ml-0.5">*</span>}
+      {required && <span className="ml-0.5 text-text-muted">*</span>}
     </label>
   );
 }
 
 const input = tv({
-  base: "w-full px-2 py-1 text-xs bg-bg border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-text-muted",
+  base: "w-full border border-border bg-bg px-2 py-1 text-text text-xs placeholder:text-text-muted focus:border-text-muted focus:outline-none",
 });
 
-type FormInputTextProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+type FormInputTextProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type"
+> & {
   type?: "text" | "email" | "url";
 };
 
-function FormInputText({ type = "text", className, ...props }: FormInputTextProps) {
-  return <input type={type} className={input({ className })} {...props} />;
+function FormInputText({
+  type = "text",
+  className,
+  ...props
+}: FormInputTextProps) {
+  return <input className={input({ className })} type={type} {...props} />;
 }
 
 function FormInputPassword({
@@ -44,14 +57,14 @@ function FormInputPassword({
   return (
     <div className="relative">
       <input
-        type={visible ? "text" : "password"}
         className={input({ className: cn("pr-7", className) })}
+        type={visible ? "text" : "password"}
         {...props}
       />
       <button
-        type="button"
+        className="absolute top-1/2 right-1.5 -translate-y-1/2 text-text-muted hover:text-text"
         onClick={() => setVisible(!visible)}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text"
+        type="button"
       >
         {visible ? <EyeOff size={12} /> : <Eye size={12} />}
       </button>
@@ -59,18 +72,18 @@ function FormInputPassword({
   );
 }
 
-type SelectOption = {
+interface SelectOption {
   value: string;
   label: string;
-};
+}
 
-type FormInputSelectProps = {
+interface FormInputSelectProps {
   options: SelectOption[];
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
-};
+}
 
 function FormInputSelect({
   options,
@@ -82,45 +95,57 @@ function FormInputSelect({
   return (
     <div className="relative">
       <select
-        value={value}
+        className={cn(
+          input(),
+          "cursor-pointer appearance-none border-0 pr-6",
+          className
+        )}
         onChange={({ target }) => onChange?.(target.value)}
-        className={cn(input(), "appearance-none pr-6 cursor-pointer border-0", className)}
+        value={value}
       >
         {placeholder && (
-          <option value="" disabled>
+          <option disabled value="">
             {placeholder}
           </option>
         )}
         {options.map((option) => (
-          <option key={option.value} value={option.value} className="bg-bg text-text">
+          <option
+            className="bg-bg text-text"
+            key={option.value}
+            value={option.value}
+          >
             {option.label}
           </option>
         ))}
       </select>
       <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-text-muted"
         size={12}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
       />
     </div>
   );
 }
 
-type FormInputCheckboxProps = {
+interface FormInputCheckboxProps {
   checked?: boolean;
   onChange?: (checked: boolean) => void;
   label?: string;
-};
+}
 
-function FormInputCheckbox({ checked = false, onChange, label }: FormInputCheckboxProps) {
+function FormInputCheckbox({
+  checked = false,
+  onChange,
+  label,
+}: FormInputCheckboxProps) {
   return (
-    <label className="flex items-center gap-1.5 cursor-pointer">
+    <label className="flex cursor-pointer items-center gap-1.5">
       <input
-        type="checkbox"
         checked={checked}
+        className="h-3 w-3 cursor-pointer accent-text"
         onChange={(e) => onChange?.(e.target.checked)}
-        className="w-3 h-3 accent-text cursor-pointer"
+        type="checkbox"
       />
-      {label && <span className="text-xs text-text">{label}</span>}
+      {label && <span className="text-text text-xs">{label}</span>}
     </label>
   );
 }
@@ -130,33 +155,39 @@ function FormInputTextarea({
   rows = 3,
   ...props
 }: TextareaHTMLAttributes<HTMLTextAreaElement> & { rows?: number }) {
-  return <textarea rows={rows} className={cn(input(), "resize-none", className)} {...props} />;
+  return (
+    <textarea
+      className={cn(input(), "resize-none", className)}
+      rows={rows}
+      {...props}
+    />
+  );
 }
 
 function FormInputHelper({ children }: { children: ReactNode }) {
-  return <p className="text-xs text-text-muted">{children}</p>;
+  return <p className="text-text-muted text-xs">{children}</p>;
 }
 
 function FormInputError({ children }: { children: ReactNode }) {
-  return <p className="text-xs text-red-500">{children}</p>;
+  return <p className="text-red-500 text-xs">{children}</p>;
 }
 
 function FormInputSuccess({ children }: { children: ReactNode }) {
-  return <p className="text-xs text-green-500">{children}</p>;
+  return <p className="text-green-500 text-xs">{children}</p>;
 }
 
 const submitButton = tv({
-  base: "px-2 py-1 text-xs border border-border text-text hover:bg-bg-muted disabled:opacity-50 disabled:cursor-not-allowed",
+  base: "border border-border px-2 py-1 text-text text-xs hover:bg-bg-muted disabled:cursor-not-allowed disabled:opacity-50",
 });
 
-type FormInputSubmitProps = {
+interface FormInputSubmitProps {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   loading?: boolean;
   loadingText?: string;
   className?: string;
-};
+}
 
 function FormInputSubmit({
   children,
@@ -168,10 +199,10 @@ function FormInputSubmit({
 }: FormInputSubmitProps) {
   return (
     <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled || loading}
       className={submitButton({ className })}
+      disabled={disabled || loading}
+      onClick={onClick}
+      type="button"
     >
       {loading ? (loadingText ?? "Loading...") : children}
     </button>
@@ -182,13 +213,19 @@ const inputGroup = tv({
   slots: {
     root: "flex items-center border border-border bg-bg focus-within:border-text-muted",
     input:
-      "flex-1 min-w-0 px-2 py-1 text-xs bg-transparent text-text placeholder:text-text-muted focus:outline-none",
-    separator: "text-xs text-text-muted select-none",
-    action: "px-1.5 text-text-muted hover:text-text shrink-0",
+      "min-w-0 flex-1 bg-transparent px-2 py-1 text-text text-xs placeholder:text-text-muted focus:outline-none",
+    separator: "select-none text-text-muted text-xs",
+    action: "shrink-0 px-1.5 text-text-muted hover:text-text",
   },
 });
 
-function InputGroupRoot({ children, className }: { children: ReactNode; className?: string }) {
+function InputGroupRoot({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   const styles = inputGroup();
   return <div className={cn(styles.root(), className)}>{children}</div>;
 }
@@ -199,7 +236,9 @@ function InputGroupInput({
   ...props
 }: InputHTMLAttributes<HTMLInputElement>) {
   const styles = inputGroup();
-  return <input type={type} className={cn(styles.input(), className)} {...props} />;
+  return (
+    <input className={cn(styles.input(), className)} type={type} {...props} />
+  );
 }
 
 function InputGroupSeparator({ children }: { children: ReactNode }) {
@@ -218,7 +257,11 @@ function InputGroupAction({
 }) {
   const styles = inputGroup();
   return (
-    <button type="button" onClick={onClick} className={cn(styles.action(), className)}>
+    <button
+      className={cn(styles.action(), className)}
+      onClick={onClick}
+      type="button"
+    >
       {children}
     </button>
   );

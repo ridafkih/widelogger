@@ -1,8 +1,8 @@
 import {
-  S3Client,
   CreateBucketCommand,
-  PutBucketPolicyCommand,
   HeadBucketCommand,
+  PutBucketPolicyCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
 import { widelog } from "../logging";
 import type { Config } from "../types/tool";
@@ -32,7 +32,12 @@ export async function initializeBucket(config: Config): Promise<void> {
       await s3.send(new HeadBucketCommand({ Bucket: bucket }));
       widelog.set("bucket_existed", true);
     } catch (error: unknown) {
-      if (error && typeof error === "object" && "name" in error && error.name === "NotFound") {
+      if (
+        error &&
+        typeof error === "object" &&
+        "name" in error &&
+        error.name === "NotFound"
+      ) {
         widelog.set("bucket_existed", false);
         await s3.send(new CreateBucketCommand({ Bucket: bucket }));
       } else {
@@ -60,7 +65,7 @@ export async function initializeBucket(config: Config): Promise<void> {
       new PutBucketPolicyCommand({
         Bucket: bucket,
         Policy: JSON.stringify(policy),
-      }),
+      })
     );
 
     widelog.set("outcome", "success");

@@ -85,6 +85,7 @@ export const agentContextFragment: PromptFragment = createFragment({
   id: "agent-context",
   name: "Agent Context",
   priority: 50,
-  render: (context) => AGENT_CONTEXT.replace("{{sessionId}}", context.sessionId),
+  render: (context) =>
+    AGENT_CONTEXT.replace("{{sessionId}}", context.sessionId),
   shouldInclude: () => true,
 });

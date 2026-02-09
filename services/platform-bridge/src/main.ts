@@ -1,16 +1,16 @@
-import { widelog } from "./logging";
 import { messageRouter } from "./bridge/message-router";
 import { responseSubscriber } from "./bridge/response-subscriber";
 import { sessionTracker } from "./bridge/session-tracker";
 import { multiplayerClient } from "./clients/multiplayer";
+import type { env } from "./env";
+import { widelog } from "./logging";
 import { getAllAdapters } from "./platforms";
 import type { setup } from "./setup";
-import type { env } from "./env";
 
-type MainOptions = {
+interface MainOptions {
   env: (typeof env)["inferOut"];
   extras: ReturnType<typeof setup>;
-};
+}
 
 type MainFunction = (options: MainOptions) => unknown;
 
@@ -30,13 +30,15 @@ export const main = (async ({ extras }) => {
     for (const adapter of adapters) {
       try {
         await adapter.initialize();
-        await adapter.startListening((message) => messageRouter.handleIncomingMessage(message));
+        await adapter.startListening((message) =>
+          messageRouter.handleIncomingMessage(message)
+        );
         started++;
       } catch (error) {
         failed++;
         widelog.set(
           `adapter_error.${adapter.platform}`,
-          error instanceof Error ? error.message : String(error),
+          error instanceof Error ? error.message : String(error)
         );
       }
     }
@@ -59,13 +61,16 @@ export const main = (async ({ extras }) => {
         widelog.set("outcome", "success");
       } catch (error) {
         widelog.set("outcome", "error");
-        widelog.set("error_message", error instanceof Error ? error.message : String(error));
+        widelog.set(
+          "error_message",
+          error instanceof Error ? error.message : String(error)
+        );
       } finally {
         widelog.time.stop("duration_ms");
         widelog.flush();
       }
     });
-  }, 3600000);
+  }, 3_600_000);
 
   return () => {
     clearInterval(cleanupInterval);

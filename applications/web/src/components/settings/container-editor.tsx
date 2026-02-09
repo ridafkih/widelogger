@@ -1,28 +1,28 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
-import { Plus, X, Folder } from "lucide-react";
+import { Folder, Plus, X } from "lucide-react";
+import { createContext, type ReactNode, use } from "react";
 import { tv } from "tailwind-variants";
 import { Button } from "@/components/button";
-import { IconButton } from "@/components/icon-button";
 import { FormInput, InputGroup } from "@/components/form-input";
+import { IconButton } from "@/components/icon-button";
 
 const styles = {
   frame: tv({
-    base: "flex flex-col gap-2 p-2 border border-border bg-bg-muted",
+    base: "flex flex-col gap-2 border border-border bg-bg-muted p-2",
   }),
   header: tv({
     slots: {
       root: "flex items-center justify-between",
-      title: "text-xs text-text-secondary",
+      title: "text-text-secondary text-xs",
     },
   }),
   section: tv({
     slots: {
       root: "flex flex-col gap-1.5",
       header: "flex items-center justify-between",
-      label: "text-xs text-text-secondary",
-      empty: "text-xs text-text-muted",
+      label: "text-text-secondary text-xs",
+      empty: "text-text-muted text-xs",
       content: "flex flex-col gap-2",
     },
   }),
@@ -31,31 +31,31 @@ const styles = {
   }),
 };
 
-type EnvVar = {
+interface EnvVar {
   id: string;
   key: string;
   value: string;
-};
+}
 
-type DependencyDraft = {
+interface DependencyDraft {
   id: string;
   dependsOnDraftId: string;
   condition: string;
-};
+}
 
-type ContainerDraft = {
+interface ContainerDraft {
   id: string;
   image: string;
   ports: string;
   isWorkspace: boolean;
   envVars: EnvVar[];
   dependencies: DependencyDraft[];
-};
+}
 
-type AvailableContainer = {
+interface AvailableContainer {
   id: string;
   label: string;
-};
+}
 
 interface ContainerEditorState {
   container: ContainerDraft;
@@ -73,12 +73,15 @@ interface ContainerEditorContextValue {
   actions: ContainerEditorActions;
 }
 
-const ContainerEditorContext = createContext<ContainerEditorContextValue | null>(null);
+const ContainerEditorContext =
+  createContext<ContainerEditorContextValue | null>(null);
 
 function useContainerEditor(): ContainerEditorContextValue {
   const context = use(ContainerEditorContext);
   if (!context) {
-    throw new Error("ContainerEditor components must be used within ContainerEditor.Provider");
+    throw new Error(
+      "ContainerEditor components must be used within ContainerEditor.Provider"
+    );
   }
   return context;
 }
@@ -156,11 +159,14 @@ function ContainerEditorImageField() {
     <div className={styles.field()}>
       <FormInput.Label>Image</FormInput.Label>
       <FormInput.Text
-        value={state.container.image}
         onChange={(event) =>
-          actions.update((container) => ({ ...container, image: event.target.value }))
+          actions.update((container) => ({
+            ...container,
+            image: event.target.value,
+          }))
         }
         placeholder="ghcr.io/org/image:tag"
+        value={state.container.image}
       />
     </div>
   );
@@ -173,11 +179,14 @@ function ContainerEditorPortsField() {
     <div className={styles.field()}>
       <FormInput.Label>Ports</FormInput.Label>
       <FormInput.Text
-        value={state.container.ports}
         onChange={(event) =>
-          actions.update((container) => ({ ...container, ports: event.target.value }))
+          actions.update((container) => ({
+            ...container,
+            ports: event.target.value,
+          }))
         }
         placeholder="3000, 8080"
+        value={state.container.ports}
       />
       <FormInput.Helper>Comma-separated port numbers</FormInput.Helper>
     </div>
@@ -196,15 +205,15 @@ function EnvVarRow({
   return (
     <InputGroup.Root>
       <InputGroup.Input
-        value={envVar.key}
         onChange={(event) => onUpdate({ ...envVar, key: event.target.value })}
         placeholder="MY_ENV_VAR"
+        value={envVar.key}
       />
       <InputGroup.Separator>=</InputGroup.Separator>
       <InputGroup.Input
+        onChange={(event) => onUpdate({ ...envVar, value: event.target.value })}
         type="password"
         value={envVar.value}
-        onChange={(event) => onUpdate({ ...envVar, value: event.target.value })}
       />
       <InputGroup.Action onClick={onRemove}>
         <X size={10} />
@@ -220,14 +229,19 @@ function ContainerEditorEnvVarsSection() {
   const handleAdd = () => {
     actions.update((container) => ({
       ...container,
-      envVars: [...container.envVars, { id: crypto.randomUUID(), key: "", value: "" }],
+      envVars: [
+        ...container.envVars,
+        { id: crypto.randomUUID(), key: "", value: "" },
+      ],
     }));
   };
 
   const handleUpdate = (id: string, updated: EnvVar) => {
     actions.update((container) => ({
       ...container,
-      envVars: container.envVars.map((envVar) => (envVar.id === id ? updated : envVar)),
+      envVars: container.envVars.map((envVar) =>
+        envVar.id === id ? updated : envVar
+      ),
     }));
   };
 
@@ -242,7 +256,7 @@ function ContainerEditorEnvVarsSection() {
     <div className={sectionStyles.root()}>
       <div className={sectionStyles.header()}>
         <span className={sectionStyles.label()}>Environment Variables</span>
-        <Button variant="ghost" onClick={handleAdd}>
+        <Button onClick={handleAdd} variant="ghost">
           <Plus size={10} />
           Add
         </Button>
@@ -253,10 +267,10 @@ function ContainerEditorEnvVarsSection() {
         <div className={sectionStyles.content()}>
           {state.container.envVars.map((envVar) => (
             <EnvVarRow
-              key={envVar.id}
               envVar={envVar}
-              onUpdate={(updated) => handleUpdate(envVar.id, updated)}
+              key={envVar.id}
               onRemove={() => handleRemove(envVar.id)}
+              onUpdate={(updated) => handleUpdate(envVar.id, updated)}
             />
           ))}
         </div>
@@ -285,10 +299,12 @@ function DependencyRow({
     <InputGroup.Root>
       <div className="flex-1">
         <FormInput.Select
-          value={dependency.dependsOnDraftId}
-          onChange={(value) => onUpdate({ ...dependency, dependsOnDraftId: value })}
+          onChange={(value) =>
+            onUpdate({ ...dependency, dependsOnDraftId: value })
+          }
           options={options}
           placeholder="Select container..."
+          value={dependency.dependsOnDraftId}
         />
       </div>
       <InputGroup.Action onClick={onRemove}>
@@ -311,7 +327,11 @@ function ContainerEditorDependenciesSection() {
       ...container,
       dependencies: [
         ...container.dependencies,
-        { id: crypto.randomUUID(), dependsOnDraftId: "", condition: "service_started" },
+        {
+          id: crypto.randomUUID(),
+          dependsOnDraftId: "",
+          condition: "service_started",
+        },
       ],
     }));
   };
@@ -320,7 +340,7 @@ function ContainerEditorDependenciesSection() {
     actions.update((container) => ({
       ...container,
       dependencies: container.dependencies.map((dependency) =>
-        dependency.id === id ? updated : dependency,
+        dependency.id === id ? updated : dependency
       ),
     }));
   };
@@ -328,7 +348,9 @@ function ContainerEditorDependenciesSection() {
   const handleRemove = (id: string) => {
     actions.update((container) => ({
       ...container,
-      dependencies: container.dependencies.filter((dependency) => dependency.id !== id),
+      dependencies: container.dependencies.filter(
+        (dependency) => dependency.id !== id
+      ),
     }));
   };
 
@@ -336,7 +358,7 @@ function ContainerEditorDependenciesSection() {
     <div className={sectionStyles.root()}>
       <div className={sectionStyles.header()}>
         <span className={sectionStyles.label()}>Depends On</span>
-        <Button variant="ghost" onClick={handleAdd}>
+        <Button onClick={handleAdd} variant="ghost">
           <Plus size={10} />
           Add
         </Button>
@@ -347,11 +369,11 @@ function ContainerEditorDependenciesSection() {
         <div className={sectionStyles.content()}>
           {state.container.dependencies.map((dependency) => (
             <DependencyRow
-              key={dependency.id}
-              dependency={dependency}
               availableContainers={state.availableContainers}
-              onUpdate={(updated) => handleUpdate(dependency.id, updated)}
+              dependency={dependency}
+              key={dependency.id}
               onRemove={() => handleRemove(dependency.id)}
+              onUpdate={(updated) => handleUpdate(dependency.id, updated)}
             />
           ))}
         </div>
@@ -365,12 +387,15 @@ function ContainerEditorWorkspaceToggle() {
   const isWorkspace = state.container.isWorkspace;
 
   const handleToggle = () => {
-    actions.update((container) => ({ ...container, isWorkspace: !container.isWorkspace }));
+    actions.update((container) => ({
+      ...container,
+      isWorkspace: !container.isWorkspace,
+    }));
   };
 
   return (
-    <Button variant={isWorkspace ? "active" : "primary"} onClick={handleToggle}>
-      <Folder size={12} fill={isWorkspace ? "currentColor" : "none"} />
+    <Button onClick={handleToggle} variant={isWorkspace ? "active" : "primary"}>
+      <Folder fill={isWorkspace ? "currentColor" : "none"} size={12} />
       {isWorkspace ? "Workspace container" : "Set as workspace"}
     </Button>
   );

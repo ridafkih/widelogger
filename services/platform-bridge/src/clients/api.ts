@@ -1,20 +1,22 @@
-import { widelog } from "../logging";
 import { config } from "../config/environment";
+import { widelog } from "../logging";
 import type {
-  OrchestrationRequest,
-  OrchestrationResult,
   ChatRequest,
   ChatResult,
+  OrchestrationRequest,
+  OrchestrationResult,
 } from "../types/messages";
 
 class ApiClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl: string = config.apiUrl) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
   }
 
-  async orchestrate(request: OrchestrationRequest): Promise<OrchestrationResult> {
+  async orchestrate(
+    request: OrchestrationRequest
+  ): Promise<OrchestrationResult> {
     const response = await fetch(`${this.baseUrl}/orchestrate`, {
       method: "POST",
       headers: {
@@ -24,14 +26,20 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(`Orchestration failed: ${error.error || response.statusText}`);
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
+      throw new Error(
+        `Orchestration failed: ${error.error || response.statusText}`
+      );
     }
 
     return response.json();
   }
 
-  async getSession(sessionId: string): Promise<{ id: string; status: string } | null> {
+  async getSession(
+    sessionId: string
+  ): Promise<{ id: string; status: string } | null> {
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}`, {
       method: "GET",
       headers: {
@@ -56,17 +64,24 @@ class ApiClient {
   }
 
   async generateSessionSummary(sessionId: string): Promise<SummaryResult> {
-    const response = await fetch(`${this.baseUrl}/internal/sessions/${sessionId}/summary`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
+    const response = await fetch(
+      `${this.baseUrl}/internal/sessions/${sessionId}/summary`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }
+    );
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(`Summary generation failed: ${error.error || response.statusText}`);
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
+      throw new Error(
+        `Summary generation failed: ${error.error || response.statusText}`
+      );
     }
 
     return response.json();
@@ -83,7 +98,9 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Chat orchestration failed: ${error || response.statusText}`);
+      throw new Error(
+        `Chat orchestration failed: ${error || response.statusText}`
+      );
     }
 
     return response.json();
@@ -96,7 +113,7 @@ class ApiClient {
    */
   async chatStream(
     request: ChatRequest,
-    onChunk: (text: string) => Promise<void>,
+    onChunk: (text: string) => Promise<void>
   ): Promise<ChatResult> {
     const response = await fetch(`${this.baseUrl}/orchestrate/chat`, {
       method: "POST",
@@ -108,7 +125,9 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Chat orchestration failed: ${error || response.statusText}`);
+      throw new Error(
+        `Chat orchestration failed: ${error || response.statusText}`
+      );
     }
 
     const contentType = response.headers.get("content-type") || "";
@@ -124,12 +143,12 @@ class ApiClient {
 
   private async consumeSseStream(
     response: Response,
-    onChunk: (text: string) => Promise<void>,
+    onChunk: (text: string) => Promise<void>
   ): Promise<ChatResult> {
     return widelog.context(async () => {
       widelog.set("event_name", "api_client.consume_sse_stream");
 
-      const reader = response.body!.getReader();
+      const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let finalResult: ChatResult | null = null;
@@ -138,7 +157,9 @@ class ApiClient {
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
 
@@ -201,22 +222,29 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
       throw new Error(
-        `Session complete notification failed: ${error.error || response.statusText}`,
+        `Session complete notification failed: ${error.error || response.statusText}`
       );
     }
 
     return response.json();
   }
 
-  async getSessionScreenshot(sessionId: string): Promise<ScreenshotResult | null> {
-    const response = await fetch(`${this.baseUrl}/internal/sessions/${sessionId}/screenshot`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  async getSessionScreenshot(
+    sessionId: string
+  ): Promise<ScreenshotResult | null> {
+    const response = await fetch(
+      `${this.baseUrl}/internal/sessions/${sessionId}/screenshot`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (response.status === 404) {
       return null;

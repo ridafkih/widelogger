@@ -1,16 +1,16 @@
 "use client";
 
-import { use } from "react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { PageFrame, Header } from "@/components/layout-primitives";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { use } from "react";
+import { Header, PageFrame } from "@/components/layout-primitives";
 import { useSessionTitle } from "@/lib/use-session-title";
 import { useSessionContext } from "../../layout";
 
-type FileReviewPageProps = {
+interface FileReviewPageProps {
   params: Promise<{ sessionId: string }>;
-};
+}
 
 export default function FileReviewPage({ params }: FileReviewPageProps) {
   const { sessionId } = use(params);
@@ -24,14 +24,14 @@ export default function FileReviewPage({ params }: FileReviewPageProps) {
       <PageFrame>
         <Header>
           <Link
+            className="flex items-center gap-1 text-text-muted text-xs hover:text-text"
             href={`/editor/${sessionId}/review`}
-            className="flex items-center gap-1 text-xs text-text-muted hover:text-text"
           >
             <ArrowLeft size={12} />
             Back to review
           </Link>
         </Header>
-        <div className="flex-1 flex items-center justify-center text-text-muted">
+        <div className="flex flex-1 items-center justify-center text-text-muted">
           No file path specified
         </div>
       </PageFrame>
@@ -42,16 +42,16 @@ export default function FileReviewPage({ params }: FileReviewPageProps) {
     <PageFrame>
       <Header>
         <Link
+          className="flex items-center gap-1 text-text-muted text-xs hover:text-text"
           href={`/editor/${sessionId}/review`}
-          className="flex items-center gap-1 text-xs text-text-muted hover:text-text"
         >
           <ArrowLeft size={12} />
           Back to review
         </Link>
         <span className="text-text-muted">/</span>
-        <span className="text-text font-mono text-xs truncate">{filePath}</span>
+        <span className="truncate font-mono text-text text-xs">{filePath}</span>
       </Header>
-      <div className="flex-1 flex items-center justify-center text-text-muted">
+      <div className="flex flex-1 items-center justify-center text-text-muted">
         File review for: {filePath}
         <br />
         (Session: {displayTitle ?? sessionId}, Project: {project?.name})

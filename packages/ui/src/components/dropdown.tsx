@@ -1,38 +1,40 @@
 "use client";
 
 import {
-  createContext,
-  useContext,
-  useState,
-  useRef,
-  useEffect,
-  type ReactNode,
   type ButtonHTMLAttributes,
+  createContext,
   type KeyboardEvent,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
+import { useClickOutside } from "../hooks/use-click-outside";
 import { cn } from "../utils/cn";
 import { Slot } from "../utils/slot";
-import { useClickOutside } from "../hooks/use-click-outside";
 
-type DropdownContextValue = {
+interface DropdownContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
   activeIndex: number;
   setActiveIndex: (index: number) => void;
-};
+}
 
 const DropdownContext = createContext<DropdownContextValue | null>(null);
 
 function useDropdown() {
   const context = useContext(DropdownContext);
-  if (!context) throw new Error("Dropdown components must be used within Dropdown");
+  if (!context) {
+    throw new Error("Dropdown components must be used within Dropdown");
+  }
   return context;
 }
 
-export type DropdownProps = {
+export interface DropdownProps {
   children: ReactNode;
   className?: string;
-};
+}
 
 export function Dropdown({ children, className }: DropdownProps) {
   const [open, setOpen] = useState(false);
@@ -40,8 +42,10 @@ export function Dropdown({ children, className }: DropdownProps) {
   const ref = useClickOutside<HTMLDivElement>(() => setOpen(false), open);
 
   return (
-    <DropdownContext.Provider value={{ open, setOpen, activeIndex, setActiveIndex }}>
-      <div ref={ref} className={cn("relative inline-block", className)}>
+    <DropdownContext.Provider
+      value={{ open, setOpen, activeIndex, setActiveIndex }}
+    >
+      <div className={cn("relative inline-block", className)} ref={ref}>
         {children}
       </div>
     </DropdownContext.Provider>
@@ -72,12 +76,12 @@ export function DropdownTrigger({
 
   return (
     <Comp
-      type="button"
+      aria-expanded={open}
+      aria-haspopup="menu"
       className={cn(!asChild && "inline-flex items-center gap-1", className)}
       onClick={() => setOpen(!open)}
       onKeyDown={handleKeyDown}
-      aria-expanded={open}
-      aria-haspopup="menu"
+      type="button"
       {...props}
     >
       {children}
@@ -85,10 +89,10 @@ export function DropdownTrigger({
   );
 }
 
-export type DropdownMenuProps = {
+export interface DropdownMenuProps {
   children: ReactNode;
   className?: string;
-};
+}
 
 export function DropdownMenu({ children, className }: DropdownMenuProps) {
   const { open, setOpen, activeIndex, setActiveIndex } = useDropdown();
@@ -119,17 +123,19 @@ export function DropdownMenu({ children, className }: DropdownMenuProps) {
     }
   };
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   return (
     <div
-      ref={menuRef}
-      role="menu"
       className={cn(
-        "absolute left-0 top-full z-50 min-w-32 bg-background border border-border shadow-xs",
-        className,
+        "absolute top-full left-0 z-50 min-w-32 border border-border bg-background shadow-xs",
+        className
       )}
       onKeyDown={handleKeyDown}
+      ref={menuRef}
+      role="menu"
     >
       {children}
     </div>
@@ -140,23 +146,28 @@ export type DropdownItemProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   icon?: ReactNode;
 };
 
-export function DropdownItem({ className, icon, children, ...props }: DropdownItemProps) {
+export function DropdownItem({
+  className,
+  icon,
+  children,
+  ...props
+}: DropdownItemProps) {
   const { setOpen } = useDropdown();
 
   return (
     <button
-      type="button"
-      role="menuitem"
       className={cn(
-        "flex w-full items-center gap-1.5 pl-2 pr-4 py-1.5 text-xs text-left",
-        "hover:bg-muted focus:bg-muted focus-visible:outline focus-visible:outline-offset-px focus-visible:outline-ring",
+        "flex w-full items-center gap-1.5 py-1.5 pr-4 pl-2 text-left text-xs",
+        "hover:bg-muted focus:bg-muted focus-visible:outline focus-visible:outline-ring focus-visible:outline-offset-px",
         "disabled:pointer-events-none disabled:opacity-50",
-        className,
+        className
       )}
       onClick={(event) => {
         props.onClick?.(event);
         setOpen(false);
       }}
+      role="menuitem"
+      type="button"
       {...props}
     >
       {icon && <span className="size-3 [&>svg]:size-3">{icon}</span>}
@@ -166,5 +177,5 @@ export function DropdownItem({ className, icon, children, ...props }: DropdownIt
 }
 
 export function DropdownSeparator({ className }: { className?: string }) {
-  return <div role="separator" className={cn("h-px bg-border", className)} />;
+  return <div className={cn("h-px bg-border", className)} role="separator" />;
 }

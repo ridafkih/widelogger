@@ -1,31 +1,39 @@
-import { createPublisher, type WebSocketData } from "@lab/multiplayer-server";
-import { schema } from "@lab/multiplayer-sdk";
-import type { Server as BunServer } from "bun";
-import type { ImageStore } from "@lab/context";
-import { widelog } from "../logging";
-import { SERVER } from "../config/constants";
-import { createWebSocketHandlers, type Auth } from "../websocket/websocket-handler";
-import { createOpenCodeProxyHandler } from "../opencode/handler";
-import { createChannelRestHandler } from "../snapshots/rest-handler";
-import type { PoolManager } from "../managers/pool.manager";
-import type { LogMonitor } from "../monitors/log.monitor";
-import { reconcileNetworkConnections } from "../runtime/network";
-import { isHttpMethod, isRouteModule } from "@lab/router";
-import type { RouteContext } from "../types/route";
 import { join } from "node:path";
-import type { PromptService } from "../types/prompt";
-import type { Sandbox, OpencodeClient, Publisher, Widelog } from "../types/dependencies";
-import { AppError, ServiceUnavailableError } from "../shared/errors";
-import type { BrowserServiceManager } from "../managers/browser-service.manager";
-import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
-import type { SessionStateStore } from "../state/session-state-store";
+import type { ImageStore } from "@lab/context";
 import {
-  withCors,
-  optionsResponse,
-  notFoundResponse,
   errorResponse,
   methodNotAllowedResponse,
+  notFoundResponse,
+  optionsResponse,
+  withCors,
 } from "@lab/http-utilities";
+import { schema } from "@lab/multiplayer-sdk";
+import { createPublisher, type WebSocketData } from "@lab/multiplayer-server";
+import { isHttpMethod, isRouteModule } from "@lab/router";
+import type { Server as BunServer } from "bun";
+import { SERVER } from "../config/constants";
+import { widelog } from "../logging";
+import type { BrowserServiceManager } from "../managers/browser-service.manager";
+import type { PoolManager } from "../managers/pool.manager";
+import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
+import type { LogMonitor } from "../monitors/log.monitor";
+import { createOpenCodeProxyHandler } from "../opencode/handler";
+import { reconcileNetworkConnections } from "../runtime/network";
+import { AppError, ServiceUnavailableError } from "../shared/errors";
+import { createChannelRestHandler } from "../snapshots/rest-handler";
+import type { SessionStateStore } from "../state/session-state-store";
+import type {
+  OpencodeClient,
+  Publisher,
+  Sandbox,
+  Widelog,
+} from "../types/dependencies";
+import type { PromptService } from "../types/prompt";
+import type { RouteContext } from "../types/route";
+import {
+  type Auth,
+  createWebSocketHandlers,
+} from "../websocket/websocket-handler";
 
 interface ApiServerConfig {
   proxyBaseDomain: string;
@@ -61,19 +69,17 @@ export class ApiServer {
 
   constructor(
     private readonly config: ApiServerConfig,
-    private readonly services: ApiServerServices,
+    private readonly services: ApiServerServices
   ) {}
 
   private getServer(): BunServer<unknown> {
-    if (!this.server) throw new ServiceUnavailableError("Server not started", "SERVER_NOT_STARTED");
-    return this.server;
-  }
-
-  private getPublisher(): Publisher {
-    if (!this.publisher) {
-      throw new ServiceUnavailableError("Server not started", "SERVER_NOT_STARTED");
+    if (!this.server) {
+      throw new ServiceUnavailableError(
+        "Server not started",
+        "SERVER_NOT_STARTED"
+      );
     }
-    return this.publisher;
+    return this.server;
   }
 
   async start(port: string): Promise<Publisher> {
@@ -162,12 +168,15 @@ export class ApiServer {
           });
         }
 
-        const [, channel] = url.pathname.match(/^\/channels\/([^/]+)\/snapshot$/) ?? [];
+        const [, channel] =
+          url.pathname.match(/^\/channels\/([^/]+)\/snapshot$/) ?? [];
         if (channel) {
           return this.handleRequestWithWideEvent(request, url, async () => {
             this.services.widelog.set("route", "channel_snapshot");
             this.services.widelog.set("channel_id", channel);
-            return withCors(await handleChannelRequest(channel, url.searchParams));
+            return withCors(
+              await handleChannelRequest(channel, url.searchParams)
+            );
           });
         }
 
@@ -194,7 +203,7 @@ export class ApiServer {
   private async handleRouteRequest(
     request: Request,
     url: URL,
-    routeContext: RouteContext,
+    routeContext: RouteContext
   ): Promise<Response> {
     return this.handleRequestWithWideEvent(request, url, async () => {
       const { widelog } = this.services;
@@ -229,14 +238,16 @@ export class ApiServer {
         return withCors(methodNotAllowedResponse());
       }
 
-      return withCors(await handler({ request, params: match.params, context: routeContext }));
+      return withCors(
+        await handler({ request, params: match.params, context: routeContext })
+      );
     });
   }
 
   private async handleRequestWithWideEvent(
     request: Request,
     url: URL,
-    handler: () => Promise<Response>,
+    handler: () => Promise<Response>
   ): Promise<Response> {
     const { widelog } = this.services;
     const requestId = crypto.randomUUID();
@@ -261,7 +272,9 @@ export class ApiServer {
       } catch (error) {
         const status = error instanceof AppError ? error.statusCode : 500;
         const message =
-          error instanceof Error && status < 500 ? error.message : "Internal server error";
+          error instanceof Error && status < 500
+            ? error.message
+            : "Internal server error";
 
         this.setStatusOutcome(status);
         widelog.errorFields(error);
@@ -270,7 +283,9 @@ export class ApiServer {
           widelog.set("error.code", error.code);
         }
 
-        const response = withCors(Response.json({ error: message, requestId }, { status }));
+        const response = withCors(
+          Response.json({ error: message, requestId }, { status })
+        );
         response.headers.set("X-Request-Id", requestId);
         return response;
       } finally {

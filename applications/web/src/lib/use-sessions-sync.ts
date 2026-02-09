@@ -1,9 +1,9 @@
 "use client";
 
+import type { Session } from "@lab/client";
 import { useEffect, useRef } from "react";
 import { useSWRConfig } from "swr";
 import { useMultiplayer } from "./multiplayer";
-import type { Session } from "@lab/client";
 
 interface MultiplayerSession {
   id: string;
@@ -39,7 +39,9 @@ export function useSessionsSync() {
 
     previousIdsRef.current = currentIds;
 
-    if (added.length === 0 && removedIds.length === 0) return;
+    if (added.length === 0 && removedIds.length === 0) {
+      return;
+    }
 
     const addedByProject = new Map<string, Session[]>();
     for (const session of added) {
@@ -52,13 +54,19 @@ export function useSessionsSync() {
       mutate(
         `sessions-${projectId}`,
         (current: Session[] | undefined) => {
-          if (!current) return newSessions;
+          if (!current) {
+            return newSessions;
+          }
           const existingIds = new Set(current.map((session) => session.id));
-          const toAdd = newSessions.filter((session) => !existingIds.has(session.id));
-          if (toAdd.length === 0) return current;
+          const toAdd = newSessions.filter(
+            (session) => !existingIds.has(session.id)
+          );
+          if (toAdd.length === 0) {
+            return current;
+          }
           return [...current, ...toAdd];
         },
-        false,
+        false
       );
     }
 
@@ -67,12 +75,18 @@ export function useSessionsSync() {
       mutate(
         (key) => typeof key === "string" && key.startsWith("sessions-"),
         (current: Session[] | undefined) => {
-          if (!current) return current;
-          const filtered = current.filter((session) => !removedSet.has(session.id));
-          if (filtered.length === current.length) return current;
+          if (!current) {
+            return current;
+          }
+          const filtered = current.filter(
+            (session) => !removedSet.has(session.id)
+          );
+          if (filtered.length === current.length) {
+            return current;
+          }
           return filtered;
         },
-        false,
+        false
       );
     }
   }, [sessions, mutate]);

@@ -3,14 +3,19 @@
 import type { Session } from "@lab/client";
 import { useMultiplayer } from "./multiplayer";
 
-export type SessionStatus = "starting" | "running" | "generating" | "error" | "deleting";
+export type SessionStatus =
+  | "starting"
+  | "running"
+  | "generating"
+  | "error"
+  | "deleting";
 
-type SessionContainer = {
+interface SessionContainer {
   id: string;
   name: string;
   status: "running" | "stopped" | "starting" | "error";
   urls: { port: number; url: string }[];
-};
+}
 
 export function useSessionStatus(session: Session | null): SessionStatus {
   const { useChannel } = useMultiplayer();
@@ -20,9 +25,13 @@ export function useSessionStatus(session: Session | null): SessionStatus {
   const containers: SessionContainer[] = useChannel(
     "sessionContainers",
     sessionChannelParams,
-    channelOptions,
+    channelOptions
   );
-  const metadata = useChannel("sessionMetadata", sessionChannelParams, channelOptions);
+  const metadata = useChannel(
+    "sessionMetadata",
+    sessionChannelParams,
+    channelOptions
+  );
 
   if (!session) {
     return "starting";
@@ -32,12 +41,16 @@ export function useSessionStatus(session: Session | null): SessionStatus {
     return "deleting";
   }
 
-  const hasStartingContainer = containers.some((container) => container.status === "starting");
+  const hasStartingContainer = containers.some(
+    (container) => container.status === "starting"
+  );
   if (hasStartingContainer || session.status === "creating") {
     return "starting";
   }
 
-  const hasErrorContainer = containers.some((container) => container.status === "error");
+  const hasErrorContainer = containers.some(
+    (container) => container.status === "error"
+  );
   if (hasErrorContainer) {
     return "error";
   }

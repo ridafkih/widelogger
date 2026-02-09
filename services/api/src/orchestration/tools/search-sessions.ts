@@ -1,13 +1,17 @@
-import { z } from "zod";
 import { tool } from "ai";
+import { z } from "zod";
 import { searchSessionsWithProject } from "../../repositories/session.repository";
 import { resolveWorkspacePathBySession } from "../../shared/path-resolver";
-import { isOpencodeMessage, extractTextFromParts } from "../opencode-messages";
 import type { OpencodeClient } from "../../types/dependencies";
+import { extractTextFromParts, isOpencodeMessage } from "../opencode-messages";
 
 const inputSchema = z.object({
   query: z.string().describe("The search query to find relevant sessions"),
-  limit: z.number().optional().default(5).describe("Maximum number of results to return"),
+  limit: z
+    .number()
+    .optional()
+    .default(5)
+    .describe("Maximum number of results to return"),
 });
 
 export function createSearchSessionsTool(opencode: OpencodeClient) {
@@ -21,7 +25,9 @@ export function createSearchSessionsTool(opencode: OpencodeClient) {
       const rows = await searchSessionsWithProject({ query, limit });
 
       const messagePromises = rows.map(async (row) => {
-        if (!row.opencodeSessionId) return null;
+        if (!row.opencodeSessionId) {
+          return null;
+        }
         try {
           const directory = await resolveWorkspacePathBySession(row.id);
           const response = await opencode.session.messages({
@@ -46,7 +52,9 @@ export function createSearchSessionsTool(opencode: OpencodeClient) {
       }> = [];
 
       for (let i = 0; i < rows.length; i++) {
-        if (results.length >= searchLimit) break;
+        if (results.length >= searchLimit) {
+          break;
+        }
 
         const row = rows[i]!;
         let relevantContent = "";
@@ -63,7 +71,9 @@ export function createSearchSessionsTool(opencode: OpencodeClient) {
 
         const rawMessages = allMessages[i];
         if (rawMessages) {
-          const messages = Array.isArray(rawMessages) ? rawMessages.filter(isOpencodeMessage) : [];
+          const messages = Array.isArray(rawMessages)
+            ? rawMessages.filter(isOpencodeMessage)
+            : [];
 
           for (const msg of messages) {
             const text = extractTextFromParts(msg.parts);
@@ -71,7 +81,7 @@ export function createSearchSessionsTool(opencode: OpencodeClient) {
               const index = text.toLowerCase().indexOf(queryLower);
               const start = Math.max(0, index - 50);
               const end = Math.min(text.length, index + query.length + 50);
-              relevantContent = "..." + text.slice(start, end) + "...";
+              relevantContent = `...${text.slice(start, end)}...`;
               score = 1.0;
               break;
             }

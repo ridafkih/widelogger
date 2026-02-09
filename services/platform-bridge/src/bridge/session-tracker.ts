@@ -1,11 +1,11 @@
-import { eq, and, sql } from "drizzle-orm";
 import { db } from "@lab/database/client";
 import {
-  platformChatMappings,
   type PlatformChatMapping,
+  platformChatMappings,
 } from "@lab/database/schema/platform-chat-mappings";
-import type { PlatformType } from "../types/messages";
+import { and, eq, sql } from "drizzle-orm";
 import { config } from "../config/environment";
+import type { PlatformType } from "../types/messages";
 
 interface ChatMapping {
   sessionId: string;
@@ -14,7 +14,10 @@ interface ChatMapping {
 }
 
 class SessionTracker {
-  async getMapping(platform: PlatformType, chatId: string): Promise<ChatMapping | null> {
+  async getMapping(
+    platform: PlatformType,
+    chatId: string
+  ): Promise<ChatMapping | null> {
     const [mapping] = await db
       .select({
         sessionId: platformChatMappings.sessionId,
@@ -25,11 +28,13 @@ class SessionTracker {
       .where(
         and(
           eq(platformChatMappings.platform, platform),
-          eq(platformChatMappings.platformChatId, chatId),
-        ),
+          eq(platformChatMappings.platformChatId, chatId)
+        )
       );
 
-    if (!mapping) return null;
+    if (!mapping) {
+      return null;
+    }
 
     const now = Date.now();
     const lastActivity = mapping.lastActivityAt.getTime();
@@ -45,7 +50,7 @@ class SessionTracker {
     chatId: string,
     sessionId: string,
     userId?: string,
-    threadId?: string,
+    threadId?: string
   ): Promise<void> {
     await db
       .insert(platformChatMappings)
@@ -57,7 +62,10 @@ class SessionTracker {
         sessionId,
       })
       .onConflictDoUpdate({
-        target: [platformChatMappings.platform, platformChatMappings.platformChatId],
+        target: [
+          platformChatMappings.platform,
+          platformChatMappings.platformChatId,
+        ],
         set: {
           sessionId,
           platformUserId: userId,
@@ -74,8 +82,8 @@ class SessionTracker {
       .where(
         and(
           eq(platformChatMappings.platform, platform),
-          eq(platformChatMappings.platformChatId, chatId),
-        ),
+          eq(platformChatMappings.platformChatId, chatId)
+        )
       );
   }
 
@@ -85,12 +93,14 @@ class SessionTracker {
       .where(
         and(
           eq(platformChatMappings.platform, platform),
-          eq(platformChatMappings.platformChatId, chatId),
-        ),
+          eq(platformChatMappings.platformChatId, chatId)
+        )
       );
   }
 
-  async getMappingsBySession(sessionId: string): Promise<PlatformChatMapping[]> {
+  async getMappingsBySession(
+    sessionId: string
+  ): Promise<PlatformChatMapping[]> {
     return db
       .select()
       .from(platformChatMappings)

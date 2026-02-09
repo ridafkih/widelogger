@@ -7,5 +7,7 @@ interface ActionGroupProps {
 }
 
 export function ActionGroup({ children, className }: ActionGroupProps) {
-  return <div className={cn("flex items-center gap-1", className)}>{children}</div>;
+  return (
+    <div className={cn("flex items-center gap-1", className)}>{children}</div>
+  );
 }

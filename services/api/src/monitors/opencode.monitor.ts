@@ -1,16 +1,22 @@
 import { TIMING } from "../config/constants";
-import { findRunningSessions, findSessionById } from "../repositories/session.repository";
-import { resolveWorkspacePathBySession } from "../shared/path-resolver";
-import { parseEvent, extractTextFromParts } from "../opencode/event-parser";
+import { widelog } from "../logging";
+import { extractTextFromParts, parseEvent } from "../opencode/event-parser";
 import {
-  publishSessionDiff,
   publishInferenceStatus,
   publishSessionCompletion,
+  publishSessionDiff,
 } from "../opencode/publisher-adapter";
-import { INFERENCE_STATUS, type SessionStateStore } from "../state/session-state-store";
-import type { OpencodeClient, Publisher } from "../types/dependencies";
+import {
+  findRunningSessions,
+  findSessionById,
+} from "../repositories/session.repository";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
-import { widelog } from "../logging";
+import { resolveWorkspacePathBySession } from "../shared/path-resolver";
+import {
+  INFERENCE_STATUS,
+  type SessionStateStore,
+} from "../state/session-state-store";
+import type { OpencodeClient, Publisher } from "../types/dependencies";
 
 class CompletionTimerManager {
   private readonly timers = new Map<string, NodeJS.Timeout>();
@@ -64,7 +70,7 @@ class SessionTracker {
     private readonly opencode: OpencodeClient,
     private readonly getPublisher: () => Publisher,
     private readonly completionTimerManager: CompletionTimerManager,
-    private readonly sessionStateStore: SessionStateStore,
+    private readonly sessionStateStore: SessionStateStore
   ) {
     this.monitor();
   }
@@ -99,10 +105,19 @@ class SessionTracker {
 
         const status = result.data[session.opencodeSessionId];
         const inferenceStatus =
-          status?.type === "busy" ? INFERENCE_STATUS.GENERATING : INFERENCE_STATUS.IDLE;
+          status?.type === "busy"
+            ? INFERENCE_STATUS.GENERATING
+            : INFERENCE_STATUS.IDLE;
 
-        await this.sessionStateStore.setInferenceStatus(this.labSessionId, inferenceStatus);
-        publishInferenceStatus(this.getPublisher(), this.labSessionId, inferenceStatus);
+        await this.sessionStateStore.setInferenceStatus(
+          this.labSessionId,
+          inferenceStatus
+        );
+        publishInferenceStatus(
+          this.getPublisher(),
+          this.labSessionId,
+          inferenceStatus
+        );
         widelog.set("inference_status", inferenceStatus);
         widelog.set("outcome", "success");
       } catch (error) {
@@ -123,16 +138,22 @@ class SessionTracker {
       try {
         const { stream } = await this.opencode.event.subscribe(
           { directory },
-          { signal: this.abortController.signal },
+          { signal: this.abortController.signal }
         );
-        if (!stream) return;
+        if (!stream) {
+          return;
+        }
 
         for await (const event of stream) {
-          if (!this.isActive) break;
+          if (!this.isActive) {
+            break;
+          }
           await this.processEvent(event);
         }
       } catch (error) {
-        if (!this.isActive) return;
+        if (!this.isActive) {
+          return;
+        }
         widelog.context(() => {
           widelog.set("event_name", "opencode_monitor.session_tracker_error");
           widelog.set("session_id", this.labSessionId);
@@ -142,14 +163,18 @@ class SessionTracker {
           widelog.flush();
         });
 
-        await new Promise((resolve) => setTimeout(resolve, TIMING.OPENCODE_MONITOR_RETRY_MS));
+        await new Promise((resolve) =>
+          setTimeout(resolve, TIMING.OPENCODE_MONITOR_RETRY_MS)
+        );
       }
     }
   }
 
   private async processEvent(rawEvent: unknown): Promise<void> {
     const event = parseEvent(rawEvent);
-    if (!event) return;
+    if (!event) {
+      return;
+    }
 
     switch (event.type) {
       case "session.diff":
@@ -157,11 +182,16 @@ class SessionTracker {
         break;
 
       case "message.updated":
-        await this.handleMessageUpdate(extractTextFromParts(event.properties.parts));
+        await this.handleMessageUpdate(
+          extractTextFromParts(event.properties.parts)
+        );
         break;
 
       case "message.part.updated":
-        if (event.properties.part.type === "text" && event.properties.part.text) {
+        if (
+          event.properties.part.type === "text" &&
+          event.properties.part.text
+        ) {
           await this.handleMessageUpdate(event.properties.part.text);
         }
         break;
@@ -175,7 +205,10 @@ class SessionTracker {
 
   private async handleMessageUpdate(text: string | null): Promise<void> {
     this.completionTimerManager.clearSession(this.labSessionId);
-    await this.sessionStateStore.setInferenceStatus(this.labSessionId, INFERENCE_STATUS.GENERATING);
+    await this.sessionStateStore.setInferenceStatus(
+      this.labSessionId,
+      INFERENCE_STATUS.GENERATING
+    );
     if (text) {
       await this.sessionStateStore.setLastMessage(this.labSessionId, text);
     }
@@ -183,13 +216,20 @@ class SessionTracker {
       this.getPublisher(),
       this.labSessionId,
       INFERENCE_STATUS.GENERATING,
-      text ?? undefined,
+      text ?? undefined
     );
   }
 
   private async handleSessionInactive(): Promise<void> {
-    await this.sessionStateStore.setInferenceStatus(this.labSessionId, INFERENCE_STATUS.IDLE);
-    publishInferenceStatus(this.getPublisher(), this.labSessionId, INFERENCE_STATUS.IDLE);
+    await this.sessionStateStore.setInferenceStatus(
+      this.labSessionId,
+      INFERENCE_STATUS.IDLE
+    );
+    publishInferenceStatus(
+      this.getPublisher(),
+      this.labSessionId,
+      INFERENCE_STATUS.IDLE
+    );
     this.completionTimerManager.scheduleCompletion(this.labSessionId);
   }
 }
@@ -198,13 +238,13 @@ export class OpenCodeMonitor {
   private readonly trackers = new Map<string, SessionTracker>();
   private readonly abortController = new AbortController();
   private readonly completionTimerManager = new CompletionTimerManager(() =>
-    this.deferredPublisher.get(),
+    this.deferredPublisher.get()
   );
 
   constructor(
     private readonly opencode: OpencodeClient,
     private readonly deferredPublisher: DeferredPublisher,
-    private readonly sessionStateStore: SessionStateStore,
+    private readonly sessionStateStore: SessionStateStore
   ) {}
 
   async start(): Promise<void> {
@@ -238,8 +278,12 @@ export class OpenCodeMonitor {
 
   private async runSyncLoop(): Promise<void> {
     while (!this.abortController.signal.aborted) {
-      await new Promise((resolve) => setTimeout(resolve, TIMING.OPENCODE_SYNC_INTERVAL_MS));
-      if (this.abortController.signal.aborted) return;
+      await new Promise((resolve) =>
+        setTimeout(resolve, TIMING.OPENCODE_SYNC_INTERVAL_MS)
+      );
+      if (this.abortController.signal.aborted) {
+        return;
+      }
 
       try {
         await this.syncSessions();
@@ -276,8 +320,8 @@ export class OpenCodeMonitor {
             this.opencode,
             () => this.deferredPublisher.get(),
             this.completionTimerManager,
-            this.sessionStateStore,
-          ),
+            this.sessionStateStore
+          )
         );
       }
     }

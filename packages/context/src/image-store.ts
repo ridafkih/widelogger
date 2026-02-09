@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { resizeImage } from "@lab/ffmpeg";
 
 export interface ImageStoreConfig {
@@ -35,8 +35,8 @@ export interface StoreResult {
  * Supports automatic resizing to reduce token usage when images are used with Claude.
  */
 export class ImageStore {
-  private s3: S3Client;
-  private config: ImageStoreConfig;
+  private readonly s3: S3Client;
+  private readonly config: ImageStoreConfig;
 
   constructor(config: ImageStoreConfig) {
     this.config = config;
@@ -58,7 +58,10 @@ export class ImageStore {
    * @param options - Storage options
    * @returns URL and metadata about the stored image
    */
-  async store(buffer: Buffer, options: StoreOptions = {}): Promise<StoreResult> {
+  async store(
+    buffer: Buffer,
+    options: StoreOptions = {}
+  ): Promise<StoreResult> {
     const {
       resize = true,
       maxDimension = 1568,
@@ -93,7 +96,7 @@ export class ImageStore {
         Key: key,
         Body: finalBuffer,
         ContentType: contentType,
-      }),
+      })
     );
 
     return {
@@ -114,7 +117,10 @@ export class ImageStore {
    * @param options - Storage options
    * @returns URL and metadata about the stored image
    */
-  async storeBase64(base64: string, options: StoreOptions = {}): Promise<StoreResult> {
+  async storeBase64(
+    base64: string,
+    options: StoreOptions = {}
+  ): Promise<StoreResult> {
     const buffer = Buffer.from(base64, "base64");
     return this.store(buffer, options);
   }
@@ -132,7 +138,7 @@ export function createImageStoreFromEnv(): ImageStore | undefined {
   const bucket = process.env.RUSTFS_BUCKET;
   const publicUrl = process.env.RUSTFS_PUBLIC_URL;
 
-  if (!endpoint || !accessKey || !secretKey || !bucket || !publicUrl) {
+  if (!(endpoint && accessKey && secretKey && bucket && publicUrl)) {
     return undefined;
   }
 

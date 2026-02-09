@@ -1,10 +1,16 @@
 "use client";
 
-import { createContext, type HTMLProps, use, useState, type ReactNode } from "react";
-import { ChevronRight, Box, Plus, Loader2 } from "lucide-react";
+import clsx from "clsx";
+import { Box, ChevronRight, Loader2, Plus } from "lucide-react";
+import {
+  createContext,
+  type HTMLProps,
+  type ReactNode,
+  use,
+  useState,
+} from "react";
 import { tv } from "tailwind-variants";
 import { IconButton } from "./icon-button";
-import clsx from "clsx";
 
 const ProjectNavigatorContext = createContext<{
   expanded: boolean;
@@ -15,15 +21,17 @@ const ProjectNavigatorContext = createContext<{
 function useProjectNavigator() {
   const context = use(ProjectNavigatorContext);
   if (!context) {
-    throw new Error("ProjectNavigator components must be used within ProjectNavigator.List");
+    throw new Error(
+      "ProjectNavigator components must be used within ProjectNavigator.List"
+    );
   }
   return context;
 }
 
-type ListProps = {
+interface ListProps {
   children: ReactNode;
   defaultExpanded?: boolean;
-};
+}
 
 function ProjectNavigatorList({ children, defaultExpanded = true }: ListProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -36,13 +44,15 @@ function ProjectNavigatorList({ children, defaultExpanded = true }: ListProps) {
         setExpanded,
       }}
     >
-      <div className="flex flex-col gap-px bg-border select-none">{children}</div>
+      <div className="flex select-none flex-col gap-px bg-border">
+        {children}
+      </div>
     </ProjectNavigatorContext>
   );
 }
 
 const chevron = tv({
-  base: "text-text-muted shrink-0 group-hover:text-text-secondary",
+  base: "shrink-0 text-text-muted group-hover:text-text-secondary",
   variants: {
     expanded: {
       true: "rotate-90",
@@ -50,26 +60,29 @@ const chevron = tv({
   },
 });
 
-type HeaderProps = {
+interface HeaderProps {
   children: ReactNode;
   onAdd?: () => void;
-};
+}
 
 function ProjectNavigatorHeader({ children, onAdd }: HeaderProps) {
   const { expanded, toggle, setExpanded } = useProjectNavigator();
 
   return (
-    <div onClick={toggle} className="group flex items-center gap-2 px-3 py-1.5 bg-bg-muted">
-      <ChevronRight size={14} className={chevron({ expanded })} />
-      <Box size={14} className="text-text-secondary shrink-0" />
+    <div
+      className="group flex items-center gap-2 bg-bg-muted px-3 py-1.5"
+      onClick={toggle}
+    >
+      <ChevronRight className={chevron({ expanded })} size={14} />
+      <Box className="shrink-0 text-text-secondary" size={14} />
       {children}
       <IconButton
+        className="ml-auto"
         onClick={(event) => {
           event.stopPropagation();
           setExpanded(true);
           onAdd?.();
         }}
-        className="ml-auto"
       >
         <Plus size={14} />
       </IconButton>
@@ -87,10 +100,10 @@ function ProjectNavigatorHeaderCount({ children }: { children: ReactNode }) {
 
 function ProjectNavigatorHeaderSkeleton() {
   return (
-    <div className="flex flex-col gap-px bg-border select-none">
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-bg-muted">
-        <ChevronRight size={14} className="text-text-muted shrink-0" />
-        <Loader2 size={14} className="animate-spin text-text-muted shrink-0" />
+    <div className="flex select-none flex-col gap-px bg-border">
+      <div className="flex items-center gap-2 bg-bg-muted px-3 py-1.5">
+        <ChevronRight className="shrink-0 text-text-muted" size={14} />
+        <Loader2 className="shrink-0 animate-spin text-text-muted" size={14} />
         <span className="text-text-muted">Loading...</span>
       </div>
     </div>
@@ -98,7 +111,7 @@ function ProjectNavigatorHeaderSkeleton() {
 }
 
 const listItem = tv({
-  base: "flex items-center gap-2 px-3 py-1.5 cursor-pointer bg-bg",
+  base: "flex cursor-pointer items-center gap-2 bg-bg px-3 py-1.5",
   variants: {
     selected: {
       true: "bg-bg-hover",
@@ -110,20 +123,31 @@ const listItem = tv({
   },
 });
 
-type ItemProps = {
+interface ItemProps {
   children: ReactNode;
   selected?: boolean;
   onClick?: () => void;
   onMouseDown?: () => void;
-};
+}
 
-function ProjectNavigatorItem({ children, selected, onClick, onMouseDown }: ItemProps) {
+function ProjectNavigatorItem({
+  children,
+  selected,
+  onClick,
+  onMouseDown,
+}: ItemProps) {
   const { expanded } = useProjectNavigator();
 
-  if (!expanded) return null;
+  if (!expanded) {
+    return null;
+  }
 
   return (
-    <div onClick={onClick} onMouseDown={onMouseDown} className={listItem({ selected })}>
+    <div
+      className={listItem({ selected })}
+      onClick={onClick}
+      onMouseDown={onMouseDown}
+    >
       {children}
     </div>
   );
@@ -132,18 +156,22 @@ function ProjectNavigatorItem({ children, selected, onClick, onMouseDown }: Item
 function ProjectNavigatorItemSkeleton({ children }: { children?: ReactNode }) {
   const { expanded } = useProjectNavigator();
 
-  if (!expanded) return null;
+  if (!expanded) {
+    return null;
+  }
 
   return (
     <div className={listItem({ selected: false })}>
-      <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />
+      <Loader2 className="shrink-0 animate-spin text-text-muted" size={14} />
       {children}
     </div>
   );
 }
 
 function ProjectNavigatorItemSkeletonBlock() {
-  return <div className="h-3 w-full max-w-10 rounded bg-bg-hover animate-pulse" />;
+  return (
+    <div className="h-3 w-full max-w-10 animate-pulse rounded bg-bg-hover" />
+  );
 }
 
 function ProjectNavigatorItemTitle({
@@ -155,11 +183,15 @@ function ProjectNavigatorItemTitle({
 }) {
   if (empty) {
     return (
-      <span className="text-text-muted italic truncate block overflow-hidden">Unnamed Session</span>
+      <span className="block overflow-hidden truncate text-text-muted italic">
+        Unnamed Session
+      </span>
     );
   }
 
-  return <span className="text-text truncate block overflow-hidden">{children}</span>;
+  return (
+    <span className="block overflow-hidden truncate text-text">{children}</span>
+  );
 }
 
 function ProjectNavigatorItemDescription({
@@ -168,7 +200,10 @@ function ProjectNavigatorItemDescription({
   ...props
 }: { children?: ReactNode } & HTMLProps<HTMLSpanElement>) {
   return (
-    <span {...props} className={clsx("text-text-muted text-right truncate", className)}>
+    <span
+      {...props}
+      className={clsx("truncate text-right text-text-muted", className)}
+    >
       {children}
     </span>
   );

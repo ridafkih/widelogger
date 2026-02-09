@@ -1,13 +1,13 @@
-import type { Handler, NoRouteContext } from "../../types/route";
+import { noContentResponse } from "@lab/http-utilities";
+import { z } from "zod";
+import { widelog } from "../../logging";
 import {
+  deleteGitHubSettings,
   getGitHubSettings,
   saveGitHubSettings,
-  deleteGitHubSettings,
 } from "../../repositories/github-settings.repository";
 import { parseRequestBody } from "../../shared/validation";
-import { noContentResponse } from "@lab/http-utilities";
-import { widelog } from "../../logging";
-import { z } from "zod";
+import type { Handler, NoRouteContext } from "../../types/route";
 
 const settingsSchema = z.object({
   pat: z.string().optional(),

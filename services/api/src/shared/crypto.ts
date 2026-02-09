@@ -8,11 +8,15 @@ const AUTH_TAG_LENGTH = 16;
 function getEncryptionKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) {
-    throw new ConfigurationError("ENCRYPTION_KEY environment variable is required for encryption");
+    throw new ConfigurationError(
+      "ENCRYPTION_KEY environment variable is required for encryption"
+    );
   }
   const keyBuffer = Buffer.from(key, "base64");
   if (keyBuffer.length !== 32) {
-    throw new ConfigurationError("ENCRYPTION_KEY must be a 32-byte key encoded as base64");
+    throw new ConfigurationError(
+      "ENCRYPTION_KEY must be a 32-byte key encoded as base64"
+    );
   }
   return keyBuffer;
 }
@@ -25,9 +29,14 @@ interface EncryptedData {
 export function encrypt(plaintext: string): EncryptedData {
   const key = getEncryptionKey();
   const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
+  const cipher = createCipheriv(ALGORITHM, key, iv, {
+    authTagLength: AUTH_TAG_LENGTH,
+  });
 
-  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, "utf8"),
+    cipher.final(),
+  ]);
   const authTag = cipher.getAuthTag();
 
   return {
@@ -44,8 +53,13 @@ export function decrypt(encrypted: string, nonce: string): string {
   const authTag = encryptedBuffer.subarray(-AUTH_TAG_LENGTH);
   const ciphertext = encryptedBuffer.subarray(0, -AUTH_TAG_LENGTH);
 
-  const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
+  const decipher = createDecipheriv(ALGORITHM, key, iv, {
+    authTagLength: AUTH_TAG_LENGTH,
+  });
   decipher.setAuthTag(authTag);
 
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+  return Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]).toString("utf8");
 }

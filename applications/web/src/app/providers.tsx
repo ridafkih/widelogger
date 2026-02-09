@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useMemo, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useMemo } from "react";
 import { SWRConfig } from "swr";
 import { MultiplayerProvider } from "@/lib/multiplayer";
 
@@ -30,12 +30,18 @@ export function Providers({ children, fallback = {} }: ProvidersProps) {
   const swrContent = <SWRConfig value={swrValue}>{children}</SWRConfig>;
 
   if (!wsUrl) {
-    return <MultiplayerEnabledContext value={false}>{swrContent}</MultiplayerEnabledContext>;
+    return (
+      <MultiplayerEnabledContext value={false}>
+        {swrContent}
+      </MultiplayerEnabledContext>
+    );
   }
 
   return (
     <MultiplayerEnabledContext value={true}>
-      <MultiplayerProvider config={{ url: wsUrl }}>{swrContent}</MultiplayerProvider>
+      <MultiplayerProvider config={{ url: wsUrl }}>
+        {swrContent}
+      </MultiplayerProvider>
     </MultiplayerEnabledContext>
   );
 }

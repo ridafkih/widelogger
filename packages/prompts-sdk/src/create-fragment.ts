@@ -1,4 +1,4 @@
-import type { PromptFragment, CreateFragmentOptions } from "./types";
+import type { CreateFragmentOptions, PromptFragment } from "./types";
 
 /**
  * Create a prompt fragment from options.
@@ -17,7 +17,7 @@ import type { PromptFragment, CreateFragmentOptions } from "./types";
  * ```
  */
 export function createFragment<TContext>(
-  options: CreateFragmentOptions<TContext>,
+  options: CreateFragmentOptions<TContext>
 ): PromptFragment<TContext> {
   return {
     id: options.id,

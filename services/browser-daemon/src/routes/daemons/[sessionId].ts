@@ -1,7 +1,10 @@
 import { NotFoundError } from "../../shared/errors";
 import type { RouteHandler } from "../../types/route";
 
-export const GET: RouteHandler = ({ params, context: { daemonManager, widelog } }) => {
+export const GET: RouteHandler = ({
+  params,
+  context: { daemonManager, widelog },
+}) => {
   const sessionId = params.sessionId!;
   widelog.set("session.id", sessionId);
 
@@ -17,7 +20,10 @@ export const GET: RouteHandler = ({ params, context: { daemonManager, widelog } 
   });
 };
 
-export const POST: RouteHandler = async ({ params, context: { daemonManager, widelog } }) => {
+export const POST: RouteHandler = async ({
+  params,
+  context: { daemonManager, widelog },
+}) => {
   const sessionId = params.sessionId!;
   widelog.set("session.id", sessionId);
 
@@ -25,7 +31,10 @@ export const POST: RouteHandler = async ({ params, context: { daemonManager, wid
   return Response.json(result);
 };
 
-export const DELETE: RouteHandler = ({ params, context: { daemonManager, widelog } }) => {
+export const DELETE: RouteHandler = ({
+  params,
+  context: { daemonManager, widelog },
+}) => {
   const sessionId = params.sessionId!;
   widelog.set("session.id", sessionId);
 

@@ -1,27 +1,36 @@
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "../utils/cn";
-import { Heading } from "./heading";
 import { Copy } from "./copy";
+import { Heading } from "./heading";
 
-export type EmptyStateProps = {
+export interface EmptyStateProps {
   icon?: ReactNode;
   title: string;
   description?: string;
   action?: ReactNode;
   className?: string;
-};
+}
 
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  className,
+}: EmptyStateProps) {
   return (
     <div
-      className={cn("flex flex-col items-center justify-center py-12 px-4 text-center", className)}
+      className={cn(
+        "flex flex-col items-center justify-center px-4 py-12 text-center",
+        className
+      )}
     >
       {icon && <span className="mb-4 text-muted-foreground">{icon}</span>}
       <Heading as="h3" size="lg">
         {title}
       </Heading>
       {description && (
-        <Copy size="sm" muted className="mt-1 max-w-sm">
+        <Copy className="mt-1 max-w-sm" muted size="sm">
           {description}
         </Copy>
       )}

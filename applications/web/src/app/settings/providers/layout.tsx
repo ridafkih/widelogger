@@ -3,17 +3,17 @@
 import type { ReactNode } from "react";
 import { ProvidersList } from "@/components/settings/providers-list";
 
-type ProvidersLayoutProps = {
+interface ProvidersLayoutProps {
   children: ReactNode;
-};
+}
 
 export default function ProvidersLayout({ children }: ProvidersLayoutProps) {
   return (
-    <div className="flex flex-1 min-h-0 overflow-hidden">
-      <div className="shrink-0 min-w-60 border-r border-border overflow-y-auto">
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="min-w-60 shrink-0 overflow-y-auto border-border border-r">
         <ProvidersList.View />
       </div>
-      <div className="flex-1 min-w-0 overflow-y-auto">{children}</div>
+      <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }

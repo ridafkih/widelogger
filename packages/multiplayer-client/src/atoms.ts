@@ -14,5 +14,5 @@ export const connectionStateAtom = atom<ConnectionState>({
 });
 
 export const channelStateFamily = atomFamily((_channel: string) =>
-  atom<ChannelState<unknown>>({ status: "connecting" }),
+  atom<ChannelState<unknown>>({ status: "connecting" })
 );

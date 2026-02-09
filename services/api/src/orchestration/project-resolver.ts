@@ -1,8 +1,8 @@
-import { z } from "zod";
 import type { Project } from "@lab/database/schema/projects";
+import { z } from "zod";
+import { NotFoundError, ValidationError } from "../shared/errors";
 import { complete } from "./llm";
 import { buildProjectResolutionPrompt } from "./prompts";
-import { NotFoundError, ValidationError } from "../shared/errors";
 
 const resolutionResponseSchema = z.object({
   projectId: z.string(),
@@ -22,7 +22,9 @@ interface ProjectInfo {
 function formatProjectContext(projects: ProjectInfo[]): string {
   return projects
     .map((project, index) => {
-      const description = project.description ? `\n   ${project.description}` : "";
+      const description = project.description
+        ? `\n   ${project.description}`
+        : "";
       return `${index + 1}. "${project.name}" (ID: ${project.id})${description}`;
     })
     .join("\n\n");
@@ -48,23 +50,33 @@ function parseResolutionResponse(response: string): ProjectResolutionResult {
 
   const parseResult = resolutionResponseSchema.safeParse(rawJson);
   if (!parseResult.success) {
-    throw new ValidationError(`Failed to parse LLM response: ${parseResult.error.message}`);
+    throw new ValidationError(
+      `Failed to parse LLM response: ${parseResult.error.message}`
+    );
   }
 
   return parseResult.data;
 }
 
-function findProjectById(projects: Project[], projectId: string): Project | undefined {
+function findProjectById(
+  projects: Project[],
+  projectId: string
+): Project | undefined {
   return projects.find((project) => project.id === projectId);
 }
 
-function findProjectByName(projects: Project[], projectName: string): Project | undefined {
-  return projects.find((project) => project.name.toLowerCase() === projectName.toLowerCase());
+function findProjectByName(
+  projects: Project[],
+  projectName: string
+): Project | undefined {
+  return projects.find(
+    (project) => project.name.toLowerCase() === projectName.toLowerCase()
+  );
 }
 
 function validateProjectExists(
   result: ProjectResolutionResult,
-  projects: Project[],
+  projects: Project[]
 ): ProjectResolutionResult {
   const matchedById = findProjectById(projects, result.projectId);
   if (matchedById) {
@@ -73,10 +85,17 @@ function validateProjectExists(
 
   const matchedByName = findProjectByName(projects, result.projectName);
   if (matchedByName) {
-    return { ...result, projectId: matchedByName.id, projectName: matchedByName.name };
+    return {
+      ...result,
+      projectId: matchedByName.id,
+      projectName: matchedByName.name,
+    };
   }
 
-  throw new NotFoundError("Resolved project", `${result.projectName} (${result.projectId})`);
+  throw new NotFoundError(
+    "Resolved project",
+    `${result.projectName} (${result.projectId})`
+  );
 }
 
 function resolveSingleProject(project: Project): ProjectResolutionResult {
@@ -90,7 +109,7 @@ function resolveSingleProject(project: Project): ProjectResolutionResult {
 
 export async function resolveProject(
   task: string,
-  projects: Project[],
+  projects: Project[]
 ): Promise<ProjectResolutionResult> {
   const firstProject = projects[0];
   if (!firstProject) {

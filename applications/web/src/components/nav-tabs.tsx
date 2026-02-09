@@ -1,12 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import { tv } from "tailwind-variants";
 
 const tabStyles = tv({
-  base: "px-3 py-1 text-xs border-b-2 -mb-px",
+  base: "-mb-px border-b-2 px-3 py-1 text-xs",
   variants: {
     active: {
       true: "border-text text-text",
@@ -15,14 +15,14 @@ const tabStyles = tv({
   },
 });
 
-type TabItem = {
+interface TabItem {
   label: string;
   href: string;
   match?: string;
-};
+}
 
 function NavTabsList({ children }: { children: ReactNode }) {
-  return <div className="flex border-b border-border">{children}</div>;
+  return <div className="flex border-border border-b">{children}</div>;
 }
 
 function NavTabsTab({
@@ -38,7 +38,11 @@ function NavTabsTab({
   const isActive = match ? pathname.startsWith(match) : pathname === href;
 
   return (
-    <Link draggable={false} href={href} className={tabStyles({ active: isActive })}>
+    <Link
+      className={tabStyles({ active: isActive })}
+      draggable={false}
+      href={href}
+    >
       {children}
     </Link>
   );
@@ -48,7 +52,7 @@ function NavTabsFromItems({ items }: { items: TabItem[] }) {
   return (
     <NavTabsList>
       {items.map(({ href, label, match }) => (
-        <NavTabsTab key={href} href={href} match={match}>
+        <NavTabsTab href={href} key={href} match={match}>
           {label}
         </NavTabsTab>
       ))}

@@ -1,19 +1,33 @@
-import * as net from "node:net";
 import * as fs from "node:fs";
-import { BrowserManager } from "agent-browser/dist/browser.js";
-import { StreamServer } from "agent-browser/dist/stream-server.js";
+import * as net from "node:net";
 import { executeCommand } from "agent-browser/dist/actions.js";
-import { parseCommand, serializeResponse, errorResponse } from "agent-browser/dist/protocol.js";
+import { BrowserManager } from "agent-browser/dist/browser.js";
+import {
+  errorResponse,
+  parseCommand,
+  serializeResponse,
+} from "agent-browser/dist/protocol.js";
+import { StreamServer } from "agent-browser/dist/stream-server.js";
 import type { DaemonWorkerConfig } from "./daemon-process";
 
-declare var self: Worker;
+declare let self: Worker;
 
 function isDaemonWorkerConfig(value: unknown): value is DaemonWorkerConfig {
-  if (typeof value !== "object" || value === null) return false;
-  if (!("sessionId" in value) || typeof value.sessionId !== "string") return false;
-  if (!("streamPort" in value) || typeof value.streamPort !== "number") return false;
-  if (!("cdpPort" in value) || typeof value.cdpPort !== "number") return false;
-  if (!("socketDir" in value) || typeof value.socketDir !== "string") return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("sessionId" in value) || typeof value.sessionId !== "string") {
+    return false;
+  }
+  if (!("streamPort" in value) || typeof value.streamPort !== "number") {
+    return false;
+  }
+  if (!("cdpPort" in value) || typeof value.cdpPort !== "number") {
+    return false;
+  }
+  if (!("socketDir" in value) || typeof value.socketDir !== "string") {
+    return false;
+  }
   return true;
 }
 
@@ -36,7 +50,10 @@ const setupPageEvents = (sessionId: string, page: BrowserPage) => {
         msg_type: msg.type(),
       },
     });
-    postMessage({ type: "browser:console", data: { level: msg.type(), text: msg.text() } });
+    postMessage({
+      type: "browser:console",
+      data: { level: msg.type(), text: msg.text() },
+    });
   });
 
   page.on("pageerror", (error) => {
@@ -55,7 +72,11 @@ const setupPageEvents = (sessionId: string, page: BrowserPage) => {
   page.on("request", (request) => {
     self.postMessage({
       type: "log",
-      data: { level: "info", event_name: "daemon_worker.request", session_id: sessionId },
+      data: {
+        level: "info",
+        event_name: "daemon_worker.request",
+        session_id: sessionId,
+      },
     });
     postMessage({
       type: "browser:request",
@@ -66,7 +87,11 @@ const setupPageEvents = (sessionId: string, page: BrowserPage) => {
   page.on("response", (response) => {
     self.postMessage({
       type: "log",
-      data: { level: "info", event_name: "daemon_worker.response", session_id: sessionId },
+      data: {
+        level: "info",
+        event_name: "daemon_worker.response",
+        session_id: sessionId,
+      },
     });
     postMessage({
       type: "browser:response",
@@ -92,7 +117,11 @@ const setupPageEvents = (sessionId: string, page: BrowserPage) => {
   page.on("load", () => {
     self.postMessage({
       type: "log",
-      data: { level: "info", event_name: "daemon_worker.page_loaded", session_id: sessionId },
+      data: {
+        level: "info",
+        event_name: "daemon_worker.page_loaded",
+        session_id: sessionId,
+      },
     });
     postMessage({ type: "browser:loaded" });
   });
@@ -100,7 +129,11 @@ const setupPageEvents = (sessionId: string, page: BrowserPage) => {
   page.on("close", () => {
     self.postMessage({
       type: "log",
-      data: { level: "info", event_name: "daemon_worker.page_closed", session_id: sessionId },
+      data: {
+        level: "info",
+        event_name: "daemon_worker.page_closed",
+        session_id: sessionId,
+      },
     });
     postMessage({ type: "browser:closed" });
   });
@@ -110,7 +143,9 @@ const setupBrowserEvents = (sessionId: string, browser: BrowserManager) => {
   const trackedPages = new Set<BrowserPage>();
 
   const trackPage = (page: BrowserPage) => {
-    if (trackedPages.has(page)) return;
+    if (trackedPages.has(page)) {
+      return;
+    }
     trackedPages.add(page);
     setupPageEvents(sessionId, page);
   };
@@ -157,7 +192,7 @@ const setupBrowserEvents = (sessionId: string, browser: BrowserManager) => {
 const createSocketServer = (
   sessionId: string,
   socketPath: string,
-  browser: BrowserManager,
+  browser: BrowserManager
 ): net.Server => {
   if (fs.existsSync(socketPath)) {
     fs.unlinkSync(socketPath);
@@ -172,24 +207,29 @@ const createSocketServer = (
       buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        if (!line.trim()) continue;
+        if (!line.trim()) {
+          continue;
+        }
 
         try {
           const parseResult = parseCommand(line);
 
           if (!parseResult.success) {
             socket.write(
-              serializeResponse(errorResponse(parseResult.id ?? "unknown", parseResult.error)) +
-                "\n",
+              `${serializeResponse(
+                errorResponse(parseResult.id ?? "unknown", parseResult.error)
+              )}\n`
             );
             continue;
           }
 
           const response = await executeCommand(parseResult.command, browser);
-          socket.write(serializeResponse(response) + "\n");
+          socket.write(`${serializeResponse(response)}\n`);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          socket.write(serializeResponse(errorResponse("error", message)) + "\n");
+          socket.write(
+            `${serializeResponse(errorResponse("error", message))}\n`
+          );
         }
       }
     });
@@ -263,11 +303,19 @@ const startWorker = async (config: DaemonWorkerConfig) => {
 
     self.postMessage({
       type: "log",
-      data: { level: "info", event_name: "daemon_worker.browser_launched", session_id: sessionId },
+      data: {
+        level: "info",
+        event_name: "daemon_worker.browser_launched",
+        session_id: sessionId,
+      },
     });
     setupBrowserEvents(sessionId, state.browser);
 
-    state.socketServer = createSocketServer(sessionId, socketPath, state.browser);
+    state.socketServer = createSocketServer(
+      sessionId,
+      socketPath,
+      state.browser
+    );
 
     state.streamServer = new StreamServer(state.browser, streamPort);
     await state.streamServer.start();
@@ -328,19 +376,29 @@ const startWorker = async (config: DaemonWorkerConfig) => {
             type: "commandResponse",
             data: {
               requestId,
-              response: { id: command.id, success: false, error: "Browser not initialized" },
+              response: {
+                id: command.id,
+                success: false,
+                error: "Browser not initialized",
+              },
             },
           });
           break;
         }
         try {
           const response = await executeCommand(command, state.browser);
-          postMessage({ type: "commandResponse", data: { requestId, response } });
+          postMessage({
+            type: "commandResponse",
+            data: { requestId, response },
+          });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           postMessage({
             type: "commandResponse",
-            data: { requestId, response: { id: command.id, success: false, error: message } },
+            data: {
+              requestId,
+              response: { id: command.id, success: false, error: message },
+            },
           });
         }
         break;
@@ -349,16 +407,28 @@ const startWorker = async (config: DaemonWorkerConfig) => {
       case "terminate":
         self.postMessage({
           type: "log",
-          data: { level: "info", event_name: "daemon_worker.terminating", session_id: sessionId },
+          data: {
+            level: "info",
+            event_name: "daemon_worker.terminating",
+            session_id: sessionId,
+          },
         });
         state.socketServer?.close();
         state.streamServer?.stop();
         state.browser?.close();
         try {
-          if (fs.existsSync(socketPath)) fs.unlinkSync(socketPath);
-          if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
-          if (fs.existsSync(streamPortFile)) fs.unlinkSync(streamPortFile);
-          if (fs.existsSync(cdpPortFile)) fs.unlinkSync(cdpPortFile);
+          if (fs.existsSync(socketPath)) {
+            fs.unlinkSync(socketPath);
+          }
+          if (fs.existsSync(pidFile)) {
+            fs.unlinkSync(pidFile);
+          }
+          if (fs.existsSync(streamPortFile)) {
+            fs.unlinkSync(streamPortFile);
+          }
+          if (fs.existsSync(cdpPortFile)) {
+            fs.unlinkSync(cdpPortFile);
+          }
         } catch (error) {
           self.postMessage({
             type: "log",

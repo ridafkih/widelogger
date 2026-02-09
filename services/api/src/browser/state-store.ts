@@ -1,17 +1,19 @@
+import {
+  BrowserError,
+  BrowserSessionState,
+  CurrentState,
+  DesiredState,
+  type StateStoreOptions,
+} from "@lab/browser-protocol";
 import { db } from "@lab/database/client";
 import { browserSessions } from "@lab/database/schema/browser-sessions";
 import { sessions } from "@lab/database/schema/sessions";
-import { eq, isNull, inArray } from "drizzle-orm";
-import {
-  type StateStoreOptions,
-  BrowserSessionState,
-  DesiredState,
-  CurrentState,
-  BrowserError,
-} from "@lab/browser-protocol";
+import { eq, inArray, isNull } from "drizzle-orm";
 import { widelog } from "../logging";
 
-const mapDbToState = (session: typeof browserSessions.$inferSelect): BrowserSessionState => ({
+const mapDbToState = (
+  session: typeof browserSessions.$inferSelect
+): BrowserSessionState => ({
   sessionId: session.sessionId,
   desiredState: DesiredState.parse(session.desiredState),
   currentState: CurrentState.parse(session.currentState),
@@ -24,7 +26,9 @@ const mapDbToState = (session: typeof browserSessions.$inferSelect): BrowserSess
   updatedAt: session.updatedAt,
 });
 
-export const getState = async (sessionId: string): Promise<BrowserSessionState | null> => {
+export const getState = async (
+  sessionId: string
+): Promise<BrowserSessionState | null> => {
   const [session] = await db
     .select()
     .from(browserSessions)
@@ -69,7 +73,7 @@ export const setState = async (state: BrowserSessionState): Promise<void> => {
 
 export const setDesiredState = async (
   sessionId: string,
-  desiredState: DesiredState,
+  desiredState: DesiredState
 ): Promise<BrowserSessionState> => {
   const [parentSession] = await db
     .select({ id: sessions.id })
@@ -107,7 +111,7 @@ export const setDesiredState = async (
 export const setCurrentState = async (
   sessionId: string,
   currentState: CurrentState,
-  options: StateStoreOptions = {},
+  options: StateStoreOptions = {}
 ): Promise<BrowserSessionState> => {
   const updateData: Record<string, unknown> = {
     currentState,
@@ -142,7 +146,7 @@ export const setCurrentState = async (
 
 export const transitionState = async (
   sessionId: string,
-  transition: (current: BrowserSessionState) => BrowserSessionState,
+  transition: (current: BrowserSessionState) => BrowserSessionState
 ): Promise<BrowserSessionState> => {
   const current = await getState(sessionId);
   if (!current) {
@@ -165,7 +169,9 @@ export const getAllSessions = async (): Promise<BrowserSessionState[]> => {
 };
 
 export const deleteSession = async (sessionId: string): Promise<void> => {
-  await db.delete(browserSessions).where(eq(browserSessions.sessionId, sessionId));
+  await db
+    .delete(browserSessions)
+    .where(eq(browserSessions.sessionId, sessionId));
 };
 
 export const updateHeartbeat = async (sessionId: string): Promise<void> => {
@@ -183,7 +189,10 @@ export const updateHeartbeat = async (sessionId: string): Promise<void> => {
   }
 };
 
-export const setLastUrl = async (sessionId: string, url: string | null): Promise<void> => {
+export const setLastUrl = async (
+  sessionId: string,
+  url: string | null
+): Promise<void> => {
   const [session] = await db
     .update(browserSessions)
     .set({
@@ -213,7 +222,9 @@ export const cleanupOrphanedSessions = async (): Promise<number> => {
       const orphanedIds = orphanedSessions.map(({ sessionId }) => sessionId);
 
       if (orphanedIds.length > 0) {
-        await db.delete(browserSessions).where(inArray(browserSessions.sessionId, orphanedIds));
+        await db
+          .delete(browserSessions)
+          .where(inArray(browserSessions.sessionId, orphanedIds));
       }
 
       widelog.set("orphaned_count", orphanedIds.length);

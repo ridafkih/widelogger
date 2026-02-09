@@ -1,9 +1,9 @@
 import { db } from "@lab/database/client";
 import {
-  orchestrationRequests,
+  type MessagingMode,
   type OrchestrationRequest,
   type OrchestrationStatus,
-  type MessagingMode,
+  orchestrationRequests,
   type ResolutionConfidence,
   type SummaryStatus,
 } from "@lab/database/schema/orchestration-requests";
@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 import { InternalError, orThrow } from "../shared/errors";
 
 async function findOrchestrationBySessionId(
-  sessionId: string,
+  sessionId: string
 ): Promise<OrchestrationRequest | null> {
   const [record] = await db
     .select()
@@ -21,12 +21,12 @@ async function findOrchestrationBySessionId(
 }
 
 export async function findOrchestrationBySessionIdOrThrow(
-  sessionId: string,
+  sessionId: string
 ): Promise<OrchestrationRequest> {
   return orThrow(
     await findOrchestrationBySessionId(sessionId),
     "Orchestration for session",
-    sessionId,
+    sessionId
   );
 }
 
@@ -40,7 +40,7 @@ interface CreateOrchestrationRequestInput {
 }
 
 export async function createOrchestrationRequest(
-  input: CreateOrchestrationRequestInput,
+  input: CreateOrchestrationRequestInput
 ): Promise<string> {
   const [record] = await db
     .insert(orchestrationRequests)
@@ -56,7 +56,10 @@ export async function createOrchestrationRequest(
     .returning({ id: orchestrationRequests.id });
 
   if (!record) {
-    throw new InternalError("Failed to create orchestration record", "ORCHESTRATION_CREATE_FAILED");
+    throw new InternalError(
+      "Failed to create orchestration record",
+      "ORCHESTRATION_CREATE_FAILED"
+    );
   }
   return record.id;
 }
@@ -72,7 +75,7 @@ interface UpdateOrchestrationStatusInput {
 export async function updateOrchestrationStatus(
   orchestrationId: string,
   status: OrchestrationStatus,
-  data?: UpdateOrchestrationStatusInput,
+  data?: UpdateOrchestrationStatusInput
 ): Promise<void> {
   await db
     .update(orchestrationRequests)
@@ -91,7 +94,7 @@ export async function updateOrchestrationStatus(
 export async function updateOrchestrationSummaryStatus(
   id: string,
   summaryStatus: SummaryStatus,
-  summaryText?: string,
+  summaryText?: string
 ): Promise<void> {
   await db
     .update(orchestrationRequests)

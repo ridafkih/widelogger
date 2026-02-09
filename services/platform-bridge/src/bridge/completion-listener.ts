@@ -1,6 +1,6 @@
-import { widelog } from "../logging";
-import { multiplayerClient } from "../clients/multiplayer";
 import { apiClient } from "../clients/api";
+import { multiplayerClient } from "../clients/multiplayer";
+import { widelog } from "../logging";
 import { getAdapter } from "../platforms";
 import { responseSubscriber } from "./response-subscriber";
 
@@ -10,17 +10,20 @@ interface SessionCompleteEvent {
 }
 
 class CompletionListener {
-  private processingSet = new Set<string>();
-  private unsubscribers = new Map<string, () => void>();
+  private readonly processingSet = new Set<string>();
+  private readonly unsubscribers = new Map<string, () => void>();
 
   subscribeToSession(sessionId: string): void {
     if (this.unsubscribers.has(sessionId)) {
       return;
     }
 
-    const unsubscribe = multiplayerClient.subscribeToSessionComplete(sessionId, (event) => {
-      this.handleSessionComplete(event);
-    });
+    const unsubscribe = multiplayerClient.subscribeToSessionComplete(
+      sessionId,
+      (event) => {
+        this.handleSessionComplete(event);
+      }
+    );
 
     this.unsubscribers.set(sessionId, unsubscribe);
   }
@@ -33,10 +36,14 @@ class CompletionListener {
     }
   }
 
-  private async handleSessionComplete(event: SessionCompleteEvent): Promise<void> {
+  private async handleSessionComplete(
+    event: SessionCompleteEvent
+  ): Promise<void> {
     const { sessionId } = event;
 
-    if (this.processingSet.has(sessionId)) return;
+    if (this.processingSet.has(sessionId)) {
+      return;
+    }
 
     this.processingSet.add(sessionId);
 

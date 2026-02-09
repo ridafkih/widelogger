@@ -1,22 +1,27 @@
-import { createContext, useEffect, useMemo, type ReactNode } from "react";
-import { Provider as JotaiProvider, useSetAtom } from "jotai";
 import type { Schema } from "@lab/multiplayer-sdk";
-import { ConnectionManager, type ConnectionConfig } from "./connection";
+import { Provider as JotaiProvider, useSetAtom } from "jotai";
+import { createContext, type ReactNode, useEffect, useMemo } from "react";
 import { connectionStateAtom } from "./atoms";
+import { type ConnectionConfig, ConnectionManager } from "./connection";
 import { createHooks } from "./hooks";
 
 export interface MultiplayerContextValue {
   connection: ConnectionManager;
 }
 
-export const MultiplayerContext = createContext<MultiplayerContextValue | null>(null);
+export const MultiplayerContext = createContext<MultiplayerContextValue | null>(
+  null
+);
 
 interface MultiplayerProviderInnerProps {
   connection: ConnectionManager;
   children: ReactNode;
 }
 
-function MultiplayerProviderInner({ connection, children }: MultiplayerProviderInnerProps) {
+function MultiplayerProviderInner({
+  connection,
+  children,
+}: MultiplayerProviderInnerProps) {
   const setConnectionState = useSetAtom(connectionStateAtom);
 
   useEffect(() => {
@@ -31,7 +36,11 @@ function MultiplayerProviderInner({ connection, children }: MultiplayerProviderI
 
   const contextValue = useMemo(() => ({ connection }), [connection]);
 
-  return <MultiplayerContext.Provider value={contextValue}>{children}</MultiplayerContext.Provider>;
+  return (
+    <MultiplayerContext.Provider value={contextValue}>
+      {children}
+    </MultiplayerContext.Provider>
+  );
 }
 
 export function createMultiplayerProvider<S extends Schema>(schema: S) {
@@ -43,11 +52,16 @@ export function createMultiplayerProvider<S extends Schema>(schema: S) {
   }
 
   function MultiplayerProvider({ config, children }: ProviderProps) {
-    const connection = useMemo(() => new ConnectionManager(config), [config.url]);
+    const connection = useMemo(
+      () => new ConnectionManager(config),
+      [config.url, config]
+    );
 
     return (
       <JotaiProvider>
-        <MultiplayerProviderInner connection={connection}>{children}</MultiplayerProviderInner>
+        <MultiplayerProviderInner connection={connection}>
+          {children}
+        </MultiplayerProviderInner>
       </JotaiProvider>
     );
   }

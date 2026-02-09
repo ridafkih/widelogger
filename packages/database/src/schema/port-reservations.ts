@@ -1,4 +1,11 @@
-import { pgTable, integer, timestamp, uuid, varchar, unique } from "drizzle-orm/pg-core";
+import {
+  integer,
+  pgTable,
+  timestamp,
+  unique,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { sessions } from "./sessions";
 
 export const portReservations = pgTable(
@@ -10,10 +17,12 @@ export const portReservations = pgTable(
       .references(() => sessions.id, { onDelete: "cascade" }),
     port: integer("port").notNull(),
     type: varchar("type", { length: 20 }).notNull(),
-    reservedAt: timestamp("reserved_at", { withTimezone: true }).notNull().defaultNow(),
+    reservedAt: timestamp("reserved_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
   },
-  (table) => [unique().on(table.port, table.type)],
+  (table) => [unique().on(table.port, table.type)]
 );
 
 export type PortReservation = typeof portReservations.$inferSelect;

@@ -39,7 +39,7 @@ export const schema = defineSchema({
         z.object({
           id: z.string(),
           name: z.string(),
-        }),
+        })
       ),
       default: [],
       delta: z.object({
@@ -84,7 +84,7 @@ export const schema = defineSchema({
           name: z.string(),
           status: z.enum(["running", "stopped", "starting", "error"]),
           urls: z.array(z.object({ port: z.number(), url: z.string() })),
-        }),
+        })
       ),
       default: [],
       delta: z.object({
@@ -102,7 +102,7 @@ export const schema = defineSchema({
         z.object({
           userId: z.string(),
           isTyping: z.boolean(),
-        }),
+        })
       ),
       default: [],
     }),
@@ -114,7 +114,7 @@ export const schema = defineSchema({
           id: z.string(),
           name: z.string(),
           avatar: z.string().optional(),
-        }),
+        })
       ),
       default: [],
     }),
@@ -137,7 +137,7 @@ export const schema = defineSchema({
           name: z.string(),
           prNumber: z.number().optional(),
           prUrl: z.string().optional(),
-        }),
+        })
       ),
       default: [],
     }),
@@ -149,7 +149,7 @@ export const schema = defineSchema({
           id: z.string(),
           title: z.string(),
           url: z.string(),
-        }),
+        })
       ),
       default: [],
     }),
@@ -190,7 +190,14 @@ export const schema = defineSchema({
       path: "session/:uuid/browser-state",
       snapshot: z.object({
         desiredState: z.enum(["running", "stopped"]),
-        currentState: z.enum(["pending", "stopped", "starting", "running", "stopping", "error"]),
+        currentState: z.enum([
+          "pending",
+          "stopped",
+          "starting",
+          "running",
+          "stopping",
+          "error",
+        ]),
         streamPort: z.number().optional(),
         errorMessage: z.string().optional(),
       }),
@@ -198,7 +205,14 @@ export const schema = defineSchema({
       delta: z.object({
         desiredState: z.enum(["running", "stopped"]).optional(),
         currentState: z
-          .enum(["pending", "stopped", "starting", "running", "stopping", "error"])
+          .enum([
+            "pending",
+            "stopped",
+            "starting",
+            "running",
+            "stopping",
+            "error",
+          ])
           .optional(),
         streamPort: z.number().optional(),
         errorMessage: z.string().optional(),
@@ -238,7 +252,9 @@ export const schema = defineSchema({
         z.object({
           type: z.literal("key_press"),
           key: z.string(),
-          modifiers: z.array(z.enum(["ctrl", "alt", "shift", "meta"])).optional(),
+          modifiers: z
+            .array(z.enum(["ctrl", "alt", "shift", "meta"]))
+            .optional(),
         }),
         z.object({
           type: z.literal("key_release"),
@@ -259,7 +275,14 @@ export const schema = defineSchema({
     orchestrationStatus: defineChannel({
       path: "orchestration/:uuid/status",
       snapshot: z.object({
-        status: z.enum(["pending", "thinking", "delegating", "starting", "complete", "error"]),
+        status: z.enum([
+          "pending",
+          "thinking",
+          "delegating",
+          "starting",
+          "complete",
+          "error",
+        ]),
         projectName: z.string().nullable(),
         sessionId: z.string().nullable(),
         errorMessage: z.string().nullable(),
@@ -272,7 +295,14 @@ export const schema = defineSchema({
       },
       delta: z.object({
         status: z
-          .enum(["pending", "thinking", "delegating", "starting", "complete", "error"])
+          .enum([
+            "pending",
+            "thinking",
+            "delegating",
+            "starting",
+            "complete",
+            "error",
+          ])
           .optional(),
         projectName: z.string().nullable().optional(),
         sessionId: z.string().nullable().optional(),

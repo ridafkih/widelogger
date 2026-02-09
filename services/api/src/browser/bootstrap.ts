@@ -1,27 +1,27 @@
 import {
   type BrowserSessionState,
+  createDaemonController,
   type DaemonController,
   type StateStore,
-  createDaemonController,
 } from "@lab/browser-protocol";
 import { TIMING } from "../config/constants";
 import {
   getFirstExposedPort,
   getFirstExposedService,
 } from "../repositories/container-session.repository";
-import { createBrowserService, type BrowserService } from "./browser-service";
-import {
-  getState,
-  setState,
-  setDesiredState,
-  setCurrentState,
-  transitionState,
-  getAllSessions,
-  deleteSession,
-  updateHeartbeat,
-  setLastUrl,
-} from "./state-store";
 import { ExternalServiceError, NotFoundError } from "../shared/errors";
+import { type BrowserService, createBrowserService } from "./browser-service";
+import {
+  deleteSession,
+  getAllSessions,
+  getState,
+  setCurrentState,
+  setDesiredState,
+  setLastUrl,
+  setState,
+  transitionState,
+  updateHeartbeat,
+} from "./state-store";
 
 interface BrowserBootstrapConfig {
   browserApiUrl: string;
@@ -48,7 +48,10 @@ const stateStore: StateStore = {
   setLastUrl,
 };
 
-async function getInitialNavigationUrl(sessionId: string, _port: number): Promise<string> {
+async function getInitialNavigationUrl(
+  sessionId: string,
+  _port: number
+): Promise<string> {
   const service = await getFirstExposedService(sessionId);
   if (!service) {
     throw new NotFoundError("Exposed service", sessionId);
@@ -61,7 +64,7 @@ function createWaitForService(config: BrowserBootstrapConfig) {
     sessionId: string,
     port: number,
     timeoutMs = TIMING.SERVICE_WAIT_TIMEOUT_MS,
-    intervalMs = TIMING.SERVICE_WAIT_INTERVAL_MS,
+    intervalMs = TIMING.SERVICE_WAIT_INTERVAL_MS
   ): Promise<void> {
     const proxyUrl = `http://${config.proxyContainerName}:${config.proxyPort}/`;
     const hostHeader = `${sessionId}--${port}.${config.proxyBaseDomain}`;
@@ -87,7 +90,7 @@ function createWaitForService(config: BrowserBootstrapConfig) {
 
     throw new ExternalServiceError(
       `Service not available: ${sessionId}--${port} (last status: ${lastStatus})`,
-      "SERVICE_NOT_AVAILABLE",
+      "SERVICE_NOT_AVAILABLE"
     );
   };
 }
@@ -98,7 +101,7 @@ export interface BrowserBootstrapResult {
 }
 
 export const bootstrapBrowserService = async (
-  config: BrowserBootstrapConfig,
+  config: BrowserBootstrapConfig
 ): Promise<BrowserBootstrapResult> => {
   const baseUrl = config.browserApiUrl;
 
@@ -120,7 +123,7 @@ export const bootstrapBrowserService = async (
       getFirstExposedPort,
       getInitialNavigationUrl,
       waitForService: createWaitForService(config),
-    },
+    }
   );
 
   return { browserService, daemonController };

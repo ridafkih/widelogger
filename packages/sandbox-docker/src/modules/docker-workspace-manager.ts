@@ -1,9 +1,13 @@
-import type { SandboxProvider, WorkspaceManager, WorkspaceManagerConfig } from "@lab/sandbox-sdk";
+import type {
+  SandboxProvider,
+  WorkspaceManager,
+  WorkspaceManagerConfig,
+} from "@lab/sandbox-sdk";
 
 export class DockerWorkspaceManager implements WorkspaceManager {
   constructor(
     private readonly client: SandboxProvider,
-    private readonly config: WorkspaceManagerConfig,
+    private readonly config: WorkspaceManagerConfig
   ) {}
 
   async startWorkspace(workspacePath: string, image: string): Promise<string> {
@@ -20,7 +24,10 @@ export class DockerWorkspaceManager implements WorkspaceManager {
     }
   }
 
-  private async getSetupCommand(workspacePath: string, image: string): Promise<string> {
+  private async getSetupCommand(
+    workspacePath: string,
+    image: string
+  ): Promise<string> {
     const { workdir } = await this.client.getImageConfig(image);
     const hasWorkdir = workdir && workdir !== "/";
 
@@ -31,11 +38,19 @@ export class DockerWorkspaceManager implements WorkspaceManager {
     return `mkdir -p ${workspacePath}`;
   }
 
-  private async populateWorkspace(image: string, command: string): Promise<void> {
+  private async populateWorkspace(
+    image: string,
+    command: string
+  ): Promise<void> {
     const containerId = await this.client.createContainer({
       image,
       command: ["sh", "-c", command],
-      volumes: [{ source: this.config.workspacesVolume, target: this.config.workspacesMount }],
+      volumes: [
+        {
+          source: this.config.workspacesVolume,
+          target: this.config.workspacesMount,
+        },
+      ],
     });
 
     await this.client.startContainer(containerId);

@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import { type ReactNode, useEffect, useRef } from "react";
 import { Review } from "@/components/review";
 import { TextAreaGroup } from "@/components/textarea-group";
 import { useFileBrowser } from "@/lib/use-file-browser";
 
-type FileBrowserProviderProps = {
+interface FileBrowserProviderProps {
   sessionId: string;
   children: ReactNode;
-};
+}
 
-function FileBrowserProvider({ sessionId, children }: FileBrowserProviderProps) {
+function FileBrowserProvider({
+  sessionId,
+  children,
+}: FileBrowserProviderProps) {
   const searchParams = useSearchParams();
   const fileParam = searchParams.get("file");
   const expandParam = searchParams.get("expand");
@@ -19,7 +22,13 @@ function FileBrowserProvider({ sessionId, children }: FileBrowserProviderProps) 
   const handledFileRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!fileParam || browser.state.rootLoading || handledFileRef.current === fileParam) return;
+    if (
+      !fileParam ||
+      browser.state.rootLoading ||
+      handledFileRef.current === fileParam
+    ) {
+      return;
+    }
 
     handledFileRef.current = fileParam;
 
@@ -34,7 +43,7 @@ function FileBrowserProvider({ sessionId, children }: FileBrowserProviderProps) 
   }, [fileParam, expandParam, browser.state.rootLoading, browser.actions]);
 
   return (
-    <Review.Provider files={[]} onDismiss={() => {}} browser={browser}>
+    <Review.Provider browser={browser} files={[]} onDismiss={() => {}}>
       {children}
     </Review.Provider>
   );
@@ -46,7 +55,10 @@ function FeedbackForm() {
       <Review.FeedbackHeader>
         <Review.FeedbackLocation />
       </Review.FeedbackHeader>
-      <TextAreaGroup.Input placeholder="Your feedback will be submitted to the agent..." rows={2} />
+      <TextAreaGroup.Input
+        placeholder="Your feedback will be submitted to the agent..."
+        rows={2}
+      />
       <TextAreaGroup.Toolbar>
         <TextAreaGroup.Submit />
       </TextAreaGroup.Toolbar>
@@ -75,9 +87,9 @@ function FileBrowserView() {
   );
 }
 
-type ReviewTabContentProps = {
+interface ReviewTabContentProps {
   sessionId: string;
-};
+}
 
 export function ReviewTabContent({ sessionId }: ReviewTabContentProps) {
   return (

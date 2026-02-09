@@ -34,7 +34,7 @@ export interface DaemonManager {
   navigate(sessionId: string, url: string): boolean;
   executeCommand(
     sessionId: string,
-    command: import("agent-browser/dist/types.js").Command,
+    command: import("agent-browser/dist/types.js").Command
   ): Promise<import("agent-browser/dist/types.js").Response>;
   getCurrentUrl(sessionId: string): string | null;
   onEvent(handler: import("./events").DaemonEventHandler): () => void;

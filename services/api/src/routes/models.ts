@@ -1,12 +1,15 @@
-import type { Handler, InfraContext } from "../types/route";
-import { ExternalServiceError } from "../shared/errors";
 import { widelog } from "../logging";
+import { ExternalServiceError } from "../shared/errors";
+import type { Handler, InfraContext } from "../types/route";
 
 const GET: Handler<InfraContext> = async ({ context: ctx }) => {
   const response = await ctx.opencode.provider.list();
 
   if (response.error || !response.data) {
-    throw new ExternalServiceError("Failed to fetch providers", "PROVIDER_LIST_FAILED");
+    throw new ExternalServiceError(
+      "Failed to fetch providers",
+      "PROVIDER_LIST_FAILED"
+    );
   }
 
   const { all, connected } = response.data;
@@ -20,7 +23,7 @@ const GET: Handler<InfraContext> = async ({ context: ctx }) => {
         providerName: provider.name,
         modelId: model.id,
         name: model.name,
-      })),
+      }))
     )
     .sort((left, right) => left.name.localeCompare(right.name));
 

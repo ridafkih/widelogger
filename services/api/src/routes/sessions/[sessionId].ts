@@ -1,12 +1,15 @@
-import { z } from "zod";
 import { noContentResponse } from "@lab/http-utilities";
-import { findSessionByIdOrThrow, updateSessionFields } from "../../repositories/session.repository";
-import { findSessionContainersBySessionId } from "../../repositories/container-session.repository";
-import { formatProxyUrl } from "../../shared/naming";
-import { parseRequestBody } from "../../shared/validation";
-import { withParams } from "../../shared/route-helpers";
-import type { RouteContextFor } from "../../types/route";
+import { z } from "zod";
 import { widelog } from "../../logging";
+import { findSessionContainersBySessionId } from "../../repositories/container-session.repository";
+import {
+  findSessionByIdOrThrow,
+  updateSessionFields,
+} from "../../repositories/session.repository";
+import { formatProxyUrl } from "../../shared/naming";
+import { withParams } from "../../shared/route-helpers";
+import { parseRequestBody } from "../../shared/validation";
+import type { RouteContextFor } from "../../types/route";
 
 const patchSessionSchema = z.object({
   opencodeSessionId: z.string().optional(),
@@ -17,10 +20,14 @@ const patchSessionSchema = z.object({
 function buildContainerUrls(
   sessionId: string,
   ports: Record<string, number>,
-  proxyBaseDomain: string,
+  proxyBaseDomain: string
 ): string[] {
   return Object.keys(ports).map((containerPort) =>
-    formatProxyUrl(sessionId, parseInt(containerPort, 10), proxyBaseDomain),
+    formatProxyUrl(
+      sessionId,
+      Number.parseInt(containerPort, 10),
+      proxyBaseDomain
+    )
   );
 }
 
@@ -37,18 +44,22 @@ const GET = withParams<{ sessionId: string }, SessionReadContext>(
 
     const containersWithStatus = await Promise.all(
       containers.map(async (container) => {
-        if (!container.runtimeId) return { ...container, info: null, urls: [] };
-        const info = await ctx.sandbox.provider.inspectContainer(container.runtimeId);
+        if (!container.runtimeId) {
+          return { ...container, info: null, urls: [] };
+        }
+        const info = await ctx.sandbox.provider.inspectContainer(
+          container.runtimeId
+        );
         const urls = info?.ports
           ? buildContainerUrls(sessionId, info.ports, ctx.proxyBaseDomain)
           : [];
         return { ...container, info, urls };
-      }),
+      })
     );
 
     widelog.set("session.container_count", containersWithStatus.length);
     return Response.json({ ...session, containers: containersWithStatus });
-  },
+  }
 );
 
 const PATCH = withParams<{ sessionId: string }>(
@@ -62,7 +73,7 @@ const PATCH = withParams<{ sessionId: string }>(
       "session.updated_fields",
       Object.keys(body)
         .filter((k) => body[k as keyof typeof body] !== undefined)
-        .join(","),
+        .join(",")
     );
 
     const updated = await updateSessionFields(sessionId, {
@@ -72,7 +83,7 @@ const PATCH = withParams<{ sessionId: string }>(
     });
 
     return Response.json(updated);
-  },
+  }
 );
 
 const DELETE = withParams<{ sessionId: string }, SessionCleanupContext>(
@@ -83,7 +94,7 @@ const DELETE = withParams<{ sessionId: string }, SessionCleanupContext>(
 
     await ctx.sessionLifecycle.cleanupSession(sessionId);
     return noContentResponse();
-  },
+  }
 );
 
 export { DELETE, GET, PATCH };

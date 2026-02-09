@@ -5,7 +5,8 @@ export const CONTAINER_STATUS = {
   ERROR: "error",
 } as const;
 
-export type ContainerStatus = (typeof CONTAINER_STATUS)[keyof typeof CONTAINER_STATUS];
+export type ContainerStatus =
+  (typeof CONTAINER_STATUS)[keyof typeof CONTAINER_STATUS];
 
 export function isContainerStatus(status: string): status is ContainerStatus {
   return Object.values(CONTAINER_STATUS).includes(status as ContainerStatus);

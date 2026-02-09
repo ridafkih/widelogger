@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { readModelConfig, createLanguageModel } from "../shared/llm-factory";
+import { createLanguageModel, readModelConfig } from "../shared/llm-factory";
 
 export async function complete(prompt: string): Promise<string> {
   const config = readModelConfig("orchestrator");

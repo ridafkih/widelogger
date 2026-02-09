@@ -1,4 +1,4 @@
-import { type ElementType, type HTMLAttributes } from "react";
+import type { ElementType, HTMLAttributes } from "react";
 import { cn } from "../utils/cn";
 
 type CopyElement = "p" | "span" | "div" | "label";
@@ -32,7 +32,7 @@ export function Copy({
         "font-sans",
         sizeStyles[size],
         muted ? "text-muted-foreground" : "text-foreground",
-        className,
+        className
       )}
       {...props}
     >

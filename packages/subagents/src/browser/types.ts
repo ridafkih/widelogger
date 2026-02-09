@@ -1,6 +1,6 @@
-import type { LanguageModel } from "ai";
 import type { DaemonController } from "@lab/browser-protocol";
-import type { SubAgentResult, Screenshot } from "../types";
+import type { LanguageModel } from "ai";
+import type { Screenshot, SubAgentResult } from "../types";
 
 export interface BrowserAgentContext {
   daemonController: DaemonController;

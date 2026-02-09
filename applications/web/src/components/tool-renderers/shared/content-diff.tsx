@@ -1,15 +1,15 @@
 "use client";
 
-import { MultiFileDiff } from "@pierre/diffs/react";
 import type { FileContents } from "@pierre/diffs";
+import { MultiFileDiff } from "@pierre/diffs/react";
 
 const pierreThemes = { light: "pierre-light", dark: "pierre-dark" } as const;
 
-type ContentDiffProps = {
+interface ContentDiffProps {
   oldContent: string;
   newContent: string;
   filename: string;
-};
+}
 
 function ContentDiff({ oldContent, newContent, filename }: ContentDiffProps) {
   const oldFile: FileContents = {
@@ -25,8 +25,8 @@ function ContentDiff({ oldContent, newContent, filename }: ContentDiffProps) {
   return (
     <div className="w-0 min-w-full">
       <MultiFileDiff
-        oldFile={oldFile}
         newFile={newFile}
+        oldFile={oldFile}
         options={{
           theme: pierreThemes,
           themeType: "system",
@@ -36,7 +36,9 @@ function ContentDiff({ oldContent, newContent, filename }: ContentDiffProps) {
           overflow: "scroll",
           disableFileHeader: true,
         }}
-        style={{ "--diffs-font-size": "12px", minWidth: 0 } as React.CSSProperties}
+        style={
+          { "--diffs-font-size": "12px", minWidth: 0 } as React.CSSProperties
+        }
       />
     </div>
   );

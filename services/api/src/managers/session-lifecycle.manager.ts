@@ -1,11 +1,14 @@
 import { initializeSessionContainers } from "../runtime/containers";
-import { SessionCleanupService } from "../services/session-cleanup.service";
-import { cleanupSessionNetwork, cleanupOrphanedNetworks } from "../runtime/network";
-import type { BrowserServiceManager } from "./browser-service.manager";
+import {
+  cleanupOrphanedNetworks,
+  cleanupSessionNetwork,
+} from "../runtime/network";
 import type { ProxyManager } from "../services/proxy.service";
-import type { Sandbox } from "../types/dependencies";
-import type { SessionStateStore } from "../state/session-state-store";
+import { SessionCleanupService } from "../services/session-cleanup.service";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
+import type { SessionStateStore } from "../state/session-state-store";
+import type { Sandbox } from "../types/dependencies";
+import type { BrowserServiceManager } from "./browser-service.manager";
 
 export class SessionLifecycleManager {
   private readonly initializationTasks = new Map<string, Promise<void>>();
@@ -15,7 +18,7 @@ export class SessionLifecycleManager {
     private readonly proxyManager: ProxyManager,
     private readonly browserServiceManager: BrowserServiceManager,
     private readonly deferredPublisher: DeferredPublisher,
-    private readonly sessionStateStore: SessionStateStore,
+    private readonly sessionStateStore: SessionStateStore
   ) {}
 
   private getDeps() {
@@ -24,7 +27,8 @@ export class SessionLifecycleManager {
       publisher: this.deferredPublisher.get(),
       proxyManager: this.proxyManager,
       sessionStateStore: this.sessionStateStore,
-      cleanupSessionNetwork: (sessionId: string) => cleanupSessionNetwork(sessionId, this.sandbox),
+      cleanupSessionNetwork: (sessionId: string) =>
+        cleanupSessionNetwork(sessionId, this.sandbox),
     });
 
     return {
@@ -44,11 +48,14 @@ export class SessionLifecycleManager {
       sessionId,
       projectId,
       this.browserServiceManager.service,
-      this.getDeps(),
+      this.getDeps()
     );
   }
 
-  scheduleInitializeSession(sessionId: string, projectId: string): Promise<void> {
+  scheduleInitializeSession(
+    sessionId: string,
+    projectId: string
+  ): Promise<void> {
     const existing = this.initializationTasks.get(sessionId);
     if (existing) {
       return existing;
@@ -68,6 +75,9 @@ export class SessionLifecycleManager {
 
   async cleanupSession(sessionId: string): Promise<void> {
     const { cleanupService } = this.getDeps();
-    await cleanupService.cleanupSessionFull(sessionId, this.browserServiceManager.service);
+    await cleanupService.cleanupSessionFull(
+      sessionId,
+      this.browserServiceManager.service
+    );
   }
 }

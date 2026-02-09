@@ -1,6 +1,6 @@
 export class CircularBuffer<T> {
   private buffer: T[] = [];
-  private maxSize: number;
+  private readonly maxSize: number;
 
   constructor(maxSize: number) {
     this.maxSize = maxSize;

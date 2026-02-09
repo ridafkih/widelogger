@@ -10,9 +10,9 @@ export function InputGroup({ children, className }: InputGroupProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 bg-muted border border-border px-2 py-1.5",
-        "focus-within:outline-1 focus-within:outline-offset-px focus-within:outline-ring",
-        className,
+        "flex items-center gap-2 border border-border bg-muted px-2 py-1.5",
+        "focus-within:outline-1 focus-within:outline-ring focus-within:outline-offset-px",
+        className
       )}
     >
       {children}
@@ -27,7 +27,11 @@ interface InputGroupIconProps {
 
 export function InputGroupIcon({ children, className }: InputGroupIconProps) {
   return (
-    <span className={cn("size-3 text-muted-foreground [&>svg]:size-3", className)}>{children}</span>
+    <span
+      className={cn("size-3 text-muted-foreground [&>svg]:size-3", className)}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -35,20 +39,21 @@ export type InputGroupInputProps = InputHTMLAttributes<HTMLInputElement> & {
   mono?: boolean;
 };
 
-export const InputGroupInput = forwardRef<HTMLInputElement, InputGroupInputProps>(
-  ({ className, mono, ...props }, ref) => {
-    return (
-      <input
-        ref={ref}
-        className={cn(
-          "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground",
-          mono && "font-mono",
-          className,
-        )}
-        {...props}
-      />
-    );
-  },
-);
+export const InputGroupInput = forwardRef<
+  HTMLInputElement,
+  InputGroupInputProps
+>(({ className, mono, ...props }, ref) => {
+  return (
+    <input
+      className={cn(
+        "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground",
+        mono && "font-mono",
+        className
+      )}
+      ref={ref}
+      {...props}
+    />
+  );
+});
 
 InputGroupInput.displayName = "InputGroupInput";

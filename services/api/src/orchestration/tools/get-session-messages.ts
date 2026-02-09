@@ -1,9 +1,9 @@
-import { z } from "zod";
 import { tool } from "ai";
+import { z } from "zod";
 import { findSessionById } from "../../repositories/session.repository";
 import { resolveWorkspacePathBySession } from "../../shared/path-resolver";
-import { isOpencodeMessage, extractTextFromParts } from "../opencode-messages";
 import type { OpencodeClient } from "../../types/dependencies";
+import { extractTextFromParts, isOpencodeMessage } from "../opencode-messages";
 
 const inputSchema = z.object({
   sessionId: z.string().describe("The session ID to get messages from"),
@@ -27,7 +27,10 @@ export function createGetSessionMessagesTool(opencode: OpencodeClient) {
       }
 
       if (!session.opencodeSessionId) {
-        return { error: "Session has no conversation history yet", messages: [] };
+        return {
+          error: "Session has no conversation history yet",
+          messages: [],
+        };
       }
 
       try {
@@ -39,7 +42,9 @@ export function createGetSessionMessagesTool(opencode: OpencodeClient) {
         });
 
         const rawMessages = response.data ?? [];
-        const messages = Array.isArray(rawMessages) ? rawMessages.filter(isOpencodeMessage) : [];
+        const messages = Array.isArray(rawMessages)
+          ? rawMessages.filter(isOpencodeMessage)
+          : [];
 
         return {
           messages: messages.map((msg) => ({
@@ -48,7 +53,8 @@ export function createGetSessionMessagesTool(opencode: OpencodeClient) {
           })),
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
         return { error: `Failed to fetch messages: ${message}`, messages: [] };
       }
     },

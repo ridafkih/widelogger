@@ -1,6 +1,6 @@
-import type { ContainerState } from "./types/container";
 import { VALID_CONTAINER_STATES } from "./constants";
 import { SandboxError } from "./error";
+import type { ContainerState } from "./types/container";
 
 export function isContainerState(value: string): value is ContainerState {
   const validContainerStates: readonly string[] = VALID_CONTAINER_STATES;

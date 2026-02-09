@@ -2,10 +2,10 @@ import { cn } from "../utils/cn";
 
 type SpinnerSize = "xxs" | "xs" | "sm" | "md" | "lg";
 
-export type SpinnerProps = {
+export interface SpinnerProps {
   size?: SpinnerSize;
   className?: string;
-};
+}
 
 const sizeStyles: Record<SpinnerSize, string> = {
   xxs: "h-2 w-2 border",
@@ -18,13 +18,13 @@ const sizeStyles: Record<SpinnerSize, string> = {
 export function Spinner({ size = "md", className }: SpinnerProps) {
   return (
     <span
+      aria-label="Loading"
       className={cn(
-        "inline-block animate-spin border-current border-t-transparent rounded-full",
+        "inline-block animate-spin rounded-full border-current border-t-transparent",
         sizeStyles[size],
-        className,
+        className
       )}
       role="status"
-      aria-label="Loading"
     />
   );
 }

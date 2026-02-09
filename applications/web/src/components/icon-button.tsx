@@ -2,7 +2,7 @@ import type { ComponentProps, Ref } from "react";
 import { tv, type VariantProps } from "tailwind-variants";
 
 const iconButton = tv({
-  base: "shrink-0 cursor-pointer -m-1.5 p-1.5",
+  base: "-m-1.5 shrink-0 cursor-pointer p-1.5",
   variants: {
     variant: {
       ghost: "text-text-muted hover:text-text",
@@ -18,6 +18,17 @@ type IconButtonProps = ComponentProps<"button"> &
     ref?: Ref<HTMLButtonElement>;
   };
 
-export function IconButton({ className, variant, ref, ...props }: IconButtonProps) {
-  return <button ref={ref} className={iconButton({ variant, className })} {...props} />;
+export function IconButton({
+  className,
+  variant,
+  ref,
+  ...props
+}: IconButtonProps) {
+  return (
+    <button
+      className={iconButton({ variant, className })}
+      ref={ref}
+      {...props}
+    />
+  );
 }

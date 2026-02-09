@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -9,32 +9,44 @@ const FOCUSABLE_SELECTOR = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(", ");
 
-export function useFocusTrap<T extends HTMLElement>(enabled: boolean = true): RefObject<T | null> {
+export function useFocusTrap<T extends HTMLElement>(
+  enabled = true
+): RefObject<T | null> {
   const containerRef = useRef<T>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     const active = document.activeElement;
     if (active instanceof HTMLElement) {
       previousActiveElement.current = active;
     }
 
-    const focusableElements = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+    const focusableElements =
+      container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
     const firstElement = focusableElements[0];
     firstElement?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Tab") return;
-      if (!containerRef.current) return;
+      if (event.key !== "Tab") {
+        return;
+      }
+      if (!containerRef.current) {
+        return;
+      }
 
-      const focusable = containerRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      const focusable =
+        containerRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
       const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      const last = focusable.at(-1);
 
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();

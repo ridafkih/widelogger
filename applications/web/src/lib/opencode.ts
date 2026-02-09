@@ -1,16 +1,16 @@
 import type {
-  Part,
-  TextPart,
-  ReasoningPart,
-  ToolPart,
-  FilePart,
-  StepStartPart,
-  StepFinishPart,
-  SnapshotPart,
-  PatchPart,
   AgentPart,
-  RetryPart,
   CompactionPart,
+  FilePart,
+  Part,
+  PatchPart,
+  ReasoningPart,
+  RetryPart,
+  SnapshotPart,
+  StepFinishPart,
+  StepStartPart,
+  TextPart,
+  ToolPart,
 } from "@opencode-ai/sdk/v2/client";
 
 export type SubtaskPart = Extract<Part, { type: "subtask" }>;

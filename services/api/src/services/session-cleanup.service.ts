@@ -1,15 +1,15 @@
+import type { BrowserService } from "../browser/browser-service";
+import { widelog } from "../logging";
 import { findSessionContainersBySessionId } from "../repositories/container-session.repository";
 import {
   deleteSession,
   findSessionById,
   updateSessionStatus,
 } from "../repositories/session.repository";
-import { SESSION_STATUS } from "../types/session";
 import type { SessionStateStore } from "../state/session-state-store";
-import type { BrowserService } from "../browser/browser-service";
-import type { Sandbox, Publisher } from "../types/dependencies";
+import type { Publisher, Sandbox } from "../types/dependencies";
+import { SESSION_STATUS } from "../types/session";
 import type { ProxyManager } from "./proxy.service";
-import { widelog } from "../logging";
 
 interface ContainerCleanupResult {
   runtimeId: string;
@@ -29,18 +29,24 @@ interface CleanupSessionDeps {
 export class SessionCleanupService {
   constructor(private readonly deps: CleanupSessionDeps) {}
 
-  async cleanupSessionFull(sessionId: string, browserService: BrowserService): Promise<void> {
+  async cleanupSessionFull(
+    sessionId: string,
+    browserService: BrowserService
+  ): Promise<void> {
     return widelog.context(async () => {
       widelog.set("event_name", "session_cleanup.completed");
       widelog.set("session_id", sessionId);
       widelog.set("cleanup_type", "full");
       widelog.time.start("duration_ms");
 
-      const { sandbox, publisher, proxyManager, cleanupSessionNetwork } = this.deps;
+      const { sandbox, publisher, proxyManager, cleanupSessionNetwork } =
+        this.deps;
 
       try {
         const session = await findSessionById(sessionId);
-        if (!session) return;
+        if (!session) {
+          return;
+        }
 
         await updateSessionStatus(sessionId, SESSION_STATUS.DELETING);
 
@@ -54,7 +60,9 @@ export class SessionCleanupService {
         });
 
         const containers = await findSessionContainersBySessionId(sessionId);
-        const runtimeIds = containers.filter((c) => c.runtimeId).map((c) => c.runtimeId);
+        const runtimeIds = containers
+          .filter((c) => c.runtimeId)
+          .map((c) => c.runtimeId);
 
         await this.stopAndRemoveContainers(runtimeIds, sandbox.provider);
         await browserService.forceStopBrowser(sessionId);
@@ -65,7 +73,7 @@ export class SessionCleanupService {
           widelog.count("error_count");
           widelog.set(
             "errors.unregister_proxy_cluster",
-            error instanceof Error ? error.message : String(error),
+            error instanceof Error ? error.message : String(error)
           );
         }
 
@@ -75,7 +83,7 @@ export class SessionCleanupService {
           widelog.count("error_count");
           widelog.set(
             "errors.network_cleanup",
-            error instanceof Error ? error.message : String(error),
+            error instanceof Error ? error.message : String(error)
           );
         }
 
@@ -95,7 +103,7 @@ export class SessionCleanupService {
   async cleanupOrphanedResources(
     sessionId: string,
     runtimeIds: string[],
-    browserService: BrowserService,
+    browserService: BrowserService
   ): Promise<void> {
     return widelog.context(async () => {
       widelog.set("event_name", "session_cleanup.completed");
@@ -115,7 +123,7 @@ export class SessionCleanupService {
           widelog.count("error_count");
           widelog.set(
             "errors.unregister_proxy_cluster",
-            error instanceof Error ? error.message : String(error),
+            error instanceof Error ? error.message : String(error)
           );
         }
 
@@ -125,7 +133,7 @@ export class SessionCleanupService {
           widelog.count("error_count");
           widelog.set(
             "errors.network_cleanup",
-            error instanceof Error ? error.message : String(error),
+            error instanceof Error ? error.message : String(error)
           );
         }
 
@@ -144,7 +152,7 @@ export class SessionCleanupService {
     sessionId: string,
     projectId: string,
     runtimeIds: string[],
-    browserService: BrowserService,
+    browserService: BrowserService
   ): Promise<void> {
     return widelog.context(async () => {
       widelog.set("event_name", "session_cleanup.completed");
@@ -171,7 +179,7 @@ export class SessionCleanupService {
           widelog.count("error_count");
           widelog.set(
             "errors.network_cleanup",
-            error instanceof Error ? error.message : String(error),
+            error instanceof Error ? error.message : String(error)
           );
         }
 
@@ -189,7 +197,7 @@ export class SessionCleanupService {
 
   private async stopAndRemoveContainers(
     runtimeIds: string[],
-    provider: Sandbox["provider"],
+    provider: Sandbox["provider"]
   ): Promise<void> {
     const cleanupResults = await Promise.allSettled(
       runtimeIds.map(async (runtimeId) => {
@@ -201,13 +209,13 @@ export class SessionCleanupService {
         } catch (error) {
           return { runtimeId, success: false, stillExists: true, error };
         }
-      }),
+      })
     );
 
     const fulfilledResults = cleanupResults
       .filter(
         (result): result is PromiseFulfilledResult<ContainerCleanupResult> =>
-          result.status === "fulfilled",
+          result.status === "fulfilled"
       )
       .map((result) => result.value);
 
@@ -216,12 +224,14 @@ export class SessionCleanupService {
       if (failure.error) {
         widelog.set(
           `errors.container_cleanup.${failure.runtimeId}`,
-          failure.error instanceof Error ? failure.error.message : String(failure.error),
+          failure.error instanceof Error
+            ? failure.error.message
+            : String(failure.error)
         );
       } else if (failure.stillExists) {
         widelog.set(
           `errors.container_still_exists.${failure.runtimeId}`,
-          "container still exists after stop and remove",
+          "container still exists after stop and remove"
         );
       }
     }

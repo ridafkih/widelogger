@@ -11,16 +11,16 @@ function EditRenderer({ input, error }: ToolRendererProps) {
   return (
     <div className="flex flex-col">
       {(oldString || newString) && (
-        <div className="w-0 min-w-full overflow-x-auto max-h-80 overflow-y-auto">
+        <div className="max-h-80 w-0 min-w-full overflow-x-auto overflow-y-auto">
           <ContentDiff
-            oldContent={oldString}
-            newContent={newString}
             filename={filePath ?? "file"}
+            newContent={newString}
+            oldContent={oldString}
           />
         </div>
       )}
       {error && (
-        <div className="px-4 py-2 bg-bg-muted w-0 min-w-full">
+        <div className="w-0 min-w-full bg-bg-muted px-4 py-2">
           <ContentError>{error}</ContentError>
         </div>
       )}

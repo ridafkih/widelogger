@@ -6,7 +6,9 @@ import type {
 
 export type MessagingMode = "active" | "passive";
 
-export type MessageHandler = (message: IncomingPlatformMessage) => Promise<void>;
+export type MessageHandler = (
+  message: IncomingPlatformMessage
+) => Promise<void>;
 
 export interface PlatformAdapter {
   readonly platform: PlatformType;

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { tv, type VariantProps } from "tailwind-variants";
 
 const pageFrame = tv({
-  base: "flex flex-col h-full min-w-0",
+  base: "flex h-full min-w-0 flex-col",
   variants: {
     overflow: {
       hidden: "overflow-hidden",
@@ -19,12 +19,21 @@ type PageFrameProps = {
   className?: string;
 } & VariantProps<typeof pageFrame>;
 
-function PageFrame({ children, overflow, position, className }: PageFrameProps) {
-  return <div className={pageFrame({ overflow, position, className })}>{children}</div>;
+function PageFrame({
+  children,
+  overflow,
+  position,
+  className,
+}: PageFrameProps) {
+  return (
+    <div className={pageFrame({ overflow, position, className })}>
+      {children}
+    </div>
+  );
 }
 
 const header = tv({
-  base: "flex items-center gap-2 px-3 py-1.5 border-b border-border",
+  base: "flex items-center gap-2 border-border border-b px-3 py-1.5",
   variants: {
     spacing: {
       default: "gap-2",
@@ -42,12 +51,19 @@ type HeaderProps = {
   as?: "header" | "nav" | "div";
 } & VariantProps<typeof header>;
 
-function Header({ children, spacing, className, as: Component = "div" }: HeaderProps) {
-  return <Component className={header({ spacing, className })}>{children}</Component>;
+function Header({
+  children,
+  spacing,
+  className,
+  as: Component = "div",
+}: HeaderProps) {
+  return (
+    <Component className={header({ spacing, className })}>{children}</Component>
+  );
 }
 
 const pageContent = tv({
-  base: "flex-1 min-h-0",
+  base: "min-h-0 flex-1",
   variants: {
     overflow: {
       auto: "overflow-auto",
@@ -64,8 +80,17 @@ type PageContentProps = {
   className?: string;
 } & VariantProps<typeof pageContent>;
 
-function PageContent({ children, overflow, display, className }: PageContentProps) {
-  return <div className={pageContent({ overflow, display, className })}>{children}</div>;
+function PageContent({
+  children,
+  overflow,
+  display,
+  className,
+}: PageContentProps) {
+  return (
+    <div className={pageContent({ overflow, display, className })}>
+      {children}
+    </div>
+  );
 }
 
 export { PageFrame, Header, PageContent };

@@ -1,15 +1,15 @@
-import { widelog } from "./logging";
 import { TIMING } from "./config/constants";
-import { resolveUpstream, parseSubdomain } from "./proxy/upstream";
-import { proxyRequest, corsHeaders } from "./proxy/request";
-import type { WebSocketData } from "./types/proxy";
-import type { setup } from "./setup";
 import type { env } from "./env";
+import { widelog } from "./logging";
+import { corsHeaders, proxyRequest } from "./proxy/request";
+import { parseSubdomain, resolveUpstream } from "./proxy/upstream";
+import type { setup } from "./setup";
+import type { WebSocketData } from "./types/proxy";
 
-type MainOptions = {
+interface MainOptions {
   env: (typeof env)["inferOut"];
   extras: ReturnType<typeof setup>;
-};
+}
 
 type MainFunction = (options: MainOptions) => unknown;
 
@@ -40,14 +40,18 @@ export const main = (({ extras }) => {
           if (!host) {
             widelog.set("status_code", 400);
             widelog.set("outcome", "client_error");
-            return new Response("Bad Request: Missing Host header", { status: 400 });
+            return new Response("Bad Request: Missing Host header", {
+              status: 400,
+            });
           }
 
           const parsed = parseSubdomain(host);
           if (!parsed) {
             widelog.set("status_code", 400);
             widelog.set("outcome", "client_error");
-            return new Response("Bad Request: Invalid subdomain format", { status: 400 });
+            return new Response("Bad Request: Invalid subdomain format", {
+              status: 400,
+            });
           }
 
           const { sessionId, port } = parsed;
@@ -58,7 +62,9 @@ export const main = (({ extras }) => {
           if (!upstream) {
             widelog.set("status_code", 404);
             widelog.set("outcome", "not_found");
-            return new Response("Not Found: Session or port not available", { status: 404 });
+            return new Response("Not Found: Session or port not available", {
+              status: 404,
+            });
           }
 
           const upgradeHeader = request.headers.get("upgrade");
@@ -162,7 +168,9 @@ export const main = (({ extras }) => {
 
   widelog.context(() => {
     widelog.set("event_name", "proxy.startup");
-    if (server.port) widelog.set("port", server.port);
+    if (server.port) {
+      widelog.set("port", server.port);
+    }
     widelog.flush();
   });
 

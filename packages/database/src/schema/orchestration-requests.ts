@@ -19,8 +19,12 @@ export const orchestrationRequests = pgTable("orchestration_requests", {
   summaryStatus: text("summary_status").default("pending"),
   summaryText: text("summary_text"),
   completedAt: timestamp("completed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type OrchestrationRequest = typeof orchestrationRequests.$inferSelect;

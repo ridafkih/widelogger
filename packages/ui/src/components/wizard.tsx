@@ -1,12 +1,12 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { useControllable } from "../hooks/use-controllable";
 
-type WizardContextValue = {
+interface WizardContextValue {
   step: string | undefined;
   setStep: (step: string) => void;
-};
+}
 
 const WizardContext = createContext<WizardContextValue | null>(null);
 
@@ -18,13 +18,13 @@ export function useWizard() {
   return context;
 }
 
-export type WizardProps = {
+export interface WizardProps {
   step?: string;
   defaultStep?: string;
   onStepChange?: (step: string) => void;
   children: ReactNode | ((context: WizardContextValue) => ReactNode);
   className?: string;
-};
+}
 
 export function Wizard({
   step: controlledStep,
@@ -50,15 +50,17 @@ export function Wizard({
   );
 }
 
-export type WizardStepProps = {
+export interface WizardStepProps {
   name: string;
   children: ReactNode;
   className?: string;
-};
+}
 
 export function WizardStep({ name, children, className }: WizardStepProps) {
   const { step } = useWizard();
-  if (step !== name) return null;
+  if (step !== name) {
+    return null;
+  }
 
   return <div className={className}>{children}</div>;
 }

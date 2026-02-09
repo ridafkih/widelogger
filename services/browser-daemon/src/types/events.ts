@@ -1,4 +1,8 @@
-export type DaemonEventType = "daemon:started" | "daemon:ready" | "daemon:stopped" | "daemon:error";
+export type DaemonEventType =
+  | "daemon:started"
+  | "daemon:ready"
+  | "daemon:stopped"
+  | "daemon:error";
 
 interface DaemonEventData {
   port?: number;

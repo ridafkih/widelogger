@@ -1,7 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignore": ["**/dist/**", "**/.next/**", "**/.turbo/**", "containers/**"],
-  "ignoreDependencies": ["oxfmt", "oxlint"],
   "workspaces": {
     "packages/*": {
       "project": ["src/**/*.{ts,tsx}"]

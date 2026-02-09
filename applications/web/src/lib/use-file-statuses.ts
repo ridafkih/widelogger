@@ -7,12 +7,12 @@ import { createSessionClient } from "./use-session-client";
 
 type FileStatus = "added" | "modified" | "deleted";
 
-export type ChangedFile = {
+export interface ChangedFile {
   path: string;
   status: FileStatus;
   added: number;
   removed: number;
-};
+}
 
 function normalizePath(path: string): string {
   const segments = path.split("/");
@@ -53,15 +53,21 @@ export function useFileStatuses(sessionId: string | null) {
   const { subscribe } = useOpenCodeSession();
   const { mutate } = useSWRConfig();
 
-  const { data, error, isLoading } = useSWR<ChangedFile[]>(getFileStatusesKey(sessionId), () =>
-    fetchFileStatuses(sessionId!),
+  const { data, error, isLoading } = useSWR<ChangedFile[]>(
+    getFileStatusesKey(sessionId),
+    () => fetchFileStatuses(sessionId!)
   );
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     const handleEvent = (event: { type: string }) => {
-      if (event.type === "file.watcher.updated" || event.type === "file.edited") {
+      if (
+        event.type === "file.watcher.updated" ||
+        event.type === "file.edited"
+      ) {
         mutate(getFileStatusesKey(sessionId));
       }
     };

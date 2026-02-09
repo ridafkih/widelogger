@@ -1,5 +1,5 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DockerClient } from "@lab/sandbox-docker";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import type { ToolContext } from "../types/tool";
 
@@ -23,10 +23,14 @@ interface ToolResult {
 
 async function getSessionServices(
   apiBaseUrl: string,
-  sessionId: string,
+  sessionId: string
 ): Promise<SessionServicesResponse | null> {
-  const response = await fetch(`${apiBaseUrl}/internal/sessions/${sessionId}/services`);
-  if (!response.ok) return null;
+  const response = await fetch(
+    `${apiBaseUrl}/internal/sessions/${sessionId}/services`
+  );
+  if (!response.ok) {
+    return null;
+  }
   return response.json();
 }
 
@@ -39,18 +43,23 @@ function errorResult(text: string): ToolResult {
 }
 
 function sessionNotFoundError(sessionId: string): ToolResult {
-  return errorResult(`Error: Could not find session "${sessionId}". Make sure the session exists.`);
+  return errorResult(
+    `Error: Could not find session "${sessionId}". Make sure the session exists.`
+  );
 }
 
-function serviceNotFoundError(containerId: string, available: string[]): ToolResult {
+function serviceNotFoundError(
+  containerId: string,
+  available: string[]
+): ToolResult {
   return errorResult(
-    `Error: Service "${containerId}" not found. Available services: ${available.join(", ") || "(none)"}`,
+    `Error: Service "${containerId}" not found. Available services: ${available.join(", ") || "(none)"}`
   );
 }
 
 function portNotFoundError(port: number, available: number[]): ToolResult {
   return errorResult(
-    `Error: No service found on port ${port}. Available ports: ${available.join(", ") || "(none)"}`,
+    `Error: No service found on port ${port}. Available ports: ${available.join(", ") || "(none)"}`
   );
 }
 
@@ -65,7 +74,7 @@ function formatSessionNetworkName(sessionId: string): string {
 async function ensureSharedContainerConnected(
   docker: DockerClient,
   sessionId: string,
-  containerName: string,
+  containerName: string
 ): Promise<void> {
   const networkName = formatSessionNetworkName(sessionId);
   const networkExists = await docker.networkExists(networkName);
@@ -73,7 +82,10 @@ async function ensureSharedContainerConnected(
     throw new Error(`Session network "${networkName}" not found`);
   }
 
-  const connected = await docker.isConnectedToNetwork(containerName, networkName);
+  const connected = await docker.isConnectedToNetwork(
+    containerName,
+    networkName
+  );
   if (connected) {
     return;
   }
@@ -88,12 +100,19 @@ export function container(server: McpServer, { docker, config }: ToolContext) {
       description:
         "List all running containers in the session. Shows containerId, image, status, and exposed ports.",
       inputSchema: {
-        sessionId: z.string().describe("The Lab session ID (provided in the system prompt)"),
+        sessionId: z
+          .string()
+          .describe("The Lab session ID (provided in the system prompt)"),
       },
     },
     async (args) => {
-      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
-      if (!data) return sessionNotFoundError(args.sessionId);
+      const data = await getSessionServices(
+        config.API_BASE_URL,
+        args.sessionId
+      );
+      if (!data) {
+        return sessionNotFoundError(args.sessionId);
+      }
 
       if (data.services.length === 0) {
         return textResult("No running processes found in this session.");
@@ -107,71 +126,111 @@ export function container(server: McpServer, { docker, config }: ToolContext) {
       }));
 
       return textResult(JSON.stringify(output, null, 2));
-    },
+    }
   );
 
   server.registerTool(
     "logs",
     {
-      description: "View recent logs from a container. Use `containers` to see available IDs.",
+      description:
+        "View recent logs from a container. Use `containers` to see available IDs.",
       inputSchema: {
-        sessionId: z.string().describe("The Lab session ID (provided in the system prompt)"),
+        sessionId: z
+          .string()
+          .describe("The Lab session ID (provided in the system prompt)"),
         containerId: z.string().describe("The containerId (from `containers`)"),
-        tail: z.number().optional().describe("Number of lines to retrieve (default: 100)"),
+        tail: z
+          .number()
+          .optional()
+          .describe("Number of lines to retrieve (default: 100)"),
       },
     },
     async (args) => {
-      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
-      if (!data) return sessionNotFoundError(args.sessionId);
+      const data = await getSessionServices(
+        config.API_BASE_URL,
+        args.sessionId
+      );
+      if (!data) {
+        return sessionNotFoundError(args.sessionId);
+      }
 
-      const service = data.services.find((candidate) => candidate.containerId === args.containerId);
+      const service = data.services.find(
+        (candidate) => candidate.containerId === args.containerId
+      );
       if (!service) {
-        const available = data.services.map((candidate) => candidate.containerId);
+        const available = data.services.map(
+          (candidate) => candidate.containerId
+        );
         return serviceNotFoundError(args.containerId, available);
       }
 
       const exists = await docker.containerExists(service.runtimeId);
-      if (!exists) return containerNotRunningError(args.containerId);
+      if (!exists) {
+        return containerNotRunningError(args.containerId);
+      }
 
       const lines = args.tail ?? 100;
       const logs: string[] = [];
-      for await (const chunk of docker.streamLogs(service.runtimeId, { tail: lines })) {
+      for await (const chunk of docker.streamLogs(service.runtimeId, {
+        tail: lines,
+      })) {
         const text = new TextDecoder().decode(chunk.data);
         logs.push(`[${chunk.stream}] ${text}`);
       }
 
       return textResult(logs.join("") || "(no logs)");
-    },
+    }
   );
 
   server.registerTool(
     "restart_process",
     {
-      description: "Restart a container. Use `containers` to see available IDs.",
+      description:
+        "Restart a container. Use `containers` to see available IDs.",
       inputSchema: {
-        sessionId: z.string().describe("The Lab session ID (provided in the system prompt)"),
-        containerId: z.string().describe("The containerId to restart (from `containers`)"),
-        timeout: z.number().optional().describe("Seconds to wait before killing (default: 10)"),
+        sessionId: z
+          .string()
+          .describe("The Lab session ID (provided in the system prompt)"),
+        containerId: z
+          .string()
+          .describe("The containerId to restart (from `containers`)"),
+        timeout: z
+          .number()
+          .optional()
+          .describe("Seconds to wait before killing (default: 10)"),
       },
     },
     async (args) => {
-      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
-      if (!data) return sessionNotFoundError(args.sessionId);
+      const data = await getSessionServices(
+        config.API_BASE_URL,
+        args.sessionId
+      );
+      if (!data) {
+        return sessionNotFoundError(args.sessionId);
+      }
 
-      const service = data.services.find((candidate) => candidate.containerId === args.containerId);
+      const service = data.services.find(
+        (candidate) => candidate.containerId === args.containerId
+      );
       if (!service) {
-        const available = data.services.map((candidate) => candidate.containerId);
+        const available = data.services.map(
+          (candidate) => candidate.containerId
+        );
         return serviceNotFoundError(args.containerId, available);
       }
 
       const exists = await docker.containerExists(service.runtimeId);
-      if (!exists) return containerNotRunningError(args.containerId);
+      if (!exists) {
+        return containerNotRunningError(args.containerId);
+      }
 
       const timeout = args.timeout ?? 10;
       await docker.restartContainer(service.runtimeId, timeout);
 
-      return textResult(`Successfully restarted container "${args.containerId}"`);
-    },
+      return textResult(
+        `Successfully restarted container "${args.containerId}"`
+      );
+    }
   );
 
   server.registerTool(
@@ -180,35 +239,48 @@ export function container(server: McpServer, { docker, config }: ToolContext) {
       description:
         "Get the internal URL for a container port. Use with the browser tool or curl/fetch.",
       inputSchema: {
-        sessionId: z.string().describe("The Lab session ID (provided in the system prompt)"),
+        sessionId: z
+          .string()
+          .describe("The Lab session ID (provided in the system prompt)"),
         port: z.number().describe("The port number (from `containers`)"),
       },
     },
     async (args) => {
-      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
-      if (!data) return sessionNotFoundError(args.sessionId);
+      const data = await getSessionServices(
+        config.API_BASE_URL,
+        args.sessionId
+      );
+      if (!data) {
+        return sessionNotFoundError(args.sessionId);
+      }
 
-      const service = data.services.find(({ ports }) => ports.includes(args.port));
+      const service = data.services.find(({ ports }) =>
+        ports.includes(args.port)
+      );
       if (!service) {
         const availablePorts = data.services.flatMap(({ ports }) => ports);
         return portNotFoundError(args.port, availablePorts);
       }
 
       try {
-        await ensureSharedContainerConnected(docker, args.sessionId, config.BROWSER_CONTAINER_NAME);
+        await ensureSharedContainerConnected(
+          docker,
+          args.sessionId,
+          config.BROWSER_CONTAINER_NAME
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return errorResult(
-          `Error: Failed to ensure browser connectivity for session "${args.sessionId}": ${message}`,
+          `Error: Failed to ensure browser connectivity for session "${args.sessionId}": ${message}`
         );
       }
 
       const internalUrl = `http://${args.sessionId}--${args.port}:${args.port}`;
 
       return textResult(
-        `Internal URL: ${internalUrl}\n\nYou can use this URL with:\n- agent-browser: Navigate to this URL to interact with the service\n- curl/fetch: Make HTTP requests from within the workspace container\n\n This URL is not relevant to the user.`,
+        `Internal URL: ${internalUrl}\n\nYou can use this URL with:\n- agent-browser: Navigate to this URL to interact with the service\n- curl/fetch: Make HTTP requests from within the workspace container\n\n This URL is not relevant to the user.`
       );
-    },
+    }
   );
 
   server.registerTool(
@@ -217,15 +289,24 @@ export function container(server: McpServer, { docker, config }: ToolContext) {
       description:
         "Get the public URL for a container port. Share with the user to access in their browser.",
       inputSchema: {
-        sessionId: z.string().describe("The Lab session ID (provided in the system prompt)"),
+        sessionId: z
+          .string()
+          .describe("The Lab session ID (provided in the system prompt)"),
         port: z.number().describe("The port number (from `containers`)"),
       },
     },
     async (args) => {
-      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
-      if (!data) return sessionNotFoundError(args.sessionId);
+      const data = await getSessionServices(
+        config.API_BASE_URL,
+        args.sessionId
+      );
+      if (!data) {
+        return sessionNotFoundError(args.sessionId);
+      }
 
-      const service = data.services.find(({ ports }) => ports.includes(args.port));
+      const service = data.services.find(({ ports }) =>
+        ports.includes(args.port)
+      );
       if (!service) {
         const availablePorts = data.services.flatMap(({ ports }) => ports);
         return portNotFoundError(args.port, availablePorts);
@@ -234,8 +315,8 @@ export function container(server: McpServer, { docker, config }: ToolContext) {
       const externalUrl = `http://${args.sessionId}--${args.port}.${data.proxyBaseDomain}`;
 
       return textResult(
-        `External URL: ${externalUrl}\n\nShare this URL with the user so they can access the service in their browser.`,
+        `External URL: ${externalUrl}\n\nShare this URL with the user so they can access the service in their browser.`
       );
-    },
+    }
   );
 }

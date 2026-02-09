@@ -14,7 +14,10 @@ export interface ChannelConfig<
 }
 
 export interface Schema<
-  TChannels extends Record<string, ChannelConfig> = Record<string, ChannelConfig>,
+  TChannels extends Record<string, ChannelConfig> = Record<
+    string,
+    ChannelConfig
+  >,
   TClientMessages extends z.ZodType = z.ZodType,
 > {
   channels: TChannels;
@@ -24,10 +27,14 @@ export interface Schema<
 export type SnapshotOf<T extends ChannelConfig> = z.infer<T["snapshot"]>;
 
 export type DeltaOf<T extends ChannelConfig> =
-  NonNullable<T["delta"]> extends z.ZodType ? z.infer<NonNullable<T["delta"]>> : never;
+  NonNullable<T["delta"]> extends z.ZodType
+    ? z.infer<NonNullable<T["delta"]>>
+    : never;
 
 export type EventOf<T extends ChannelConfig> =
-  NonNullable<T["event"]> extends z.ZodType ? z.infer<NonNullable<T["event"]>> : never;
+  NonNullable<T["event"]> extends z.ZodType
+    ? z.infer<NonNullable<T["event"]>>
+    : never;
 
 export type ClientMessageOf<S extends Schema> = z.infer<S["clientMessages"]>;
 
@@ -48,7 +55,9 @@ export type ChannelName<S extends Schema> = keyof S["channels"] & string;
 
 export type PathOf<C extends ChannelConfig> = C["path"];
 
-export type HasParams<Path extends string> = Path extends `${string}:${string}` ? true : false;
+export type HasParams<Path extends string> = Path extends `${string}:${string}`
+  ? true
+  : false;
 
 export type ParamsFor<Path extends string> =
   HasParams<Path> extends true ? { uuid: string } : undefined;

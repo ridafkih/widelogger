@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot } from "lucide-react";
-import { ContentText, ContentError, getString } from "../shared";
+import { ContentError, ContentText, getString } from "../shared";
 import type { ToolRendererProps } from "../types";
 
 function TaskRenderer({ input, output, error, status }: ToolRendererProps) {
@@ -11,25 +11,27 @@ function TaskRenderer({ input, output, error, status }: ToolRendererProps) {
 
   return (
     <div className="flex flex-col">
-      <div className="px-4 py-2 flex items-center gap-1.5 bg-bg-muted">
-        <Bot size={12} className="text-text-muted shrink-0" />
+      <div className="flex items-center gap-1.5 bg-bg-muted px-4 py-2">
+        <Bot className="shrink-0 text-text-muted" size={12} />
         <span className="text-xs">{description ?? "Task"}</span>
-        {subagentType && <span className="text-xs text-text-muted">({subagentType})</span>}
+        {subagentType && (
+          <span className="text-text-muted text-xs">({subagentType})</span>
+        )}
       </div>
       {prompt && (
-        <div className="px-4 py-2 bg-bg-muted">
-          <p className="text-xs text-text-muted line-clamp-3 border-l-2 border-border pl-2">
+        <div className="bg-bg-muted px-4 py-2">
+          <p className="line-clamp-3 border-border border-l-2 pl-2 text-text-muted text-xs">
             {prompt}
           </p>
         </div>
       )}
       {output && status === "completed" && (
-        <div className="px-4 py-2 bg-bg-muted w-0 min-w-full">
+        <div className="w-0 min-w-full bg-bg-muted px-4 py-2">
           <ContentText maxLines={15}>{output}</ContentText>
         </div>
       )}
       {error && (
-        <div className="px-4 py-2 bg-bg-muted w-0 min-w-full">
+        <div className="w-0 min-w-full bg-bg-muted px-4 py-2">
           <ContentError>{error}</ContentError>
         </div>
       )}

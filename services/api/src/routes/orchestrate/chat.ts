@@ -1,19 +1,19 @@
+import { buildSseResponse } from "@lab/http-utilities";
 import { z } from "zod";
-import type { Handler, RouteContextFor } from "../../types/route";
+import { getPlatformConfig } from "../../config/platforms";
+import { widelog } from "../../logging";
 import {
+  type ChatOrchestratorResult,
   chatOrchestrate,
   chatOrchestrateStream,
-  type ChatOrchestratorResult,
 } from "../../orchestration/chat-orchestrator";
 import {
-  saveOrchestratorMessage,
   getConversationHistory,
+  saveOrchestratorMessage,
 } from "../../repositories/orchestrator-message.repository";
-import { getPlatformConfig } from "../../config/platforms";
-import { buildSseResponse } from "@lab/http-utilities";
 import { parseRequestBody } from "../../shared/validation";
 import { MESSAGE_ROLE } from "../../types/message";
-import { widelog } from "../../logging";
+import type { Handler, RouteContextFor } from "../../types/route";
 
 const chatRequestSchema = z.object({
   content: z.string().min(1),
@@ -77,7 +77,7 @@ const POST: Handler<OrchestrationContext> = async ({ request, context }) => {
           content: result.message,
           sessionId: result.sessionId,
         });
-      },
+      }
     );
 
     return buildSseResponse(stream);
@@ -112,8 +112,12 @@ const POST: Handler<OrchestrationContext> = async ({ request, context }) => {
 };
 
 function createSseStream(
-  generator: AsyncGenerator<{ type: "chunk"; text: string }, ChatOrchestratorResult, unknown>,
-  onComplete: (result: ChatOrchestratorResult) => Promise<void>,
+  generator: AsyncGenerator<
+    { type: "chunk"; text: string },
+    ChatOrchestratorResult,
+    unknown
+  >,
+  onComplete: (result: ChatOrchestratorResult) => Promise<void>
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
 
@@ -143,7 +147,8 @@ function createSseStream(
       } catch (error) {
         widelog.errorFields(error, { prefix: "orchestration.stream_error" });
         widelog.set("orchestration.stream_outcome", "error");
-        const errorMessage = error instanceof Error ? error.message : "Stream failed";
+        const errorMessage =
+          error instanceof Error ? error.message : "Stream failed";
         const errorEvent = `event: error\ndata: ${JSON.stringify({ error: errorMessage })}\n\n`;
         controller.enqueue(encoder.encode(errorEvent));
         controller.close();

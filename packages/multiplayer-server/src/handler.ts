@@ -1,20 +1,22 @@
-import type { Server, ServerWebSocket } from "bun";
 import type {
-  Schema,
   ChannelConfig,
+  ClientMessageOf,
+  Schema,
+  SnapshotOf,
   WireClientMessage,
   WireServerMessage,
-  SnapshotOf,
-  ClientMessageOf,
 } from "@lab/multiplayer-sdk";
 import { parsePath } from "@lab/multiplayer-sdk";
+import type { Server, ServerWebSocket } from "bun";
 
 function safeParseClientMessage<S extends Schema>(
   schema: S,
-  data: unknown,
+  data: unknown
 ): { success: true; data: ClientMessageOf<S> } | { success: false } {
   const result = schema.clientMessages.safeParse(data);
-  if (!result.success) return { success: false };
+  if (!result.success) {
+    return { success: false };
+  }
   return { success: true, data: result.data };
 }
 
@@ -31,19 +33,29 @@ function hasData(value: object): value is { data: unknown } {
 }
 
 function isWireClientMessage(value: unknown): value is WireClientMessage {
-  if (typeof value !== "object" || value === null) return false;
-  if (!hasType(value)) return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!hasType(value)) {
+    return false;
+  }
 
   const { type } = value;
 
-  if (type === "ping") return true;
+  if (type === "ping") {
+    return true;
+  }
 
   if (type === "message") {
     return hasData(value);
   }
 
-  if (!hasChannel(value)) return false;
-  if (typeof value.channel !== "string") return false;
+  if (!hasChannel(value)) {
+    return false;
+  }
+  if (typeof value.channel !== "string") {
+    return false;
+  }
 
   switch (type) {
     case "subscribe":
@@ -67,16 +79,22 @@ export interface ChannelContext<TAuth, TParams> {
 
 type AnyParams = Record<string, string>;
 
-export type ChannelHandlers<TChannel extends ChannelConfig, TAuth> = {
-  authorize?: (context: ChannelContext<TAuth, AnyParams>) => boolean | Promise<boolean>;
+export interface ChannelHandlers<TChannel extends ChannelConfig, TAuth> {
+  authorize?: (
+    context: ChannelContext<TAuth, AnyParams>
+  ) => boolean | Promise<boolean>;
 
   getSnapshot: (
-    context: ChannelContext<TAuth, AnyParams>,
+    context: ChannelContext<TAuth, AnyParams>
   ) => SnapshotOf<TChannel> | Promise<SnapshotOf<TChannel>>;
 
-  onSubscribe?: (context: ChannelContext<TAuth, AnyParams>) => void | Promise<void>;
-  onUnsubscribe?: (context: ChannelContext<TAuth, AnyParams>) => void | Promise<void>;
-};
+  onSubscribe?: (
+    context: ChannelContext<TAuth, AnyParams>
+  ) => void | Promise<void>;
+  onUnsubscribe?: (
+    context: ChannelContext<TAuth, AnyParams>
+  ) => void | Promise<void>;
+}
 
 export type SchemaHandlers<S extends Schema, TAuth> = {
   [K in keyof S["channels"]]?: ChannelHandlers<S["channels"][K], TAuth>;
@@ -89,13 +107,16 @@ export interface MessageContext<TAuth> {
 
 export interface HandlerOptions<S extends Schema, TAuth> {
   authenticate: (token: string | null) => TAuth | Promise<TAuth>;
-  onMessage?: (context: MessageContext<TAuth>, message: ClientMessageOf<S>) => void | Promise<void>;
+  onMessage?: (
+    context: MessageContext<TAuth>,
+    message: ClientMessageOf<S>
+  ) => void | Promise<void>;
 }
 
 export function createWebSocketHandler<S extends Schema, TAuth>(
   schema: S,
   handlers: SchemaHandlers<S, TAuth>,
-  options: HandlerOptions<S, TAuth>,
+  options: HandlerOptions<S, TAuth>
 ) {
   type WS = ServerWebSocket<WebSocketData<TAuth>>;
 
@@ -105,9 +126,11 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
     return name in handlers;
   }
 
-  function findChannelMatch(
-    resolvedPath: string,
-  ): { name: HandlerName; config: ChannelConfig; params: Record<string, string> } | null {
+  function findChannelMatch(resolvedPath: string): {
+    name: HandlerName;
+    config: ChannelConfig;
+    params: Record<string, string>;
+  } | null {
     for (const [name, config] of Object.entries(schema.channels)) {
       const params = parsePath(config.path, resolvedPath);
       if (params !== null && isHandlerName(name)) {
@@ -131,7 +154,11 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
 
     const handler = handlers[match.name];
     if (!handler) {
-      sendMessage(ws, { type: "error", channel, error: "No handler for channel" });
+      sendMessage(ws, {
+        type: "error",
+        channel,
+        error: "No handler for channel",
+      });
       return;
     }
 
@@ -190,10 +217,14 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
   }
 
   async function handleMessage(ws: WS, data: unknown): Promise<void> {
-    if (!options.onMessage) return;
+    if (!options.onMessage) {
+      return;
+    }
 
     const parseResult = safeParseClientMessage(schema, data);
-    if (!parseResult.success) return;
+    if (!parseResult.success) {
+      return;
+    }
 
     const context: MessageContext<TAuth> = {
       auth: ws.data.auth,
@@ -214,7 +245,9 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
   const websocketHandler = {
     async message(ws: WS, message: string | Buffer) {
       try {
-        const raw: unknown = JSON.parse(typeof message === "string" ? message : message.toString());
+        const raw: unknown = JSON.parse(
+          typeof message === "string" ? message : message.toString()
+        );
 
         if (!isWireClientMessage(raw)) {
           return;
@@ -250,9 +283,14 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
               params: match.params,
               ws,
             };
-            Promise.resolve(handler.onUnsubscribe(context)).catch((err: unknown) => {
-              console.warn("Error in onUnsubscribe handler during close:", err);
-            });
+            Promise.resolve(handler.onUnsubscribe(context)).catch(
+              (err: unknown) => {
+                console.warn(
+                  "Error in onUnsubscribe handler during close:",
+                  err
+                );
+              }
+            );
           }
         }
         ws.unsubscribe(channel);
@@ -263,7 +301,7 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
 
   async function upgrade(
     req: Request,
-    server: Server<WebSocketData<TAuth>>,
+    server: Server<WebSocketData<TAuth>>
   ): Promise<Response | undefined> {
     const url = new URL(req.url);
     const token = url.searchParams.get("token");

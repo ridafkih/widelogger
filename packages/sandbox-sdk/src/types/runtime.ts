@@ -16,5 +16,7 @@ export interface RuntimeContainerStartResult {
 }
 
 export interface RuntimeManager {
-  startContainer(input: RuntimeContainerStartInput): Promise<RuntimeContainerStartResult>;
+  startContainer(
+    input: RuntimeContainerStartInput
+  ): Promise<RuntimeContainerStartResult>;
 }

@@ -1,4 +1,7 @@
-export function buildProjectResolutionPrompt(task: string, projectContext: string): string {
+export function buildProjectResolutionPrompt(
+  task: string,
+  projectContext: string
+): string {
   return `You are a project routing assistant. Given a user's task and a list of available projects, determine which project the task should be routed to.
 
 ## Available Projects

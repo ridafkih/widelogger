@@ -1,15 +1,15 @@
 import { LIMITS } from "../config/constants";
+import { widelog } from "../logging";
 import { complete } from "../orchestration/llm";
 import {
-  isOpencodeMessage,
   extractTextFromParts,
+  isOpencodeMessage,
   type OpencodeMessage,
 } from "../orchestration/opencode-messages";
 import { findSessionById } from "../repositories/session.repository";
 import { resolveWorkspacePathBySession } from "../shared/path-resolver";
 import type { OpencodeClient } from "../types/dependencies";
 import { MESSAGE_ROLE } from "../types/message";
-import { widelog } from "../logging";
 
 interface TaskSummary {
   success: boolean;
@@ -37,19 +37,25 @@ function formatConversationForLLM(messages: OpencodeMessage[]): string {
 const platformFormatGuidelines: Record<string, string> = {
   imessage:
     "Keep the summary very short (under 200 characters), use plain text only, no markdown or formatting.",
-  slack: "You may use Slack mrkdwn: *bold*, _italic_. Keep it concise but informative.",
-  discord: "You may use Discord markdown: **bold**, *italic*. Keep under 500 characters.",
+  slack:
+    "You may use Slack mrkdwn: *bold*, _italic_. Keep it concise but informative.",
+  discord:
+    "You may use Discord markdown: **bold**, *italic*. Keep under 500 characters.",
 };
 
 function getPlatformGuideline(platform?: string): string {
-  if (!platform) return "Keep the summary concise and use plain text.";
+  if (!platform) {
+    return "Keep the summary concise and use plain text.";
+  }
   return (
     platformFormatGuidelines[platform.toLowerCase()] ??
     "Keep the summary concise and use plain text."
   );
 }
 
-export async function generateTaskSummary(options: GenerateSummaryOptions): Promise<TaskSummary> {
+export async function generateTaskSummary(
+  options: GenerateSummaryOptions
+): Promise<TaskSummary> {
   const { sessionId, originalTask, platformOrigin, opencode } = options;
   const session = await findSessionById(sessionId);
 
@@ -69,7 +75,9 @@ export async function generateTaskSummary(options: GenerateSummaryOptions): Prom
     });
 
     const rawMessages = response.data ?? [];
-    const messages = Array.isArray(rawMessages) ? rawMessages.filter(isOpencodeMessage) : [];
+    const messages = Array.isArray(rawMessages)
+      ? rawMessages.filter(isOpencodeMessage)
+      : [];
 
     if (messages.length === 0) {
       return {

@@ -1,11 +1,11 @@
-import { widelog } from "./logging";
-import { createDaemonManager } from "./utils/daemon-manager";
-import { BrowserDaemonServer } from "./server/browser-daemon-server";
 import type { env } from "./env";
+import { widelog } from "./logging";
+import { BrowserDaemonServer } from "./server/browser-daemon-server";
+import { createDaemonManager } from "./utils/daemon-manager";
 
-type SetupOptions = {
+interface SetupOptions {
   env: (typeof env)["inferOut"];
-};
+}
 
 type SetupFunction = (options: SetupOptions) => unknown;
 

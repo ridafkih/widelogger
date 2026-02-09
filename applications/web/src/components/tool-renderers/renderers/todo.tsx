@@ -1,17 +1,17 @@
 "use client";
 
-import { Circle, CircleDot, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Circle, CircleDot } from "lucide-react";
 import { tv } from "tailwind-variants";
-import { getString, getArray } from "../shared";
+import { getArray, getString } from "../shared";
 import type { ToolRendererProps } from "../types";
 
-type TodoItem = {
+interface TodoItem {
   id?: string;
   content?: string;
   subject?: string;
   status?: "pending" | "in_progress" | "completed";
   priority?: number;
-};
+}
 
 const statusIcon = tv({
   base: "size-3 shrink-0",
@@ -51,23 +51,27 @@ function TodoRenderer({ input, error }: ToolRendererProps) {
 
   return (
     <div className="flex flex-col bg-bg-muted">
-      <div className="px-4 py-2 text-xs text-text-secondary">{title}</div>
+      <div className="px-4 py-2 text-text-secondary text-xs">{title}</div>
       {isSingleTodo && (
-        <div className="px-4 py-1 flex items-start gap-2">
+        <div className="flex items-start gap-2 px-4 py-1">
           {inputStatus &&
             (() => {
-              const Icon = statusIcons[inputStatus as keyof typeof statusIcons] ?? Circle;
+              const Icon =
+                statusIcons[inputStatus as keyof typeof statusIcons] ?? Circle;
               return (
                 <Icon
                   className={statusIcon({
-                    status: (inputStatus as keyof typeof statusIcons) ?? "pending",
+                    status:
+                      (inputStatus as keyof typeof statusIcons) ?? "pending",
                   })}
                 />
               );
             })()}
           <div className="flex flex-col gap-0.5">
             <span className="text-xs">{subject}</span>
-            {description && <span className="text-xs text-text-muted">{description}</span>}
+            {description && (
+              <span className="text-text-muted text-xs">{description}</span>
+            )}
           </div>
         </div>
       )}
@@ -77,13 +81,15 @@ function TodoRenderer({ input, error }: ToolRendererProps) {
           todo.id ??
           `${todo.subject ?? todo.content ?? "todo"}-${todo.status ?? "pending"}-${index}`;
         return (
-          <div key={todoKey} className="px-4 py-1 flex items-start gap-2">
-            <Icon className={statusIcon({ status: todo.status ?? "pending" })} />
+          <div className="flex items-start gap-2 px-4 py-1" key={todoKey}>
+            <Icon
+              className={statusIcon({ status: todo.status ?? "pending" })}
+            />
             <span className="text-xs">{todo.content ?? todo.subject}</span>
           </div>
         );
       })}
-      {error && <div className="px-4 py-2 text-xs text-red-500">{error}</div>}
+      {error && <div className="px-4 py-2 text-red-500 text-xs">{error}</div>}
     </div>
   );
 }

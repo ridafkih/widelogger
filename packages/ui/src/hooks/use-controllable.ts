@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-type UseControllableParams<T> = {
+interface UseControllableParams<T> {
   value?: T;
   defaultValue?: T;
   onChange?: (value: T) => void;
-};
+}
 
 export function useControllable<T>({
   value: controlledValue,
@@ -27,7 +27,7 @@ export function useControllable<T>({
       }
       onChangeRef.current?.(nextValue);
     },
-    [isControlled],
+    [isControlled]
   );
 
   return [value, setValue];

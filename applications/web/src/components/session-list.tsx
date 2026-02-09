@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Box, Plus } from "lucide-react";
-import type { ReactNode } from "react";
 import type { Project, Session } from "@lab/client";
+import { Box, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { tv } from "tailwind-variants";
-import { useProjects, useSessions, useCreateSession } from "@/lib/hooks";
+import { useCreateSession, useProjects, useSessions } from "@/lib/hooks";
 import { useSessionsSync } from "@/lib/use-sessions-sync";
 import { IconButton } from "./icon-button";
 import { SessionItem } from "./session-item";
@@ -14,8 +14,8 @@ const row = tv({
   base: "flex items-center gap-2 py-2",
   variants: {
     type: {
-      project: "text-text-secondary cursor-default",
-      session: "hover:brightness-75 cursor-pointer",
+      project: "cursor-default text-text-secondary",
+      session: "cursor-pointer hover:brightness-75",
     },
   },
 });
@@ -24,7 +24,13 @@ function SessionListRoot({ children }: { children: ReactNode }) {
   return <div className="flex flex-col">{children}</div>;
 }
 
-function SessionListProject({ project, children }: { project: Project; children?: ReactNode }) {
+function SessionListProject({
+  project,
+  children,
+}: {
+  project: Project;
+  children?: ReactNode;
+}) {
   const router = useRouter();
   const { data: sessions } = useSessions(project.id);
   const createSession = useCreateSession();
@@ -34,18 +40,20 @@ function SessionListProject({ project, children }: { project: Project; children?
   const handleAddSession = async (event: React.MouseEvent) => {
     event.stopPropagation();
     const session = await createSession(project.id);
-    if (session) router.push(`/editor/${session.id}/chat`);
+    if (session) {
+      router.push(`/editor/${session.id}/chat`);
+    }
   };
 
   return (
     <div>
       <div className={row({ type: "project" })}>
-        <Box size={14} className="shrink-0" />
-        <span className="font-medium text-nowrap">{project.name}</span>
+        <Box className="shrink-0" size={14} />
+        <span className="text-nowrap font-medium">{project.name}</span>
         <span className="text-text-muted text-xs">{sessionCount}</span>
         <IconButton
-          onClick={handleAddSession}
           className="ml-auto opacity-0 group-hover:opacity-100"
+          onClick={handleAddSession}
         >
           <Plus size={14} />
         </IconButton>
@@ -59,14 +67,14 @@ function SessionListItem({ session }: { session: Session }) {
   return (
     <SessionItem.Provider session={session}>
       <SessionItem.Link className={row({ type: "session" })}>
-        <div className="max-w-1/2 flex items-center gap-2">
-          <div className="flex items-center gap-2 shrink-0">
+        <div className="flex max-w-1/2 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <SessionItem.Status />
             <SessionItem.Hash />
           </div>
           <SessionItem.Title />
         </div>
-        <div className="overflow-hidden flex grow justify-end">
+        <div className="flex grow justify-end overflow-hidden">
           <SessionItem.LastMessage />
         </div>
       </SessionItem.Link>
@@ -75,15 +83,19 @@ function SessionListItem({ session }: { session: Session }) {
 }
 
 function SessionListEmpty() {
-  return <div className="text-text-muted text-sm py-4 text-center">No projects yet</div>;
+  return (
+    <div className="py-4 text-center text-sm text-text-muted">
+      No projects yet
+    </div>
+  );
 }
 
 function SessionListLoading() {
   return (
     <div className="py-2">
       <div className="flex items-center gap-2 py-2 text-text-muted">
-        <div className="h-3.5 w-3.5 rounded-full bg-bg-hover animate-pulse" />
-        <div className="h-3 w-24 rounded bg-bg-hover animate-pulse" />
+        <div className="h-3.5 w-3.5 animate-pulse rounded-full bg-bg-hover" />
+        <div className="h-3 w-24 animate-pulse rounded bg-bg-hover" />
       </div>
     </div>
   );

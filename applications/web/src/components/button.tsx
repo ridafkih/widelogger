@@ -1,14 +1,14 @@
-import { type ComponentProps } from "react";
+import type { ComponentProps } from "react";
 import { tv, type VariantProps } from "tailwind-variants";
 
 const button = tv({
-  base: "flex items-center gap-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+  base: "flex cursor-pointer items-center gap-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50",
   variants: {
     variant: {
-      primary: "border border-border text-text bg-bg-muted hover:bg-bg-hover",
-      ghost: "text-text-muted hover:text-text hover:bg-bg-muted",
+      primary: "border border-border bg-bg-muted text-text hover:bg-bg-hover",
+      ghost: "text-text-muted hover:bg-bg-muted hover:text-text",
       danger: "border border-red-500/30 text-red-500 hover:bg-red-500/10",
-      active: "border border-blue-500/50 text-blue-500 bg-blue-500/10",
+      active: "border border-blue-500/50 bg-blue-500/10 text-blue-500",
     },
     size: {
       sm: "px-1.5 py-0.5",
@@ -23,8 +23,20 @@ const button = tv({
 
 type ButtonProps = ComponentProps<"button"> & VariantProps<typeof button>;
 
-function Button({ className, variant, size, type = "button", ...props }: ButtonProps) {
-  return <button type={type} className={button({ variant, size, className })} {...props} />;
+function Button({
+  className,
+  variant,
+  size,
+  type = "button",
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      className={button({ variant, size, className })}
+      type={type}
+      {...props}
+    />
+  );
 }
 
 export { Button, button };

@@ -1,18 +1,22 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import {
   createContext,
-  use,
-  useState,
-  useEffect,
-  useRef,
   type ReactNode,
   type RefObject,
+  use,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { tv } from "tailwind-variants";
-import { ChevronDown } from "lucide-react";
-import { useContainerLogs, type LogSource, type LogEntry } from "@/lib/use-container-logs";
 import { cn } from "@/lib/cn";
+import {
+  type LogEntry,
+  type LogSource,
+  useContainerLogs,
+} from "@/lib/use-container-logs";
 
 const text = tv({
   base: "text-[10px]",
@@ -57,12 +61,16 @@ interface ContainerLogsContextValue {
   meta: ContainerLogsMeta;
 }
 
-const ContainerLogsContext = createContext<ContainerLogsContextValue | null>(null);
+const ContainerLogsContext = createContext<ContainerLogsContextValue | null>(
+  null
+);
 
 function useContainerLogsContext() {
   const context = use(ContainerLogsContext);
   if (!context) {
-    throw new Error("ContainerLogs components must be used within ContainerLogs.Provider");
+    throw new Error(
+      "ContainerLogs components must be used within ContainerLogs.Provider"
+    );
   }
   return context;
 }
@@ -79,8 +87,11 @@ function ContainerLogsProvider({
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (sources.length > 0 && (!activeTab || !sources.find((s) => s.id === activeTab))) {
-      setActiveTab(sources[0]!.id);
+    if (
+      sources.length > 0 &&
+      !(activeTab && sources.find((s) => s.id === activeTab))
+    ) {
+      setActiveTab(sources[0]?.id);
     } else if (sources.length === 0) {
       setActiveTab(null);
     }
@@ -118,18 +129,24 @@ function ContainerLogsSelector() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isOpen]);
 
-  if (state.sources.length === 0) return null;
+  if (state.sources.length === 0) {
+    return null;
+  }
 
   if (state.sources.length === 1 && activeSource) {
     return (
@@ -143,41 +160,49 @@ function ContainerLogsSelector() {
   }
 
   return (
-    <div ref={dropdownRef} className="relative px-3 py-1.5">
+    <div className="relative px-3 py-1.5" ref={dropdownRef}>
       <button
-        type="button"
+        className={cn(
+          "flex w-full items-center gap-1.5",
+          text({ color: "secondary" })
+        )}
         onClick={() => setIsOpen(!isOpen)}
-        className={cn("flex items-center gap-1.5 w-full", text({ color: "secondary" }))}
+        type="button"
       >
         {activeSource && (
           <>
             <ContainerLogsStatusIndicator status={activeSource.status} />
-            <span className="truncate flex-1 text-left">{activeSource.hostname}</span>
+            <span className="flex-1 truncate text-left">
+              {activeSource.hostname}
+            </span>
           </>
         )}
         <ChevronDown
+          className={cn(
+            "shrink-0 transition-transform",
+            isOpen && "rotate-180"
+          )}
           size={12}
-          className={cn("shrink-0 transition-transform", isOpen && "rotate-180")}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-10 mx-3 mt-1 bg-bg-muted border border-border rounded shadow-lg">
+        <div className="absolute top-full right-0 left-0 z-10 mx-3 mt-1 rounded border border-border bg-bg-muted shadow-lg">
           {state.sources.map((source) => (
             <button
+              className={cn(
+                "flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors hover:bg-border",
+                text({ font: "sans" }),
+                source.id === state.activeTab
+                  ? text({ color: "default" })
+                  : text({ color: "secondary" })
+              )}
               key={source.id}
-              type="button"
               onClick={() => {
                 actions.setActiveTab(source.id);
                 setIsOpen(false);
               }}
-              className={cn(
-                "flex items-center gap-1.5 w-full px-2 py-1.5 text-left hover:bg-border transition-colors",
-                text({ font: "sans" }),
-                source.id === state.activeTab
-                  ? text({ color: "default" })
-                  : text({ color: "secondary" }),
-              )}
+              type="button"
             >
               <ContainerLogsStatusIndicator status={source.status} />
               <span className="truncate">{source.hostname}</span>
@@ -189,14 +214,22 @@ function ContainerLogsSelector() {
   );
 }
 
-function ContainerLogsStatusIndicator({ status }: { status: LogSource["status"] }) {
+function ContainerLogsStatusIndicator({
+  status,
+}: {
+  status: LogSource["status"];
+}) {
   const statusColor = {
     streaming: "bg-green-500",
     stopped: "bg-text-muted",
     error: "bg-red-500",
   };
 
-  return <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusColor[status])} />;
+  return (
+    <span
+      className={cn("h-1.5 w-1.5 shrink-0 rounded-full", statusColor[status])}
+    />
+  );
 }
 
 function ContainerLogsContent({ className }: { className?: string }) {
@@ -204,11 +237,15 @@ function ContainerLogsContent({ className }: { className?: string }) {
   const [autoScroll, setAutoScroll] = useState(true);
   const lastLogCount = useRef(0);
 
-  const containerLogs = state.activeTab ? (state.logs[state.activeTab] ?? []) : [];
+  const containerLogs = state.activeTab
+    ? (state.logs[state.activeTab] ?? [])
+    : [];
 
   const handleScroll = () => {
     const container = meta.contentRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     const { scrollTop, scrollHeight, clientHeight } = container;
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
@@ -235,26 +272,47 @@ function ContainerLogsContent({ className }: { className?: string }) {
 
   return (
     <div
-      ref={meta.contentRef}
+      className={cn(
+        "flex h-48 flex-col overflow-x-auto overflow-y-auto",
+        className
+      )}
       onScroll={handleScroll}
-      className={cn("flex flex-col h-48 overflow-y-auto overflow-x-auto", className)}
+      ref={meta.contentRef}
     >
       {containerLogs.map((entry, index) => (
-        <ContainerLogsLine key={`${entry.timestamp}-${index}`} entry={entry} index={index} />
+        <ContainerLogsLine
+          entry={entry}
+          index={index}
+          key={`${entry.timestamp}-${index}`}
+        />
       ))}
     </div>
   );
 }
 
-function ContainerLogsLine({ entry, index }: { entry: LogEntry; index: number }) {
+function ContainerLogsLine({
+  entry,
+  index,
+}: {
+  entry: LogEntry;
+  index: number;
+}) {
   const isEven = index % 2 === 0;
 
   return (
-    <div className={cn("px-3 py-0.5", text({ font: "mono" }), isEven ? "bg-bg" : "bg-bg-muted")}>
+    <div
+      className={cn(
+        "px-3 py-0.5",
+        text({ font: "mono" }),
+        isEven ? "bg-bg" : "bg-bg-muted"
+      )}
+    >
       <span
         className={cn(
           "whitespace-nowrap",
-          entry.stream === "stderr" ? text({ color: "error" }) : text({ color: "default" }),
+          entry.stream === "stderr"
+            ? text({ color: "error" })
+            : text({ color: "default" })
         )}
       >
         {entry.text}
@@ -265,7 +323,12 @@ function ContainerLogsLine({ entry, index }: { entry: LogEntry; index: number })
 
 function ContainerLogsEmpty({ children }: { children: ReactNode }) {
   return (
-    <div className={cn("flex items-center justify-center h-32", text({ color: "muted" }))}>
+    <div
+      className={cn(
+        "flex h-32 items-center justify-center",
+        text({ color: "muted" })
+      )}
+    >
       {children}
     </div>
   );

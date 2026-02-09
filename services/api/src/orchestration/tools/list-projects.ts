@@ -1,9 +1,10 @@
-import { z } from "zod";
 import { tool } from "ai";
+import { z } from "zod";
 import { findAllProjects } from "../../repositories/project.repository";
 
 export const listProjectsTool = tool({
-  description: "Lists all available projects with their IDs, names, and descriptions",
+  description:
+    "Lists all available projects with their IDs, names, and descriptions",
   inputSchema: z.object({}),
   execute: async () => {
     const projects = await findAllProjects();

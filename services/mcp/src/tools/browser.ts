@@ -1,17 +1,17 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { z } from "zod/v4";
-import type { ToolContext, Config } from "../types/tool";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
-  createHierarchicalTool,
-  type CommandNode,
-  type ToolResult,
-} from "../utils/hierarchical-tool";
-import {
+  type BrowserCommand,
   executeCommand as baseExecuteCommand,
   type CommandResult,
-  type BrowserCommand,
 } from "@lab/browser-protocol";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod/v4";
+import type { Config, ToolContext } from "../types/tool";
+import {
+  type CommandNode,
+  createHierarchicalTool,
+  type ToolResult,
+} from "../utils/hierarchical-tool";
 
 function createS3Client(config: Config): S3Client {
   return new S3Client({
@@ -49,21 +49,27 @@ function handleResult(result: CommandResult): ToolResult {
     content: [
       {
         type: "text",
-        text: typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2),
+        text:
+          typeof result.data === "string"
+            ? result.data
+            : JSON.stringify(result.data, null, 2),
       },
     ],
   };
 }
 
 export function browser(server: McpServer, { config }: ToolContext) {
-  function executeCommand(sessionId: string, command: BrowserCommand): Promise<CommandResult> {
+  function executeCommand(
+    sessionId: string,
+    command: BrowserCommand
+  ): Promise<CommandResult> {
     return baseExecuteCommand(config.BROWSER_DAEMON_URL, sessionId, command);
   }
 
   async function uploadToRustFS(
     data: Buffer,
     filename: string,
-    contentType: string = "image/png",
+    contentType = "image/png"
   ): Promise<string> {
     const s3 = createS3Client(config);
 
@@ -73,7 +79,7 @@ export function browser(server: McpServer, { config }: ToolContext) {
         Key: filename,
         Body: data,
         ContentType: contentType,
-      }),
+      })
     );
 
     return `${config.RUSTFS_PUBLIC_URL}/${config.RUSTFS_BUCKET}/${filename}`;
@@ -81,13 +87,16 @@ export function browser(server: McpServer, { config }: ToolContext) {
 
   async function handleScreenshotResult(
     sessionId: string,
-    result: CommandResult,
+    result: CommandResult
   ): Promise<ToolResult> {
     if (!result.success) {
       return {
         isError: true,
         content: [
-          { type: "text", text: `Error: ${result.error || "Failed to capture screenshot"}` },
+          {
+            type: "text",
+            text: `Error: ${result.error || "Failed to capture screenshot"}`,
+          },
         ],
       };
     }
@@ -104,7 +113,9 @@ export function browser(server: McpServer, { config }: ToolContext) {
     if (!base64) {
       return {
         isError: true,
-        content: [{ type: "text", text: "Error: Screenshot data not returned" }],
+        content: [
+          { type: "text", text: "Error: Screenshot data not returned" },
+        ],
       };
     }
 
@@ -117,26 +128,39 @@ export function browser(server: McpServer, { config }: ToolContext) {
       return {
         content: [
           { type: "image", data: base64, mimeType: "image/png" },
-          { type: "text", text: `Screenshot captured successfully and available at ${url}` },
+          {
+            type: "text",
+            text: `Screenshot captured successfully and available at ${url}`,
+          },
         ],
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `Error: Failed to upload screenshot: ${message}` }],
+        content: [
+          {
+            type: "text",
+            text: `Error: Failed to upload screenshot: ${message}`,
+          },
+        ],
       };
     }
   }
 
   async function handleRecordingStopResult(
     sessionId: string,
-    result: CommandResult,
+    result: CommandResult
   ): Promise<ToolResult> {
     if (!result.success) {
       return {
         isError: true,
-        content: [{ type: "text", text: `Error: ${result.error || "Failed to stop recording"}` }],
+        content: [
+          {
+            type: "text",
+            text: `Error: ${result.error || "Failed to stop recording"}`,
+          },
+        ],
       };
     }
 
@@ -172,7 +196,12 @@ export function browser(server: McpServer, { config }: ToolContext) {
       const message = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `Error: Failed to upload recording: ${message}` }],
+        content: [
+          {
+            type: "text",
+            text: `Error: Failed to upload recording: ${message}`,
+          },
+        ],
       };
     }
   }
@@ -180,7 +209,7 @@ export function browser(server: McpServer, { config }: ToolContext) {
   function simpleHandler(
     action: string,
     requiredParams: string[] = [],
-    paramMapping?: Record<string, string>,
+    paramMapping?: Record<string, string>
   ): CommandNode["handler"] {
     return async (args, ctx) => {
       for (const param of requiredParams) {
@@ -220,7 +249,7 @@ export function browser(server: McpServer, { config }: ToolContext) {
 
   function recordingStartHandler(): CommandNode["handler"] {
     return async (args, ctx) => {
-      const timeout = typeof args.timeout === "number" ? args.timeout : 60000;
+      const timeout = typeof args.timeout === "number" ? args.timeout : 60_000;
       const maxTimeout = 5 * 60 * 1000; // 5 minutes
       const clampedTimeout = Math.min(Math.max(timeout, 1000), maxTimeout);
 
@@ -261,7 +290,7 @@ export function browser(server: McpServer, { config }: ToolContext) {
 
   function recordingRestartHandler(): CommandNode["handler"] {
     return async (args, ctx) => {
-      const timeout = typeof args.timeout === "number" ? args.timeout : 60000;
+      const timeout = typeof args.timeout === "number" ? args.timeout : 60_000;
       const maxTimeout = 5 * 60 * 1000; // 5 minutes
       const clampedTimeout = Math.min(Math.max(timeout, 1000), maxTimeout);
 
@@ -303,7 +332,7 @@ export function browser(server: McpServer, { config }: ToolContext) {
           .boolean()
           .optional()
           .describe(
-            "Set to true to capture the full scrollable page in a single image instead of just the viewport",
+            "Set to true to capture the full scrollable page in a single image instead of just the viewport"
           ),
       },
       handler: screenshotHandler(),
@@ -313,12 +342,18 @@ export function browser(server: McpServer, { config }: ToolContext) {
       children: {
         click: {
           description: "Click an element",
-          params: { selector: z.string().describe("CSS selector of element to click") },
+          params: {
+            selector: z.string().describe("CSS selector of element to click"),
+          },
           handler: simpleHandler("click", ["selector"]),
         },
         dblclick: {
           description: "Double-click an element",
-          params: { selector: z.string().describe("CSS selector of element to double-click") },
+          params: {
+            selector: z
+              .string()
+              .describe("CSS selector of element to double-click"),
+          },
           handler: simpleHandler("dblclick", ["selector"]),
         },
         type: {
@@ -340,9 +375,13 @@ export function browser(server: McpServer, { config }: ToolContext) {
         press: {
           description:
             "Press a keyboard key or key combination (e.g., Enter, Tab, Control+a, Shift+ArrowDown)",
-          params: { key: z.string().describe("Key or key combination to press") },
+          params: {
+            key: z.string().describe("Key or key combination to press"),
+          },
           handler: async (args, ctx) => {
-            if (!args.key) return errorResult("'key' is required for press");
+            if (!args.key) {
+              return errorResult("'key' is required for press");
+            }
             const command = {
               id: ctx.generateCommandId(),
               action: "keyboard",
@@ -354,12 +393,16 @@ export function browser(server: McpServer, { config }: ToolContext) {
         },
         hover: {
           description: "Hover over an element",
-          params: { selector: z.string().describe("CSS selector of element to hover") },
+          params: {
+            selector: z.string().describe("CSS selector of element to hover"),
+          },
           handler: simpleHandler("hover", ["selector"]),
         },
         focus: {
           description: "Focus an element",
-          params: { selector: z.string().describe("CSS selector of element to focus") },
+          params: {
+            selector: z.string().describe("CSS selector of element to focus"),
+          },
           handler: simpleHandler("focus", ["selector"]),
         },
         drag: {
@@ -372,12 +415,18 @@ export function browser(server: McpServer, { config }: ToolContext) {
         },
         check: {
           description: "Check a checkbox",
-          params: { selector: z.string().describe("CSS selector of checkbox to check") },
+          params: {
+            selector: z.string().describe("CSS selector of checkbox to check"),
+          },
           handler: simpleHandler("check", ["selector"]),
         },
         uncheck: {
           description: "Uncheck a checkbox",
-          params: { selector: z.string().describe("CSS selector of checkbox to uncheck") },
+          params: {
+            selector: z
+              .string()
+              .describe("CSS selector of checkbox to uncheck"),
+          },
           handler: simpleHandler("uncheck", ["selector"]),
         },
         select: {
@@ -399,7 +448,9 @@ export function browser(server: McpServer, { config }: ToolContext) {
         download: {
           description: "Download a file by clicking an element",
           params: {
-            selector: z.string().describe("CSS selector of download link/button"),
+            selector: z
+              .string()
+              .describe("CSS selector of download link/button"),
             path: z.string().describe("Path to save the downloaded file"),
           },
           handler: simpleHandler("download", ["selector", "path"]),
@@ -419,7 +470,9 @@ export function browser(server: McpServer, { config }: ToolContext) {
               .describe("When to consider navigation complete (default: load)"),
           },
           handler: async (args, ctx) => {
-            if (!args.url) return errorResult("'url' is required for goto");
+            if (!args.url) {
+              return errorResult("'url' is required for goto");
+            }
             const command = {
               id: ctx.generateCommandId(),
               action: "navigate",
@@ -445,13 +498,25 @@ export function browser(server: McpServer, { config }: ToolContext) {
         scroll: {
           description: "Scroll the page in a direction",
           params: {
-            direction: z.enum(["up", "down", "left", "right"]).describe("Direction to scroll"),
-            amount: z.number().optional().describe("Pixels to scroll (default: 300)"),
+            direction: z
+              .enum(["up", "down", "left", "right"])
+              .describe("Direction to scroll"),
+            amount: z
+              .number()
+              .optional()
+              .describe("Pixels to scroll (default: 300)"),
           },
           handler: async (args, ctx) => {
-            const direction = args.direction as "up" | "down" | "left" | "right" | undefined;
+            const direction = args.direction as
+              | "up"
+              | "down"
+              | "left"
+              | "right"
+              | undefined;
             if (!direction) {
-              return errorResult("'direction' is required for scroll (up, down, left, right)");
+              return errorResult(
+                "'direction' is required for scroll (up, down, left, right)"
+              );
             }
             const amount = typeof args.amount === "number" ? args.amount : 300;
 
@@ -485,13 +550,19 @@ export function browser(server: McpServer, { config }: ToolContext) {
         },
         scrollto: {
           description: "Scroll an element into view",
-          params: { selector: z.string().describe("CSS selector of element to scroll into view") },
+          params: {
+            selector: z
+              .string()
+              .describe("CSS selector of element to scroll into view"),
+          },
           handler: simpleHandler("scrollintoview", ["selector"]),
         },
         wait: {
           description: "Wait for an element to reach a certain state",
           params: {
-            selector: z.string().describe("CSS selector of element to wait for"),
+            selector: z
+              .string()
+              .describe("CSS selector of element to wait for"),
             state: z
               .enum(["attached", "detached", "visible", "hidden"])
               .optional()
@@ -521,8 +592,12 @@ export function browser(server: McpServer, { config }: ToolContext) {
             name: z.string().describe("Attribute name to get"),
           },
           handler: async (args, ctx) => {
-            if (!args.selector) return errorResult("'selector' is required");
-            if (!args.name) return errorResult("'name' is required");
+            if (!args.selector) {
+              return errorResult("'selector' is required");
+            }
+            if (!args.name) {
+              return errorResult("'name' is required");
+            }
             const command = {
               id: ctx.generateCommandId(),
               action: "getattribute",
@@ -545,12 +620,16 @@ export function browser(server: McpServer, { config }: ToolContext) {
         },
         checked: {
           description: "Check if a checkbox or radio button is checked",
-          params: { selector: z.string().describe("CSS selector of checkbox/radio") },
+          params: {
+            selector: z.string().describe("CSS selector of checkbox/radio"),
+          },
           handler: simpleHandler("ischecked", ["selector"]),
         },
         count: {
           description: "Count how many elements match a selector",
-          params: { selector: z.string().describe("CSS selector to count matches for") },
+          params: {
+            selector: z.string().describe("CSS selector to count matches for"),
+          },
           handler: simpleHandler("count", ["selector"]),
         },
         box: {
@@ -567,7 +646,8 @@ export function browser(server: McpServer, { config }: ToolContext) {
     },
 
     page: {
-      description: "Page content, PDF export, URL, title, JavaScript evaluation",
+      description:
+        "Page content, PDF export, URL, title, JavaScript evaluation",
       children: {
         html: {
           description: "Get the HTML content of the page or a specific element",
@@ -623,12 +703,16 @@ export function browser(server: McpServer, { config }: ToolContext) {
     },
 
     debug: {
-      description: "Debugging tools: console logs, errors, element highlighting",
+      description:
+        "Debugging tools: console logs, errors, element highlighting",
       children: {
         console: {
           description: "Get browser console log messages",
           params: {
-            clear: z.boolean().optional().describe("Clear logs after retrieving (default: false)"),
+            clear: z
+              .boolean()
+              .optional()
+              .describe("Clear logs after retrieving (default: false)"),
           },
           handler: simpleHandler("console"),
         },
@@ -643,8 +727,13 @@ export function browser(server: McpServer, { config }: ToolContext) {
           handler: simpleHandler("errors"),
         },
         highlight: {
-          description: "Visually highlight an element on the page for debugging",
-          params: { selector: z.string().describe("CSS selector of element to highlight") },
+          description:
+            "Visually highlight an element on the page for debugging",
+          params: {
+            selector: z
+              .string()
+              .describe("CSS selector of element to highlight"),
+          },
           handler: simpleHandler("highlight", ["selector"]),
         },
       },
@@ -682,17 +771,26 @@ export function browser(server: McpServer, { config }: ToolContext) {
                     z.object({
                       name: z.string().describe("Cookie name"),
                       value: z.string().describe("Cookie value"),
-                      url: z.string().optional().describe("URL to set cookie for"),
+                      url: z
+                        .string()
+                        .optional()
+                        .describe("URL to set cookie for"),
                       domain: z.string().optional().describe("Cookie domain"),
                       path: z.string().optional().describe("Cookie path"),
-                      expires: z.number().optional().describe("Expiration timestamp"),
-                      httpOnly: z.boolean().optional().describe("HTTP only flag"),
+                      expires: z
+                        .number()
+                        .optional()
+                        .describe("Expiration timestamp"),
+                      httpOnly: z
+                        .boolean()
+                        .optional()
+                        .describe("HTTP only flag"),
                       secure: z.boolean().optional().describe("Secure flag"),
                       sameSite: z
                         .enum(["Strict", "Lax", "None"])
                         .optional()
                         .describe("SameSite policy"),
-                    }),
+                    })
                   )
                   .describe("Array of cookies to set"),
               },
@@ -710,11 +808,18 @@ export function browser(server: McpServer, { config }: ToolContext) {
             get: {
               description: "Get a value from storage",
               params: {
-                type: z.enum(["local", "session"]).describe("Storage type: local or session"),
-                key: z.string().optional().describe("Key to get (omit to get all keys)"),
+                type: z
+                  .enum(["local", "session"])
+                  .describe("Storage type: local or session"),
+                key: z
+                  .string()
+                  .optional()
+                  .describe("Key to get (omit to get all keys)"),
               },
               handler: async (args, ctx) => {
-                if (!args.type) return errorResult("'type' is required (local or session)");
+                if (!args.type) {
+                  return errorResult("'type' is required (local or session)");
+                }
                 const command = {
                   id: ctx.generateCommandId(),
                   action: "storage_get",
@@ -728,14 +833,22 @@ export function browser(server: McpServer, { config }: ToolContext) {
             set: {
               description: "Set a value in storage",
               params: {
-                type: z.enum(["local", "session"]).describe("Storage type: local or session"),
+                type: z
+                  .enum(["local", "session"])
+                  .describe("Storage type: local or session"),
                 key: z.string().describe("Key to set"),
                 value: z.string().describe("Value to store"),
               },
               handler: async (args, ctx) => {
-                if (!args.type) return errorResult("'type' is required (local or session)");
-                if (!args.key) return errorResult("'key' is required");
-                if (args.value === undefined) return errorResult("'value' is required");
+                if (!args.type) {
+                  return errorResult("'type' is required (local or session)");
+                }
+                if (!args.key) {
+                  return errorResult("'key' is required");
+                }
+                if (args.value === undefined) {
+                  return errorResult("'value' is required");
+                }
                 const command = {
                   id: ctx.generateCommandId(),
                   action: "storage_set",
@@ -750,10 +863,14 @@ export function browser(server: McpServer, { config }: ToolContext) {
             clear: {
               description: "Clear all values from storage",
               params: {
-                type: z.enum(["local", "session"]).describe("Storage type: local or session"),
+                type: z
+                  .enum(["local", "session"])
+                  .describe("Storage type: local or session"),
               },
               handler: async (args, ctx) => {
-                if (!args.type) return errorResult("'type' is required (local or session)");
+                if (!args.type) {
+                  return errorResult("'type' is required (local or session)");
+                }
                 const command = {
                   id: ctx.generateCommandId(),
                   action: "storage_clear",
@@ -775,7 +892,10 @@ export function browser(server: McpServer, { config }: ToolContext) {
             new: {
               description: "Open a new tab",
               params: {
-                url: z.string().optional().describe("URL to open in new tab (default: blank page)"),
+                url: z
+                  .string()
+                  .optional()
+                  .describe("URL to open in new tab (default: blank page)"),
               },
               handler: simpleHandler("tab_new"),
             },
@@ -787,7 +907,10 @@ export function browser(server: McpServer, { config }: ToolContext) {
             close: {
               description: "Close a tab",
               params: {
-                index: z.number().optional().describe("Tab index to close (default: current tab)"),
+                index: z
+                  .number()
+                  .optional()
+                  .describe("Tab index to close (default: current tab)"),
               },
               handler: simpleHandler("tab_close"),
             },
@@ -831,8 +954,15 @@ export function browser(server: McpServer, { config }: ToolContext) {
           description:
             "Scroll using mouse wheel at current position. Move mouse first with mouse move.",
           params: {
-            deltaY: z.number().describe("Vertical scroll amount (positive = down, negative = up)"),
-            deltaX: z.number().optional().describe("Horizontal scroll amount (default: 0)"),
+            deltaY: z
+              .number()
+              .describe(
+                "Vertical scroll amount (positive = down, negative = up)"
+              ),
+            deltaX: z
+              .number()
+              .optional()
+              .describe("Horizontal scroll amount (default: 0)"),
           },
           handler: simpleHandler("wheel", ["deltaY"]),
         },
@@ -840,7 +970,8 @@ export function browser(server: McpServer, { config }: ToolContext) {
     },
 
     record: {
-      description: "Video recording controls for capturing browser sessions as WebM videos",
+      description:
+        "Video recording controls for capturing browser sessions as WebM videos",
       children: {
         start: {
           description:
@@ -854,13 +985,14 @@ export function browser(server: McpServer, { config }: ToolContext) {
               .number()
               .optional()
               .describe(
-                "Recording timeout in milliseconds. Default: 60000 (60s). Max: 300000 (5 min). Increase for longer recordings, decrease for quick captures.",
+                "Recording timeout in milliseconds. Default: 60000 (60s). Max: 300000 (5 min). Increase for longer recordings, decrease for quick captures."
               ),
           },
           handler: recordingStartHandler(),
         },
         stop: {
-          description: "Stop the current recording and upload the video to storage",
+          description:
+            "Stop the current recording and upload the video to storage",
           handler: recordingStopHandler(),
         },
         restart: {
@@ -875,7 +1007,7 @@ export function browser(server: McpServer, { config }: ToolContext) {
               .number()
               .optional()
               .describe(
-                "Recording timeout in milliseconds. Default: 60000 (60s). Max: 300000 (5 min). Increase for longer recordings, decrease for quick captures.",
+                "Recording timeout in milliseconds. Default: 60000 (60s). Max: 300000 (5 min). Increase for longer recordings, decrease for quick captures."
               ),
           },
           handler: recordingRestartHandler(),
@@ -891,7 +1023,8 @@ export function browser(server: McpServer, { config }: ToolContext) {
     tree: browserTree,
     contextFactory: (sessionId) => ({
       sessionId,
-      generateCommandId: () => `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      generateCommandId: () =>
+        `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     }),
   });
 }

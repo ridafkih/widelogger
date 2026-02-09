@@ -1,5 +1,5 @@
+import type { ImageConfig, ImageManager } from "@lab/sandbox-sdk";
 import type Dockerode from "dockerode";
-import type { ImageManager, ImageConfig } from "@lab/sandbox-sdk";
 import { isNotFoundError } from "../utils/error-handling";
 
 export class DockerImageManager implements ImageManager {
@@ -11,7 +11,7 @@ export class DockerImageManager implements ImageManager {
 
   async pullImage(
     imageRef: string,
-    onProgress?: (event: { status: string; progress?: string }) => void,
+    onProgress?: (event: { status: string; progress?: string }) => void
   ): Promise<void> {
     const pullStream = await this.docker.pull(imageRef);
 
@@ -25,7 +25,7 @@ export class DockerImageManager implements ImageManager {
             resolve();
           }
         },
-        onProgress,
+        onProgress
       );
     });
   }
@@ -53,7 +53,8 @@ export class DockerImageManager implements ImageManager {
 
     return {
       workdir: imageInfo.Config.WorkingDir || "/",
-      entrypoint: typeof entrypoint === "string" ? [entrypoint] : (entrypoint ?? null),
+      entrypoint:
+        typeof entrypoint === "string" ? [entrypoint] : (entrypoint ?? null),
       cmd: imageInfo.Config.Cmd ?? null,
     };
   }

@@ -1,7 +1,11 @@
 import type { DaemonController } from "@lab/browser-protocol";
 import type { ExecutionStep, Screenshot } from "../types";
-import type { BrowserAgentContext, BrowserTaskResult, ScreenshotData } from "./types";
 import { runAgentLoop } from "./loop";
+import type {
+  BrowserAgentContext,
+  BrowserTaskResult,
+  ScreenshotData,
+} from "./types";
 
 function generateSessionId(): string {
   return `browser-task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -10,7 +14,7 @@ function generateSessionId(): string {
 async function waitForDaemonReady(
   daemonController: DaemonController,
   sessionId: string,
-  timeoutMs: number = 30000,
+  timeoutMs = 30_000
 ): Promise<void> {
   const startTime = Date.now();
 
@@ -22,19 +26,24 @@ async function waitForDaemonReady(
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  throw new Error(`Daemon ${sessionId} did not become ready within ${timeoutMs}ms`);
+  throw new Error(
+    `Daemon ${sessionId} did not become ready within ${timeoutMs}ms`
+  );
 }
 
 async function captureScreenshot(
   daemonController: DaemonController,
-  sessionId: string,
+  sessionId: string
 ): Promise<Screenshot | undefined> {
-  const result = await daemonController.executeCommand<ScreenshotData>(sessionId, {
-    id: `screenshot-${Date.now()}`,
-    action: "screenshot",
-  });
+  const result = await daemonController.executeCommand<ScreenshotData>(
+    sessionId,
+    {
+      id: `screenshot-${Date.now()}`,
+      action: "screenshot",
+    }
+  );
 
-  if (!result.success || !result.data?.base64) {
+  if (!(result.success && result.data?.base64)) {
     return undefined;
   }
 
@@ -49,7 +58,7 @@ function recordTraceStep(
   trace: ExecutionStep[],
   action: string,
   params?: Record<string, unknown>,
-  error?: string,
+  error?: string
 ): void {
   trace.push({
     action,
@@ -59,11 +68,17 @@ function recordTraceStep(
   });
 }
 
-async function cleanupDaemon(daemonController: DaemonController, sessionId: string): Promise<void> {
+async function cleanupDaemon(
+  daemonController: DaemonController,
+  sessionId: string
+): Promise<void> {
   try {
     await daemonController.stop(sessionId);
   } catch (stopError) {
-    console.warn(`[BrowserTask] Failed to stop daemon ${sessionId}:`, stopError);
+    console.warn(
+      `[BrowserTask] Failed to stop daemon ${sessionId}:`,
+      stopError
+    );
   }
 }
 
@@ -74,7 +89,7 @@ export interface ExecuteBrowserTaskParams {
 }
 
 export async function executeBrowserTask(
-  params: ExecuteBrowserTaskParams,
+  params: ExecuteBrowserTaskParams
 ): Promise<BrowserTaskResult> {
   const { objective, startUrl, context } = params;
   const { daemonController } = context;
@@ -107,7 +122,8 @@ export async function executeBrowserTask(
       stepsExecuted: trace.length,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     recordTraceStep(trace, "error", undefined, errorMessage);
 
     let screenshot: Screenshot | undefined;

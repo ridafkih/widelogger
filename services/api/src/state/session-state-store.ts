@@ -5,7 +5,8 @@ export const INFERENCE_STATUS = {
   GENERATING: "generating",
 } as const;
 
-export type InferenceStatus = (typeof INFERENCE_STATUS)[keyof typeof INFERENCE_STATUS];
+export type InferenceStatus =
+  (typeof INFERENCE_STATUS)[keyof typeof INFERENCE_STATUS];
 
 interface SessionState {
   inferenceStatus: InferenceStatus;
@@ -18,22 +19,33 @@ export class SessionStateStore {
   constructor(private readonly redis: RedisClient) {}
 
   async getInferenceStatus(sessionId: string): Promise<InferenceStatus> {
-    const value = await this.redis.get(`${KEY_PREFIX}:${sessionId}:inferenceStatus`);
-    if (value === INFERENCE_STATUS.GENERATING) return INFERENCE_STATUS.GENERATING;
+    const value = await this.redis.get(
+      `${KEY_PREFIX}:${sessionId}:inferenceStatus`
+    );
+    if (value === INFERENCE_STATUS.GENERATING) {
+      return INFERENCE_STATUS.GENERATING;
+    }
     return INFERENCE_STATUS.IDLE;
   }
 
-  async setInferenceStatus(sessionId: string, status: InferenceStatus): Promise<void> {
+  async setInferenceStatus(
+    sessionId: string,
+    status: InferenceStatus
+  ): Promise<void> {
     await this.redis.set(`${KEY_PREFIX}:${sessionId}:inferenceStatus`, status);
   }
 
   async getLastMessage(sessionId: string): Promise<string | undefined> {
-    const value = await this.redis.get(`${KEY_PREFIX}:${sessionId}:lastMessage`);
+    const value = await this.redis.get(
+      `${KEY_PREFIX}:${sessionId}:lastMessage`
+    );
     return value ?? undefined;
   }
 
   async setLastMessage(sessionId: string, message: string): Promise<void> {
-    if (!message) return;
+    if (!message) {
+      return;
+    }
     await this.redis.set(`${KEY_PREFIX}:${sessionId}:lastMessage`, message);
   }
 

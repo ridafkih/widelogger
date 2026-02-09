@@ -1,11 +1,11 @@
 import type { ImageStore } from "@lab/context";
 import type { BrowserServiceManager } from "../managers/browser-service.manager";
-import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
 import type { PoolManager } from "../managers/pool.manager";
+import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
 import type { LogMonitor } from "../monitors/log.monitor";
-import type { PromptService } from "./prompt";
-import type { Sandbox, OpencodeClient, Publisher } from "./dependencies";
 import type { SessionStateStore } from "../state/session-state-store";
+import type { OpencodeClient, Publisher, Sandbox } from "./dependencies";
+import type { PromptService } from "./prompt";
 
 export interface BrowserContext {
   browserService: BrowserServiceManager;

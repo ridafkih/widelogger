@@ -16,7 +16,7 @@
  */
 async function* breakOnDelimiter(
   stream: AsyncIterable<string>,
-  delimiter: string = "\n\n",
+  delimiter = "\n\n"
 ): AsyncGenerator<string, void, unknown> {
   let buffer = "";
 
@@ -44,7 +44,7 @@ async function* breakOnDelimiter(
  * Convenience function for breaking messages into paragraphs during streaming.
  */
 export function breakDoubleNewlines(
-  stream: AsyncIterable<string>,
+  stream: AsyncIterable<string>
 ): AsyncGenerator<string, void, unknown> {
   return breakOnDelimiter(stream, "\n\n");
 }

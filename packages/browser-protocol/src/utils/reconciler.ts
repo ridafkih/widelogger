@@ -1,24 +1,24 @@
-import { type BrowserSessionState, type CurrentState } from "../types/session";
-import { computeRequiredAction, type Action } from "../utils/state-machine";
 import type {
-  StateStore,
-  StateStoreOptions,
   DaemonController,
   Reconciler,
   ReconcilerConfig,
+  StateStore,
+  StateStoreOptions,
 } from "../types/orchestrator";
+import type { BrowserSessionState, CurrentState } from "../types/session";
+import { type Action, computeRequiredAction } from "../utils/state-machine";
 
 export type { Reconciler, ReconcilerConfig } from "../types/orchestrator";
 
 export const createReconciler = (
   stateStore: StateStore,
   daemonController: DaemonController,
-  config: ReconcilerConfig,
+  config: ReconcilerConfig
 ): Reconciler => {
   const updateCurrentState = (
     sessionId: string,
     currentState: CurrentState,
-    options: StateStoreOptions = {},
+    options: StateStoreOptions = {}
   ): Promise<BrowserSessionState> => {
     return stateStore.setCurrentState(sessionId, currentState, options);
   };
@@ -26,7 +26,9 @@ export const createReconciler = (
   const startSession = async (session: BrowserSessionState): Promise<void> => {
     const { sessionId, retryCount } = session;
 
-    if (retryCount >= config.maxRetries) return;
+    if (retryCount >= config.maxRetries) {
+      return;
+    }
 
     await updateCurrentState(sessionId, "starting", {
       retryCount: retryCount + 1,
@@ -34,12 +36,16 @@ export const createReconciler = (
     });
 
     try {
-      const { port } = await daemonController.start(sessionId, session.lastUrl ?? undefined);
+      const { port } = await daemonController.start(
+        sessionId,
+        session.lastUrl ?? undefined
+      );
       await updateCurrentState(sessionId, "starting", { streamPort: port });
     } catch (error) {
       await updateCurrentState(sessionId, "stopped", {
         streamPort: null,
-        errorMessage: error instanceof Error ? error.message : "Failed to start daemon",
+        errorMessage:
+          error instanceof Error ? error.message : "Failed to start daemon",
       });
     }
   };
@@ -62,11 +68,15 @@ export const createReconciler = (
     });
   };
 
-  const checkDaemonReady = async (session: BrowserSessionState): Promise<void> => {
+  const checkDaemonReady = async (
+    session: BrowserSessionState
+  ): Promise<void> => {
     const { sessionId } = session;
 
     const status = await daemonController.getStatus(sessionId);
-    if (!status?.ready) return;
+    if (!status?.ready) {
+      return;
+    }
 
     await updateCurrentState(sessionId, "running", { streamPort: status.port });
 
@@ -81,7 +91,9 @@ export const createReconciler = (
     }
   };
 
-  const checkDaemonAlive = async (session: BrowserSessionState): Promise<void> => {
+  const checkDaemonAlive = async (
+    session: BrowserSessionState
+  ): Promise<void> => {
     const { sessionId } = session;
 
     const status = await daemonController.getStatus(sessionId);
@@ -90,7 +102,9 @@ export const createReconciler = (
     }
   };
 
-  const checkStoppingComplete = async (session: BrowserSessionState): Promise<void> => {
+  const checkStoppingComplete = async (
+    session: BrowserSessionState
+  ): Promise<void> => {
     const { sessionId } = session;
 
     const status = await daemonController.getStatus(sessionId);
@@ -99,7 +113,9 @@ export const createReconciler = (
     }
   };
 
-  const resetToStopped = async (session: BrowserSessionState): Promise<void> => {
+  const resetToStopped = async (
+    session: BrowserSessionState
+  ): Promise<void> => {
     const { sessionId } = session;
 
     await updateCurrentState(sessionId, "stopped", {
@@ -108,16 +124,25 @@ export const createReconciler = (
     });
   };
 
-  const executeAction = async (session: BrowserSessionState, action: Action): Promise<void> => {
+  const executeAction = async (
+    session: BrowserSessionState,
+    action: Action
+  ): Promise<void> => {
     switch (action) {
       case "StartDaemon":
         return startSession(session);
       case "StopDaemon":
         return stopSession(session);
       case "WaitForReady":
-        if (session.currentState === "starting") return checkDaemonReady(session);
-        if (session.currentState === "stopping") return checkStoppingComplete(session);
-        if (session.currentState === "running") return checkDaemonAlive(session);
+        if (session.currentState === "starting") {
+          return checkDaemonReady(session);
+        }
+        if (session.currentState === "stopping") {
+          return checkStoppingComplete(session);
+        }
+        if (session.currentState === "running") {
+          return checkDaemonAlive(session);
+        }
         return;
       case "ResetToStopped":
         return resetToStopped(session);
@@ -126,8 +151,13 @@ export const createReconciler = (
     }
   };
 
-  const reconcileSession = async (session: BrowserSessionState): Promise<void> => {
-    const action = computeRequiredAction(session.desiredState, session.currentState);
+  const reconcileSession = async (
+    session: BrowserSessionState
+  ): Promise<void> => {
+    const action = computeRequiredAction(
+      session.desiredState,
+      session.currentState
+    );
     await executeAction(session, action);
   };
 
@@ -146,7 +176,7 @@ export const createReconciler = (
     if (errors.length > 0) {
       throw new AggregateError(
         errors.map((e) => e.error),
-        `Reconciliation failed for ${errors.length} session(s): ${errors.map((e) => e.sessionId).join(", ")}`,
+        `Reconciliation failed for ${errors.length} session(s): ${errors.map((e) => e.sessionId).join(", ")}`
       );
     }
   };

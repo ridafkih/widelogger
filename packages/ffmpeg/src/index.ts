@@ -1,6 +1,6 @@
 export {
-  resizeImage,
+  type ResizeResult,
   resizeBase64,
   resizeBase64WithInfo,
-  type ResizeResult,
+  resizeImage,
 } from "./image-resizer";

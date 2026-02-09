@@ -1,7 +1,7 @@
-import type { Handler, GithubContext } from "../../types/route";
-import { validateState } from "./auth";
-import { saveGitHubOAuthToken } from "../../repositories/github-settings.repository";
 import { widelog } from "../../logging";
+import { saveGitHubOAuthToken } from "../../repositories/github-settings.repository";
+import type { GithubContext, Handler } from "../../types/route";
+import { validateState } from "./auth";
 
 interface GitHubTokenResponse {
   access_token?: string;
@@ -17,7 +17,10 @@ interface GitHubUserResponse {
   email?: string;
 }
 
-function redirectToSettings(frontendUrl: string, params: Record<string, string>): Response {
+function redirectToSettings(
+  frontendUrl: string,
+  params: Record<string, string>
+): Response {
   const search = new URLSearchParams({ tab: "github", ...params });
   return Response.redirect(`${frontendUrl}/settings?${search.toString()}`, 302);
 }
@@ -26,7 +29,10 @@ const GET: Handler<GithubContext> = async ({ request, context: ctx }) => {
   widelog.set("github.action", "oauth_callback");
 
   if (!ctx.frontendUrl) {
-    return Response.json({ error: "FRONTEND_URL is not configured" }, { status: 500 });
+    return Response.json(
+      { error: "FRONTEND_URL is not configured" },
+      { status: 500 }
+    );
   }
 
   const url = new URL(request.url);
@@ -38,40 +44,54 @@ const GET: Handler<GithubContext> = async ({ request, context: ctx }) => {
   const frontendUrl = ctx.frontendUrl;
 
   if (error) {
-    return redirectToSettings(frontendUrl, { error: errorDescription || error });
+    return redirectToSettings(frontendUrl, {
+      error: errorDescription || error,
+    });
   }
 
-  if (!code || !state) {
-    return redirectToSettings(frontendUrl, { error: "Missing code or state parameter" });
+  if (!(code && state)) {
+    return redirectToSettings(frontendUrl, {
+      error: "Missing code or state parameter",
+    });
   }
 
   if (!validateState(state)) {
-    return redirectToSettings(frontendUrl, { error: "Invalid or expired state parameter" });
+    return redirectToSettings(frontendUrl, {
+      error: "Invalid or expired state parameter",
+    });
   }
 
-  if (!ctx.githubClientId || !ctx.githubClientSecret) {
-    return redirectToSettings(frontendUrl, { error: "GitHub OAuth is not configured" });
+  if (!(ctx.githubClientId && ctx.githubClientSecret)) {
+    return redirectToSettings(frontendUrl, {
+      error: "GitHub OAuth is not configured",
+    });
   }
 
   try {
-    const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        client_id: ctx.githubClientId,
-        client_secret: ctx.githubClientSecret,
-        code,
-      }),
-    });
+    const tokenResponse = await fetch(
+      "https://github.com/login/oauth/access_token",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: ctx.githubClientId,
+          client_secret: ctx.githubClientSecret,
+          code,
+        }),
+      }
+    );
 
     const tokenData: GitHubTokenResponse = await tokenResponse.json();
 
     if (tokenData.error || !tokenData.access_token) {
       return redirectToSettings(frontendUrl, {
-        error: tokenData.error_description || tokenData.error || "Failed to get access token",
+        error:
+          tokenData.error_description ||
+          tokenData.error ||
+          "Failed to get access token",
       });
     }
 
@@ -84,7 +104,9 @@ const GET: Handler<GithubContext> = async ({ request, context: ctx }) => {
     });
 
     if (!userResponse.ok) {
-      return redirectToSettings(frontendUrl, { error: "Failed to fetch GitHub user info" });
+      return redirectToSettings(frontendUrl, {
+        error: "Failed to fetch GitHub user info",
+      });
     }
 
     const userData: GitHubUserResponse = await userResponse.json();
@@ -101,7 +123,9 @@ const GET: Handler<GithubContext> = async ({ request, context: ctx }) => {
   } catch (err) {
     widelog.errorFields(err, { prefix: "github.oauth_callback_error" });
     widelog.set("github.oauth_callback_outcome", "error");
-    return redirectToSettings(frontendUrl, { error: "An unexpected error occurred" });
+    return redirectToSettings(frontendUrl, {
+      error: "An unexpected error occurred",
+    });
   }
 };
 

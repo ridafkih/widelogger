@@ -1,4 +1,8 @@
-import type { PromptFragment, PromptService, PromptCompositionResult } from "./types";
+import type {
+  PromptCompositionResult,
+  PromptFragment,
+  PromptService,
+} from "./types";
 
 /**
  * Configuration for the PromptComposer.
@@ -22,7 +26,9 @@ export class PromptComposer<TContext> implements PromptService<TContext> {
 
   constructor(config: PromptComposerConfig<TContext>) {
     // Sort fragments by priority (lower values first)
-    this.fragments = [...config.fragments].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+    this.fragments = [...config.fragments].sort(
+      (a, b) => (a.priority ?? 0) - (b.priority ?? 0)
+    );
     this.separator = config.separator ?? "\n\n";
   }
 
@@ -36,11 +42,15 @@ export class PromptComposer<TContext> implements PromptService<TContext> {
     for (const fragment of this.fragments) {
       // Check if fragment should be included
       const shouldInclude = fragment.shouldInclude?.(context) ?? true;
-      if (!shouldInclude) continue;
+      if (!shouldInclude) {
+        continue;
+      }
 
       // Render the fragment
       const rendered = fragment.render(context);
-      if (rendered === null || rendered.length === 0) continue;
+      if (rendered === null || rendered.length === 0) {
+        continue;
+      }
 
       includedFragments.push(fragment.id);
       renderedParts.push(rendered);

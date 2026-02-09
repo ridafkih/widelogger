@@ -6,7 +6,13 @@ export function defineChannel<
   const TDefault extends z.infer<TSnapshot>,
   const TDelta extends z.ZodType = never,
   const TEvent extends z.ZodType = never,
->(config: { path: TPath; snapshot: TSnapshot; default: TDefault; delta?: TDelta; event?: TEvent }) {
+>(config: {
+  path: TPath;
+  snapshot: TSnapshot;
+  default: TDefault;
+  delta?: TDelta;
+  event?: TEvent;
+}) {
   return config;
 }
 

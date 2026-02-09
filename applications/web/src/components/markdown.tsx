@@ -1,17 +1,26 @@
 "use client";
 
+import { File } from "@pierre/diffs/react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Streamdown } from "streamdown";
-import { File } from "@pierre/diffs/react";
 import { cn } from "@/lib/cn";
 
 const pierreThemes = { light: "pierre-light", dark: "pierre-dark" } as const;
 
-function CodeBlock({ content, language }: { content: string; language?: string }) {
+function CodeBlock({
+  content,
+  language,
+}: {
+  content: string;
+  language?: string;
+}) {
   return (
     <div className="w-0 min-w-full">
       <File
-        file={{ name: language ? `file.${language}` : "file.txt", contents: content }}
+        file={{
+          name: language ? `file.${language}` : "file.txt",
+          contents: content,
+        }}
         options={{
           theme: pierreThemes,
           themeType: "system",
@@ -34,7 +43,7 @@ function P({ children, className, ...props }: ComponentPropsWithoutRef<"p">) {
 
 function H1({ children, className, ...props }: ComponentPropsWithoutRef<"h1">) {
   return (
-    <h1 className={cn("text-lg font-semibold", className)} {...props}>
+    <h1 className={cn("font-semibold text-lg", className)} {...props}>
       {children}
     </h1>
   );
@@ -42,7 +51,7 @@ function H1({ children, className, ...props }: ComponentPropsWithoutRef<"h1">) {
 
 function H2({ children, className, ...props }: ComponentPropsWithoutRef<"h2">) {
   return (
-    <h2 className={cn("text-base font-semibold", className)} {...props}>
+    <h2 className={cn("font-semibold text-base", className)} {...props}>
       {children}
     </h2>
   );
@@ -50,7 +59,7 @@ function H2({ children, className, ...props }: ComponentPropsWithoutRef<"h2">) {
 
 function H3({ children, className, ...props }: ComponentPropsWithoutRef<"h3">) {
   return (
-    <h3 className={cn("text-sm font-semibold", className)} {...props}>
+    <h3 className={cn("font-semibold text-sm", className)} {...props}>
       {children}
     </h3>
   );
@@ -58,7 +67,7 @@ function H3({ children, className, ...props }: ComponentPropsWithoutRef<"h3">) {
 
 function H4({ children, className, ...props }: ComponentPropsWithoutRef<"h4">) {
   return (
-    <h4 className={cn("text-sm font-medium", className)} {...props}>
+    <h4 className={cn("font-medium text-sm", className)} {...props}>
       {children}
     </h4>
   );
@@ -66,7 +75,7 @@ function H4({ children, className, ...props }: ComponentPropsWithoutRef<"h4">) {
 
 function H5({ children, className, ...props }: ComponentPropsWithoutRef<"h5">) {
   return (
-    <h5 className={cn("text-xs font-medium", className)} {...props}>
+    <h5 className={cn("font-medium text-xs", className)} {...props}>
       {children}
     </h5>
   );
@@ -74,7 +83,10 @@ function H5({ children, className, ...props }: ComponentPropsWithoutRef<"h5">) {
 
 function H6({ children, className, ...props }: ComponentPropsWithoutRef<"h6">) {
   return (
-    <h6 className={cn("text-xs font-medium text-text-secondary", className)} {...props}>
+    <h6
+      className={cn("font-medium text-text-secondary text-xs", className)}
+      {...props}
+    >
       {children}
     </h6>
   );
@@ -83,7 +95,10 @@ function H6({ children, className, ...props }: ComponentPropsWithoutRef<"h6">) {
 function A({ children, className, ...props }: ComponentPropsWithoutRef<"a">) {
   return (
     <a
-      className={cn("text-accent underline underline-offset-2 hover:no-underline", className)}
+      className={cn(
+        "text-accent underline underline-offset-2 hover:no-underline",
+        className
+      )}
       {...props}
     >
       {children}
@@ -91,7 +106,11 @@ function A({ children, className, ...props }: ComponentPropsWithoutRef<"a">) {
   );
 }
 
-function Strong({ children, className, ...props }: ComponentPropsWithoutRef<"strong">) {
+function Strong({
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"strong">) {
   return (
     <strong className={cn("font-semibold", className)} {...props}>
       {children}
@@ -107,22 +126,33 @@ function Em({ children, className, ...props }: ComponentPropsWithoutRef<"em">) {
   );
 }
 
-function Code({ children, className, ...props }: ComponentPropsWithoutRef<"code">) {
+function Code({
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"code">) {
   return (
-    <code className={cn("font-mono text-[0.95em] px-1 py-0.5 bg-border", className)} {...props}>
+    <code
+      className={cn("bg-border px-1 py-0.5 font-mono text-[0.95em]", className)}
+      {...props}
+    >
       {children}
     </code>
   );
 }
 
 function Pre({ children }: ComponentPropsWithoutRef<"pre">) {
-  const codeChild = children as ReactNode & { props?: { className?: string; children?: string } };
+  const codeChild = children as ReactNode & {
+    props?: { className?: string; children?: string };
+  };
   const codeClassName = codeChild?.props?.className ?? "";
   const codeContent = codeChild?.props?.children ?? "";
 
   if (typeof codeContent !== "string") {
     return (
-      <pre className="font-mono text-xs p-3 rounded bg-bg-muted overflow-x-auto">{children}</pre>
+      <pre className="overflow-x-auto rounded bg-bg-muted p-3 font-mono text-xs">
+        {children}
+      </pre>
     );
   }
 
@@ -132,10 +162,17 @@ function Pre({ children }: ComponentPropsWithoutRef<"pre">) {
   return <CodeBlock content={codeContent} language={lang} />;
 }
 
-function Blockquote({ children, className, ...props }: ComponentPropsWithoutRef<"blockquote">) {
+function Blockquote({
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"blockquote">) {
   return (
     <blockquote
-      className={cn("border-l-2 border-border pl-3 text-text-secondary italic", className)}
+      className={cn(
+        "border-border border-l-2 pl-3 text-text-secondary italic",
+        className
+      )}
       {...props}
     >
       {children}
@@ -145,7 +182,7 @@ function Blockquote({ children, className, ...props }: ComponentPropsWithoutRef<
 
 function Ul({ children, className, ...props }: ComponentPropsWithoutRef<"ul">) {
   return (
-    <ul className={cn("list-disc pl-4 space-y-1", className)} {...props}>
+    <ul className={cn("list-disc space-y-1 pl-4", className)} {...props}>
       {children}
     </ul>
   );
@@ -153,7 +190,7 @@ function Ul({ children, className, ...props }: ComponentPropsWithoutRef<"ul">) {
 
 function Ol({ children, className, ...props }: ComponentPropsWithoutRef<"ol">) {
   return (
-    <ol className={cn("list-decimal pl-4 space-y-1", className)} {...props}>
+    <ol className={cn("list-decimal space-y-1 pl-4", className)} {...props}>
       {children}
     </ol>
   );
@@ -171,7 +208,11 @@ function Hr({ className, ...props }: ComponentPropsWithoutRef<"hr">) {
   return <hr className={cn("border-border", className)} {...props} />;
 }
 
-function Table({ children, className, ...props }: ComponentPropsWithoutRef<"table">) {
+function Table({
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"table">) {
   return (
     <div className="overflow-x-auto">
       <table className={cn("w-full text-xs", className)} {...props}>
@@ -181,15 +222,23 @@ function Table({ children, className, ...props }: ComponentPropsWithoutRef<"tabl
   );
 }
 
-function Thead({ children, className, ...props }: ComponentPropsWithoutRef<"thead">) {
+function Thead({
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"thead">) {
   return (
-    <thead className={cn("border-b border-border", className)} {...props}>
+    <thead className={cn("border-border border-b", className)} {...props}>
       {children}
     </thead>
   );
 }
 
-function Tbody({ children, className, ...props }: ComponentPropsWithoutRef<"tbody">) {
+function Tbody({
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"tbody">) {
   return (
     <tbody className={cn("divide-y divide-border", className)} {...props}>
       {children}
@@ -207,7 +256,10 @@ function Tr({ children, className, ...props }: ComponentPropsWithoutRef<"tr">) {
 
 function Th({ children, className, ...props }: ComponentPropsWithoutRef<"th">) {
   return (
-    <th className={cn("px-2 py-1.5 text-left font-medium", className)} {...props}>
+    <th
+      className={cn("px-2 py-1.5 text-left font-medium", className)}
+      {...props}
+    >
       {children}
     </th>
   );
@@ -247,18 +299,18 @@ const components = {
   td: Td,
 };
 
-type MarkdownProps = {
+interface MarkdownProps {
   children: string;
   isStreaming?: boolean;
-};
+}
 
 function Markdown({ children, isStreaming = false }: MarkdownProps) {
   return (
     <Streamdown
       className="flex flex-col gap-3"
-      mode={isStreaming ? "streaming" : "static"}
-      isAnimating={isStreaming}
       components={components}
+      isAnimating={isStreaming}
+      mode={isStreaming ? "streaming" : "static"}
     >
       {children}
     </Streamdown>

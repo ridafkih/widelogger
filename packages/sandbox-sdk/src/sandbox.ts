@@ -1,9 +1,9 @@
-import type { SandboxProvider } from "./types/provider";
-import type { NetworkManager } from "./types/network";
-import type { WorkspaceManager } from "./types/workspace";
 import type { ContainerEventStream } from "./types/events";
+import type { NetworkManager } from "./types/network";
+import type { SandboxProvider } from "./types/provider";
 import type { RuntimeManager } from "./types/runtime";
 import type { SessionManager } from "./types/session";
+import type { WorkspaceManager } from "./types/workspace";
 
 export interface SandboxConfig {
   network: NetworkManager;
@@ -20,7 +20,7 @@ export class Sandbox {
 
   constructor(
     public readonly provider: SandboxProvider & ContainerEventStream,
-    public readonly config: SandboxConfig,
+    public readonly config: SandboxConfig
   ) {
     this.network = config.network;
     this.workspace = config.workspace;

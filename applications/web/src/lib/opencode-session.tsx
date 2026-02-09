@@ -1,13 +1,21 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { createOpencodeClient, type Event } from "@opencode-ai/sdk/v2/client";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+} from "react";
 
 type EventListener = (event: Event) => void;
 
 function getApiUrl(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) throw new Error("NEXT_PUBLIC_API_URL must be set");
+  if (!apiUrl) {
+    throw new Error("NEXT_PUBLIC_API_URL must be set");
+  }
   return apiUrl;
 }
 
@@ -16,14 +24,18 @@ interface OpenCodeSessionContextValue {
   subscribe: (listener: EventListener) => () => void;
 }
 
-const OpenCodeSessionContext = createContext<OpenCodeSessionContextValue | null>(null);
+const OpenCodeSessionContext =
+  createContext<OpenCodeSessionContextValue | null>(null);
 
 interface OpenCodeSessionProviderProps {
   sessionId: string | null;
   children: ReactNode;
 }
 
-export function OpenCodeSessionProvider({ sessionId, children }: OpenCodeSessionProviderProps) {
+export function OpenCodeSessionProvider({
+  sessionId,
+  children,
+}: OpenCodeSessionProviderProps) {
   const listenersRef = useRef<Set<EventListener>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -85,7 +97,9 @@ export function OpenCodeSessionProvider({ sessionId, children }: OpenCodeSession
 export function useOpenCodeSession() {
   const context = useContext(OpenCodeSessionContext);
   if (!context) {
-    throw new Error("useOpenCodeSession must be used within OpenCodeSessionProvider");
+    throw new Error(
+      "useOpenCodeSession must be used within OpenCodeSessionProvider"
+    );
   }
   return context;
 }

@@ -31,9 +31,7 @@
     }
   },
   "scripts": {
-    "types": "tsc --noEmit",
-    "lint": "oxlint",
-    "format": "oxfmt ."
+    "types": "tsc --noEmit"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -46,8 +44,6 @@
     "@types/react-dom": "^19",
     "lucide-react": "^0.563.0",
     "next": "^16",
-    "oxfmt": "0.28.0",
-    "oxlint": "1.43.0",
     "typescript": "^5"
   },
   "peerDependencies": {

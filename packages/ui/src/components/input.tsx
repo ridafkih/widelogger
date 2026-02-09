@@ -9,16 +9,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, mono, ...props }, ref) => {
     return (
       <input
-        ref={ref}
         className={cn(
-          "flex-1 bg-muted border border-border px-2 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-offset-px focus-visible:outline-ring",
+          "flex-1 border border-border bg-muted px-2 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-ring focus-visible:outline-offset-px",
           mono && "font-mono",
-          className,
+          className
         )}
+        ref={ref}
         {...props}
       />
     );
-  },
+  }
 );
 
 Input.displayName = "Input";

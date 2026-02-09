@@ -1,13 +1,13 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
+import type { Project } from "@lab/client";
+import { Box, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Box, Plus } from "lucide-react";
+import { createContext, type ReactNode, use } from "react";
 import { tv } from "tailwind-variants";
 import { cn } from "@/lib/cn";
 import { useProjects } from "@/lib/hooks";
-import type { Project } from "@lab/client";
 
 interface ProjectsListContextValue {
   state: {
@@ -20,12 +20,16 @@ interface ProjectsListContextValue {
   };
 }
 
-const ProjectsListContext = createContext<ProjectsListContextValue | null>(null);
+const ProjectsListContext = createContext<ProjectsListContextValue | null>(
+  null
+);
 
 function useProjectsList() {
   const context = use(ProjectsListContext);
   if (!context) {
-    throw new Error("ProjectsList components must be used within ProjectsList.Provider");
+    throw new Error(
+      "ProjectsList components must be used within ProjectsList.Provider"
+    );
   }
   return context;
 }
@@ -33,7 +37,9 @@ function useProjectsList() {
 function ProjectsListProvider({ children }: { children: ReactNode }) {
   const { data, error, isLoading, mutate } = useProjects();
 
-  const sortedProjects = [...(data ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedProjects = [...(data ?? [])].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 
   const contextValue: ProjectsListContextValue = {
     state: {
@@ -46,7 +52,9 @@ function ProjectsListProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <ProjectsListContext value={contextValue}>{children}</ProjectsListContext>;
+  return (
+    <ProjectsListContext value={contextValue}>{children}</ProjectsListContext>
+  );
 }
 
 function ProjectsListRoot({ children }: { children: ReactNode }) {
@@ -56,10 +64,10 @@ function ProjectsListRoot({ children }: { children: ReactNode }) {
 function ProjectsListHeader({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center justify-between px-2 py-1.5">
-      <span className="text-xs text-text-secondary">{children}</span>
+      <span className="text-text-secondary text-xs">{children}</span>
       <Link
+        className="flex items-center gap-1 text-text-muted text-xs hover:text-text"
         href="/settings/projects/create"
-        className="flex items-center gap-1 text-xs text-text-muted hover:text-text"
       >
         <Plus size={10} />
       </Link>
@@ -69,20 +77,32 @@ function ProjectsListHeader({ children }: { children: ReactNode }) {
 
 function ProjectsListLoading() {
   const { state } = useProjectsList();
-  if (!state.isLoading) return null;
-  return <span className="px-2 py-1.5 text-xs text-text-muted">Loading...</span>;
+  if (!state.isLoading) {
+    return null;
+  }
+  return (
+    <span className="px-2 py-1.5 text-text-muted text-xs">Loading...</span>
+  );
 }
 
 function ProjectsListError() {
   const { state } = useProjectsList();
-  if (!state.error) return null;
-  return <span className="px-2 py-1.5 text-xs text-red-500">Failed to load</span>;
+  if (!state.error) {
+    return null;
+  }
+  return (
+    <span className="px-2 py-1.5 text-red-500 text-xs">Failed to load</span>
+  );
 }
 
 function ProjectsListEmpty() {
   const { state } = useProjectsList();
-  if (state.isLoading || state.error || state.projects.length > 0) return null;
-  return <span className="px-2 py-1.5 text-xs text-text-muted">No projects yet</span>;
+  if (state.isLoading || state.error || state.projects.length > 0) {
+    return null;
+  }
+  return (
+    <span className="px-2 py-1.5 text-text-muted text-xs">No projects yet</span>
+  );
 }
 
 const itemStyles = tv({
@@ -103,11 +123,13 @@ function ProjectsListItem({ project }: { project: Project }) {
   const containerCount = project.containers?.length ?? 0;
 
   return (
-    <Link href={href} className={itemStyles({ active: isActive })}>
-      <Box size={12} className="text-text-muted shrink-0" />
-      <span className="text-text truncate">{project.name}</span>
+    <Link className={itemStyles({ active: isActive })} href={href}>
+      <Box className="shrink-0 text-text-muted" size={12} />
+      <span className="truncate text-text">{project.name}</span>
       {containerCount > 0 && (
-        <span className={cn("ml-auto text-text-muted shrink-0")}>{containerCount}</span>
+        <span className={cn("ml-auto shrink-0 text-text-muted")}>
+          {containerCount}
+        </span>
       )}
     </Link>
   );
@@ -115,7 +137,9 @@ function ProjectsListItem({ project }: { project: Project }) {
 
 function ProjectsListItems() {
   const { state } = useProjectsList();
-  if (state.isLoading || state.error || state.projects.length === 0) return null;
+  if (state.isLoading || state.error || state.projects.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col">

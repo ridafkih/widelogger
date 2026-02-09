@@ -1,7 +1,12 @@
-import { isDaemonRunning, cleanupSocket, getSocketDir, getStreamPortFile } from "agent-browser";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import type { DaemonSession } from "../types/daemon";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import {
+  cleanupSocket,
+  getSocketDir,
+  getStreamPortFile,
+  isDaemonRunning,
+} from "agent-browser";
 import { widelog } from "../logging";
+import type { DaemonSession } from "../types/daemon";
 
 interface RecoveryCallbacks {
   onRecover: (sessionId: string, streamPort: number, cdpPort?: number) => void;
@@ -13,7 +18,7 @@ function getCdpPortFile(sessionId: string): string {
 
 export function recoverSession(
   sessionId: string,
-  callbacks: RecoveryCallbacks,
+  callbacks: RecoveryCallbacks
 ): DaemonSession | null {
   return widelog.context(() => {
     widelog.set("event_name", "daemon.session_recovery");
@@ -27,8 +32,11 @@ export function recoverSession(
         return null;
       }
 
-      const streamPort = parseInt(readFileSync(streamPortPath, "utf-8").trim(), 10);
-      if (isNaN(streamPort)) {
+      const streamPort = Number.parseInt(
+        readFileSync(streamPortPath, "utf-8").trim(),
+        10
+      );
+      if (Number.isNaN(streamPort)) {
         widelog.set("outcome", "skipped");
         widelog.set("skip_reason", "invalid_port_in_file");
         return null;
@@ -37,8 +45,11 @@ export function recoverSession(
       const cdpPortPath = getCdpPortFile(sessionId);
       let cdpPort: number | undefined;
       if (existsSync(cdpPortPath)) {
-        const parsed = parseInt(readFileSync(cdpPortPath, "utf-8").trim(), 10);
-        if (!isNaN(parsed)) {
+        const parsed = Number.parseInt(
+          readFileSync(cdpPortPath, "utf-8").trim(),
+          10
+        );
+        if (!Number.isNaN(parsed)) {
           cdpPort = parsed;
         }
       }
@@ -72,14 +83,18 @@ export function recoverSession(
 
 export function discoverExistingSessions(callbacks: RecoveryCallbacks): void {
   const socketDir = getSocketDir();
-  if (!existsSync(socketDir)) return;
+  if (!existsSync(socketDir)) {
+    return;
+  }
 
   const files = readdirSync(socketDir);
   const streamFiles = files.filter((file) => file.endsWith(".stream"));
 
   for (const streamFile of streamFiles) {
     const sessionId = streamFile.replace(".stream", "");
-    if (sessionId === "default") continue;
+    if (sessionId === "default") {
+      continue;
+    }
     recoverSession(sessionId, callbacks);
   }
 }

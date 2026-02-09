@@ -1,9 +1,9 @@
-import type Dockerode from "dockerode";
 import type {
-  ContainerEventStream,
   ContainerEvent,
+  ContainerEventStream,
   ContainerEventStreamOptions,
 } from "@lab/sandbox-sdk";
+import type Dockerode from "dockerode";
 
 const CONTAINER_EVENT_TYPES: readonly string[] = [
   "start",
@@ -21,7 +21,7 @@ export class DockerEventStream implements ContainerEventStream {
   constructor(private readonly docker: Dockerode) {}
 
   async *streamContainerEvents(
-    options?: ContainerEventStreamOptions,
+    options?: ContainerEventStreamOptions
   ): AsyncGenerator<ContainerEvent> {
     const filters: Record<string, string[]> = {
       type: ["container"],
@@ -39,7 +39,8 @@ export class DockerEventStream implements ContainerEventStream {
     const eventStream = await this.docker.getEvents({ filters });
 
     for await (const chunk of eventStream) {
-      const rawData = typeof chunk === "string" ? chunk : chunk.toString("utf-8");
+      const rawData =
+        typeof chunk === "string" ? chunk : chunk.toString("utf-8");
 
       for (const line of rawData.split("\n")) {
         const trimmedLine = line.trim();

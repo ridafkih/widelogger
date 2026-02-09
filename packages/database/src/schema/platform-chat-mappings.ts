@@ -1,4 +1,11 @@
-import { index, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import {
+  index,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { sessions } from "./sessions";
 
 export const platformChatMappings = pgTable(
@@ -12,14 +19,18 @@ export const platformChatMappings = pgTable(
     sessionId: uuid("session_id")
       .notNull()
       .references(() => sessions.id, { onDelete: "cascade" }),
-    lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     unique("platform_chat_unique").on(table.platform, table.platformChatId),
     index("platform_chat_lookup_idx").on(table.platform, table.platformChatId),
     index("platform_session_idx").on(table.sessionId),
-  ],
+  ]
 );
 
 export type PlatformChatMapping = typeof platformChatMappings.$inferSelect;

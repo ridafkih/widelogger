@@ -1,10 +1,17 @@
-import { z } from "zod";
 import { tool } from "ai";
+import { z } from "zod";
 import { findSessionsWithProject } from "../../repositories/session.repository";
 
 const inputSchema = z.object({
-  projectId: z.string().optional().describe("Optional project ID to filter sessions by"),
-  limit: z.number().optional().default(10).describe("Maximum number of sessions to return"),
+  projectId: z
+    .string()
+    .optional()
+    .describe("Optional project ID to filter sessions by"),
+  limit: z
+    .number()
+    .optional()
+    .default(10)
+    .describe("Maximum number of sessions to return"),
 });
 
 export const listSessionsTool = tool({

@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import type {
+  AssistantMessage,
+  Message,
+  Part,
+} from "@opencode-ai/sdk/v2/client";
+import { useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import type { Message, Part, AssistantMessage } from "@opencode-ai/sdk/v2/client";
 import { api } from "./api";
-import { useOpenCodeSession, type Event } from "./opencode-session";
-import { useSessionClient, createSessionClient } from "./use-session-client";
+import { type Event, useOpenCodeSession } from "./opencode-session";
 import type { Attachment } from "./use-attachments";
+import { createSessionClient, useSessionClient } from "./use-session-client";
 
 interface LoadedMessage {
   info: Message;
@@ -29,7 +33,12 @@ export type SessionStatus =
   | { type: "idle" }
   | { type: "busy" }
   | { type: "retry"; attempt: number; message: string; next: number }
-  | { type: "error"; message?: string; isRetryable?: boolean; statusCode?: number };
+  | {
+      type: "error";
+      message?: string;
+      isRetryable?: boolean;
+      statusCode?: number;
+    };
 
 interface UseAgentResult {
   isLoading: boolean;
@@ -56,7 +65,9 @@ function parseLoadedMessages(data: LoadedMessage[]): MessageState[] {
 }
 
 function getSessionIdFromEvent(event: Event): string | undefined {
-  if (!("properties" in event)) return undefined;
+  if (!("properties" in event)) {
+    return undefined;
+  }
 
   const properties = event.properties;
 
@@ -64,14 +75,22 @@ function getSessionIdFromEvent(event: Event): string | undefined {
     return properties.sessionID;
   }
 
-  if ("info" in properties && typeof properties.info === "object" && properties.info !== null) {
+  if (
+    "info" in properties &&
+    typeof properties.info === "object" &&
+    properties.info !== null
+  ) {
     const info = properties.info;
     if ("sessionID" in info && typeof info.sessionID === "string") {
       return info.sessionID;
     }
   }
 
-  if ("part" in properties && typeof properties.part === "object" && properties.part !== null) {
+  if (
+    "part" in properties &&
+    typeof properties.part === "object" &&
+    properties.part !== null
+  ) {
     const part = properties.part;
     if ("sessionID" in part && typeof part.sessionID === "string") {
       return part.sessionID;
@@ -90,7 +109,9 @@ function upsertPart(parts: Part[], part: Part): Part[] {
   if (existingIndex === -1) {
     return [...parts, part];
   }
-  return parts.map((existing, index) => (index === existingIndex ? part : existing));
+  return parts.map((existing, index) =>
+    index === existingIndex ? part : existing
+  );
 }
 
 interface PendingQuestion {
@@ -107,31 +128,57 @@ function extractPendingQuestion(question: unknown): PendingQuestion | null {
     return null;
   }
 
-  if (!("tool" in question) || typeof question.tool !== "object" || question.tool === null) {
+  if (
+    !("tool" in question) ||
+    typeof question.tool !== "object" ||
+    question.tool === null
+  ) {
     return null;
   }
 
-  if (!("callID" in question.tool) || typeof question.tool.callID !== "string") {
+  if (
+    !("callID" in question.tool) ||
+    typeof question.tool.callID !== "string"
+  ) {
     return null;
   }
 
   return { callID: question.tool.callID, requestID: question.id };
 }
 
-function extractQuestionAskedEvent(event: Event): { callID: string; requestID: string } | null {
-  if (!("properties" in event)) return null;
+function extractQuestionAskedEvent(
+  event: Event
+): { callID: string; requestID: string } | null {
+  if (!("properties" in event)) {
+    return null;
+  }
   const properties = event.properties;
-  if (typeof properties !== "object" || properties === null) return null;
-  if (!("callID" in properties) || typeof properties.callID !== "string") return null;
-  if (!("requestID" in properties) || typeof properties.requestID !== "string") return null;
+  if (typeof properties !== "object" || properties === null) {
+    return null;
+  }
+  if (!("callID" in properties) || typeof properties.callID !== "string") {
+    return null;
+  }
+  if (
+    !("requestID" in properties) ||
+    typeof properties.requestID !== "string"
+  ) {
+    return null;
+  }
   return { callID: properties.callID, requestID: properties.requestID };
 }
 
 function extractQuestionCallID(event: Event): string | null {
-  if (!("properties" in event)) return null;
+  if (!("properties" in event)) {
+    return null;
+  }
   const properties = event.properties;
-  if (typeof properties !== "object" || properties === null) return null;
-  if (!("callID" in properties) || typeof properties.callID !== "string") return null;
+  if (typeof properties !== "object" || properties === null) {
+    return null;
+  }
+  if (!("callID" in properties) || typeof properties.callID !== "string") {
+    return null;
+  }
   return properties.callID;
 }
 
@@ -142,9 +189,13 @@ interface MessageError {
 }
 
 function extractMessageError(info: Message): MessageError | null {
-  if (info.role !== "assistant") return null;
+  if (info.role !== "assistant") {
+    return null;
+  }
   const assistantMessage = info as AssistantMessage;
-  if (!assistantMessage.error) return null;
+  if (!assistantMessage.error) {
+    return null;
+  }
 
   const error = assistantMessage.error;
   const message =
@@ -159,7 +210,9 @@ function extractMessageError(info: Message): MessageError | null {
   };
 }
 
-async function fetchPendingQuestions(labSessionId: string): Promise<PendingQuestion[]> {
+async function fetchPendingQuestions(
+  labSessionId: string
+): Promise<PendingQuestion[]> {
   const client = createSessionClient(labSessionId);
   const response = await client.question.list();
   if (response.error || !response.data) {
@@ -176,7 +229,9 @@ async function fetchPendingQuestions(labSessionId: string): Promise<PendingQuest
   return pendingQuestions;
 }
 
-async function fetchSessionData(labSessionId: string): Promise<SessionData | null> {
+async function fetchSessionData(
+  labSessionId: string
+): Promise<SessionData | null> {
   const client = createSessionClient(labSessionId);
   const labSession = await api.sessions.get(labSessionId);
 
@@ -195,7 +250,9 @@ async function fetchSessionData(labSessionId: string): Promise<SessionData | nul
   });
 
   if (messagesResponse.error) {
-    throw new Error(`Failed to fetch messages: ${JSON.stringify(messagesResponse.error)}`);
+    throw new Error(
+      `Failed to fetch messages: ${JSON.stringify(messagesResponse.error)}`
+    );
   }
 
   return {
@@ -208,8 +265,16 @@ function getAgentMessagesKey(labSessionId: string): string {
   return `agent-messages-${labSessionId}`;
 }
 
-type TextPart = { type: "text"; text: string };
-type FilePart = { type: "file"; mime: string; url: string; filename: string };
+interface TextPart {
+  type: "text";
+  text: string;
+}
+interface FilePart {
+  type: "file";
+  mime: string;
+  url: string;
+  filename: string;
+}
 type MessagePart = TextPart | FilePart;
 
 function attachmentToFilePart(attachment: Attachment): FilePart {
@@ -221,7 +286,10 @@ function attachmentToFilePart(attachment: Attachment): FilePart {
   };
 }
 
-function buildMessageParts(content: string, attachments?: Attachment[]): MessagePart[] {
+function buildMessageParts(
+  content: string,
+  attachments?: Attachment[]
+): MessagePart[] {
   const parts: MessagePart[] = [];
 
   if (content.trim().length > 0) {
@@ -239,11 +307,17 @@ function buildMessageParts(content: string, attachments?: Attachment[]): Message
 export function useAgent(labSessionId: string): UseAgentResult {
   const { subscribe } = useOpenCodeSession();
   const { mutate } = useSWRConfig();
-  const [streamedMessages, setStreamedMessages] = useState<MessageState[] | null>(null);
+  const [streamedMessages, setStreamedMessages] = useState<
+    MessageState[] | null
+  >(null);
   const [error, setError] = useState<Error | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [sessionStatus, setSessionStatus] = useState<SessionStatus>({ type: "idle" });
-  const [questionRequests, setQuestionRequests] = useState<Map<string, string>>(() => new Map());
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>({
+    type: "idle",
+  });
+  const [questionRequests, setQuestionRequests] = useState<Map<string, string>>(
+    () => new Map()
+  );
   const currentOpencodeSessionRef = useRef<string | null>(null);
   const sendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamedMessagesRef = useRef<MessageState[] | null>(null);
@@ -254,13 +328,14 @@ export function useAgent(labSessionId: string): UseAgentResult {
     data: sessionData,
     error: swrError,
     isLoading,
-  } = useSWR<SessionData | null>(labSessionId ? getAgentMessagesKey(labSessionId) : null, () =>
-    fetchSessionData(labSessionId),
+  } = useSWR<SessionData | null>(
+    labSessionId ? getAgentMessagesKey(labSessionId) : null,
+    () => fetchSessionData(labSessionId)
   );
 
   const { data: pendingQuestions } = useSWR(
     labSessionId ? `pending-questions-${labSessionId}` : null,
-    () => fetchPendingQuestions(labSessionId),
+    () => fetchPendingQuestions(labSessionId)
   );
 
   useEffect(() => {
@@ -270,14 +345,21 @@ export function useAgent(labSessionId: string): UseAgentResult {
     }
     streamedMessagesRef.current = streamedMessages;
     if (swrError) {
-      setError(swrError instanceof Error ? swrError : new Error("Failed to initialize"));
+      setError(
+        swrError instanceof Error ? swrError : new Error("Failed to initialize")
+      );
     }
   }, [sessionData, streamedMessages, swrError]);
 
   useEffect(() => {
     if (pendingQuestions && pendingQuestions.length > 0) {
       setQuestionRequests(
-        new Map(pendingQuestions.map((question) => [question.callID, question.requestID])),
+        new Map(
+          pendingQuestions.map((question) => [
+            question.callID,
+            question.requestID,
+          ])
+        )
       );
     }
   }, [pendingQuestions]);
@@ -286,13 +368,17 @@ export function useAgent(labSessionId: string): UseAgentResult {
   const opencodeSessionId = sessionData?.opencodeSessionId ?? null;
 
   useEffect(() => {
-    if (!opencodeSessionId) return;
+    if (!opencodeSessionId) {
+      return;
+    }
 
     const handleMessageUpdated = (info: Message) => {
       setStreamedMessages((previous) => {
         const base = previous ?? sessionDataRef.current?.messages ?? [];
         const existing = base.find((message) => message.id === info.id);
-        if (existing) return base;
+        if (existing) {
+          return base;
+        }
         return [...base, { id: info.id, role: info.role, parts: [] }];
       });
 
@@ -316,10 +402,13 @@ export function useAgent(labSessionId: string): UseAgentResult {
       setStreamedMessages((previous) => {
         const base = previous ?? sessionDataRef.current?.messages ?? [];
         return base.map((message) => {
-          if (message.id !== part.messageID) return message;
-          return Object.assign({}, message, {
+          if (message.id !== part.messageID) {
+            return message;
+          }
+          return {
+            ...message,
             parts: sortPartsById(upsertPart(message.parts, part)),
-          });
+          };
         });
       });
     };
@@ -368,10 +457,12 @@ export function useAgent(labSessionId: string): UseAgentResult {
           mutate(
             getAgentMessagesKey(labSessionId),
             (current: SessionData | null | undefined) => {
-              if (!current) return current;
+              if (!current) {
+                return current;
+              }
               return { ...current, messages: streamedMessagesRef.current! };
             },
-            { revalidate: false },
+            { revalidate: false }
           );
         }
         setStreamedMessages(null);
@@ -390,12 +481,15 @@ export function useAgent(labSessionId: string): UseAgentResult {
         const extracted = extractQuestionAskedEvent(event);
         if (extracted) {
           setQuestionRequests((previous) =>
-            new Map(previous).set(extracted.callID, extracted.requestID),
+            new Map(previous).set(extracted.callID, extracted.requestID)
           );
         }
       }
 
-      if (event.type === "question.replied" || event.type === "question.rejected") {
+      if (
+        event.type === "question.replied" ||
+        event.type === "question.rejected"
+      ) {
         const callID = extractQuestionCallID(event);
         if (callID) {
           setQuestionRequests((previous) => {
@@ -410,8 +504,12 @@ export function useAgent(labSessionId: string): UseAgentResult {
     return subscribe(processEvent);
   }, [subscribe, opencodeSessionId, mutate, labSessionId]);
 
-  const sendMessage = async ({ content, modelId, attachments }: SendMessageOptions) => {
-    if (!opencodeSessionId || !opencodeClient) {
+  const sendMessage = async ({
+    content,
+    modelId,
+    attachments,
+  }: SendMessageOptions) => {
+    if (!(opencodeSessionId && opencodeClient)) {
       throw new Error("Session not initialized");
     }
 
@@ -427,7 +525,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
         setIsSending(false);
         sendingTimeoutRef.current = null;
       },
-      5 * 60 * 1000,
+      5 * 60 * 1000
     );
 
     try {
@@ -444,10 +542,13 @@ export function useAgent(labSessionId: string): UseAgentResult {
       });
 
       if (response.error) {
-        throw new Error(`Failed to send message: ${JSON.stringify(response.error)}`);
+        throw new Error(
+          `Failed to send message: ${JSON.stringify(response.error)}`
+        );
       }
     } catch (error) {
-      const errorInstance = error instanceof Error ? error : new Error("Failed to send message");
+      const errorInstance =
+        error instanceof Error ? error : new Error("Failed to send message");
       setError(errorInstance);
       setIsSending(false);
       throw errorInstance;
@@ -460,7 +561,9 @@ export function useAgent(labSessionId: string): UseAgentResult {
   };
 
   const abortSession = async () => {
-    if (!currentOpencodeSessionRef.current || !opencodeClient) return;
+    if (!(currentOpencodeSessionRef.current && opencodeClient)) {
+      return;
+    }
 
     try {
       await opencodeClient.session.abort({

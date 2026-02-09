@@ -1,13 +1,13 @@
 import type {
-  Project,
-  CreateProjectInput,
-  UpdateProjectInput,
   Container,
   CreateContainerInput,
-  Session,
+  CreateProjectInput,
   Model,
   OrchestrationInput,
   OrchestrationResult,
+  Project,
+  Session,
+  UpdateProjectInput,
 } from "./types";
 
 export interface ClientConfig {
@@ -63,7 +63,8 @@ export function createClient(config: ClientConfig) {
     },
 
     containers: {
-      list: (projectId: string) => request<Container[]>(`/projects/${projectId}/containers`),
+      list: (projectId: string) =>
+        request<Container[]>(`/projects/${projectId}/containers`),
 
       create: (projectId: string, input: CreateContainerInput) =>
         request<Container>(`/projects/${projectId}/containers`, {
@@ -71,7 +72,11 @@ export function createClient(config: ClientConfig) {
           body: JSON.stringify(input),
         }),
 
-      setWorkspace: (projectId: string, containerId: string, isWorkspace: boolean) =>
+      setWorkspace: (
+        projectId: string,
+        containerId: string,
+        isWorkspace: boolean
+      ) =>
         request<void>(`/projects/${projectId}/containers/${containerId}`, {
           method: "PATCH",
           body: JSON.stringify({ isWorkspace }),
@@ -79,17 +84,24 @@ export function createClient(config: ClientConfig) {
     },
 
     sessions: {
-      list: (projectId: string) => request<Session[]>(`/projects/${projectId}/sessions`),
+      list: (projectId: string) =>
+        request<Session[]>(`/projects/${projectId}/sessions`),
 
       get: (sessionId: string) => request<Session>(`/sessions/${sessionId}`),
 
-      create: (projectId: string, data?: { title?: string; initialMessage?: string }) =>
+      create: (
+        projectId: string,
+        data?: { title?: string; initialMessage?: string }
+      ) =>
         request<Session>(`/projects/${projectId}/sessions`, {
           method: "POST",
           body: JSON.stringify(data ?? {}),
         }),
 
-      update: (sessionId: string, data: { opencodeSessionId?: string; title?: string }) =>
+      update: (
+        sessionId: string,
+        data: { opencodeSessionId?: string; title?: string }
+      ) =>
         request<Session>(`/sessions/${sessionId}`, {
           method: "PATCH",
           body: JSON.stringify(data),

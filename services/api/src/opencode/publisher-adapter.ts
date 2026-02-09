@@ -1,12 +1,12 @@
-import { getChangeType } from "../types/file";
-import type { Publisher } from "../types/dependencies";
-import type { SessionDiffEvent } from "./event-parser";
 import type { InferenceStatus } from "../state/session-state-store";
+import type { Publisher } from "../types/dependencies";
+import { getChangeType } from "../types/file";
+import type { SessionDiffEvent } from "./event-parser";
 
 export function publishSessionDiff(
   publisher: Publisher,
   sessionId: string,
-  event: SessionDiffEvent,
+  event: SessionDiffEvent
 ): void {
   for (const diff of event.properties.diff) {
     publisher.publishDelta(
@@ -21,7 +21,7 @@ export function publishSessionDiff(
           status: "pending" as const,
           changeType: getChangeType(diff.before, diff.after),
         },
-      },
+      }
     );
   }
 }
@@ -30,7 +30,7 @@ export function publishInferenceStatus(
   publisher: Publisher,
   sessionId: string,
   inferenceStatus: InferenceStatus,
-  lastMessage?: string,
+  lastMessage?: string
 ): void {
   const delta: Record<string, string> = { inferenceStatus };
   if (lastMessage) {
@@ -39,10 +39,13 @@ export function publishInferenceStatus(
   publisher.publishDelta("sessionMetadata", { uuid: sessionId }, delta);
 }
 
-export function publishSessionCompletion(publisher: Publisher, sessionId: string): void {
+export function publishSessionCompletion(
+  publisher: Publisher,
+  sessionId: string
+): void {
   publisher.publishEvent(
     "sessionComplete",
     { uuid: sessionId },
-    { sessionId, completedAt: Date.now() },
+    { sessionId, completedAt: Date.now() }
   );
 }

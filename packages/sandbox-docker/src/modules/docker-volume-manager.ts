@@ -1,11 +1,11 @@
-import type Dockerode from "dockerode";
-import type { VolumeManager, ContainerManager } from "@lab/sandbox-sdk";
+import { setTimeout } from "node:timers/promises";
+import type { ContainerManager, VolumeManager } from "@lab/sandbox-sdk";
 import { SandboxError } from "@lab/sandbox-sdk";
-import { setTimeout } from "timers/promises";
+import type Dockerode from "dockerode";
 import { ALPINE_IMAGE, VOLUME_CLONE_COMMAND } from "../constants";
 import { isNotFoundError } from "../utils/error-handling";
 
-const DEFAULT_CLONE_TIMEOUT_MS = 30000;
+const DEFAULT_CLONE_TIMEOUT_MS = 30_000;
 
 async function throwAfterTimeout(ms: number, message: string): Promise<never> {
   await setTimeout(ms);
@@ -15,10 +15,13 @@ async function throwAfterTimeout(ms: number, message: string): Promise<never> {
 export class DockerVolumeManager implements VolumeManager {
   constructor(
     private readonly docker: Dockerode,
-    private readonly containerManager: ContainerManager,
+    private readonly containerManager: ContainerManager
   ) {}
 
-  async createVolume(name: string, labels?: Record<string, string>): Promise<void> {
+  async createVolume(
+    name: string,
+    labels?: Record<string, string>
+  ): Promise<void> {
     await this.docker.createVolume({
       Name: name,
       Labels: labels,
@@ -52,7 +55,7 @@ export class DockerVolumeManager implements VolumeManager {
   async cloneVolume(
     sourceVolume: string,
     targetVolume: string,
-    timeoutMs = DEFAULT_CLONE_TIMEOUT_MS,
+    timeoutMs = DEFAULT_CLONE_TIMEOUT_MS
   ): Promise<void> {
     await this.createVolume(targetVolume);
 
@@ -70,7 +73,10 @@ export class DockerVolumeManager implements VolumeManager {
 
       const waitResult = await Promise.race([
         this.containerManager.waitContainer(cloneContainerId),
-        throwAfterTimeout(timeoutMs, `Volume clone timed out after ${timeoutMs}ms`),
+        throwAfterTimeout(
+          timeoutMs,
+          `Volume clone timed out after ${timeoutMs}ms`
+        ),
       ]);
 
       if (waitResult.exitCode !== 0) {
@@ -78,7 +84,7 @@ export class DockerVolumeManager implements VolumeManager {
         throw SandboxError.volumeCloneFailed(
           sourceVolume,
           targetVolume,
-          `Clone container exited with code ${waitResult.exitCode}`,
+          `Clone container exited with code ${waitResult.exitCode}`
         );
       }
     } catch (error) {

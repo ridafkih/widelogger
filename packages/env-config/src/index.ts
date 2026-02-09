@@ -18,7 +18,10 @@ export function getRequiredEnv(key: string): string {
  * Gets an optional environment variable.
  * Returns the default value if the variable is not set or is empty.
  */
-export function getOptionalEnv(key: string, defaultValue?: string): string | undefined {
+export function getOptionalEnv(
+  key: string,
+  defaultValue?: string
+): string | undefined {
   const value = process.env[key];
   if (value === undefined || value === "") {
     return defaultValue;
@@ -36,8 +39,8 @@ export function getOptionalEnvInt(key: string, defaultValue: number): number {
   if (value === undefined || value === "") {
     return defaultValue;
   }
-  const parsed = parseInt(value, 10);
-  if (isNaN(parsed)) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
     throw new Error(`${key} must be a valid integer`);
   }
   return parsed;
@@ -48,7 +51,10 @@ export function getOptionalEnvInt(key: string, defaultValue: number): number {
  * Returns true if the value is "true" or "1" (case-insensitive).
  * Returns the default value if the variable is not set or is empty.
  */
-export function getOptionalEnvBool(key: string, defaultValue: boolean): boolean {
+export function getOptionalEnvBool(
+  key: string,
+  defaultValue: boolean
+): boolean {
   const value = process.env[key];
   if (value === undefined || value === "") {
     return defaultValue;
@@ -61,7 +67,10 @@ export function getOptionalEnvBool(key: string, defaultValue: boolean): boolean 
  * Splits the value by commas and trims whitespace.
  * Returns an empty array if the variable is not set or is empty.
  */
-export function getOptionalEnvList(key: string, defaultValue: string[] = []): string[] {
+export function getOptionalEnvList(
+  key: string,
+  defaultValue: string[] = []
+): string[] {
   const value = process.env[key];
   if (value === undefined || value === "") {
     return defaultValue;
@@ -82,8 +91,8 @@ export function getOptionalEnvFloat(key: string, defaultValue: number): number {
   if (value === undefined || value === "") {
     return defaultValue;
   }
-  const parsed = parseFloat(value);
-  if (isNaN(parsed)) {
+  const parsed = Number.parseFloat(value);
+  if (Number.isNaN(parsed)) {
     throw new Error(`${key} must be a valid number`);
   }
   return parsed;

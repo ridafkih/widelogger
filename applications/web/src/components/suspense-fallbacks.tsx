@@ -15,9 +15,9 @@ export function ProjectsLoadingFallback() {
 
 export function ChatLoadingFallback() {
   return (
-    <div className="flex flex-col h-full items-center justify-center">
+    <div className="flex h-full flex-col items-center justify-center">
       <div className="flex items-center gap-2 text-text-muted">
-        <Loader2 size={14} className="animate-spin" />
+        <Loader2 className="animate-spin" size={14} />
         <span className="text-xs">Loading conversation...</span>
       </div>
     </div>

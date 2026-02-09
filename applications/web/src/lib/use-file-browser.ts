@@ -1,15 +1,20 @@
 "use client";
 
-import { useReducer, useEffect, useRef } from "react";
-import useSWR from "swr";
 import type { FileContent } from "@opencode-ai/sdk/v2/client";
-import { useFileStatuses, type ChangedFile } from "./use-file-statuses";
-import { useSessionClient, createSessionClient } from "./use-session-client";
-import type { BrowserState, BrowserActions, FileNode, FileStatus } from "@/components/review";
+import { useEffect, useReducer, useRef } from "react";
+import useSWR from "swr";
+import type {
+  BrowserActions,
+  BrowserState,
+  FileNode,
+  FileStatus,
+} from "@/components/review";
+import { type ChangedFile, useFileStatuses } from "./use-file-statuses";
+import { createSessionClient, useSessionClient } from "./use-session-client";
 
 type Patch = NonNullable<FileContent["patch"]>;
 
-type FileBrowserState = {
+interface FileBrowserState {
   expandedPaths: Set<string>;
   loadedContents: Map<string, FileNode[]>;
   loadingPaths: Set<string>;
@@ -17,7 +22,7 @@ type FileBrowserState = {
   previewContent: string | null;
   previewPatch: Patch | null;
   previewLoading: boolean;
-};
+}
 
 type FileBrowserAction =
   | { type: "RESET" }
@@ -43,7 +48,10 @@ function getInitialState(): FileBrowserState {
   };
 }
 
-function fileBrowserReducer(state: FileBrowserState, action: FileBrowserAction): FileBrowserState {
+function fileBrowserReducer(
+  state: FileBrowserState,
+  action: FileBrowserAction
+): FileBrowserState {
   switch (action.type) {
     case "RESET":
       return getInitialState();
@@ -159,14 +167,19 @@ export function useFileBrowser(sessionId: string | null): {
   state: BrowserState;
   actions: BrowserActions;
 } {
-  const { files: changedFiles, isLoading: statusesLoading } = useFileStatuses(sessionId);
+  const { files: changedFiles, isLoading: statusesLoading } =
+    useFileStatuses(sessionId);
 
-  const [browserState, dispatch] = useReducer(fileBrowserReducer, null, getInitialState);
+  const [browserState, dispatch] = useReducer(
+    fileBrowserReducer,
+    null,
+    getInitialState
+  );
   const client = useSessionClient(sessionId);
 
   const { data: rootNodes, isLoading: rootLoading } = useSWR<FileNode[]>(
     sessionId ? `file-browser-root-${sessionId}` : null,
-    () => fetchRootFiles(sessionId!),
+    () => fetchRootFiles(sessionId!)
   );
 
   const { statuses: fileStatuses, dirsWithChanges: directoriesWithChanges } =
@@ -175,7 +188,9 @@ export function useFileBrowser(sessionId: string | null): {
   const initializedSessionRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (initializedSessionRef.current === sessionId) return;
+    if (initializedSessionRef.current === sessionId) {
+      return;
+    }
     initializedSessionRef.current = sessionId;
 
     dispatch({ type: "RESET" });
@@ -213,14 +228,18 @@ export function useFileBrowser(sessionId: string | null): {
   };
 
   const selectFile = async (path: string) => {
-    if (!client) return;
+    if (!client) {
+      return;
+    }
 
     dispatch({ type: "SELECT_FILE", path });
 
     try {
       const response = await client.file.read({ path });
 
-      if (!response.data || response.data.type !== "text") return;
+      if (!response.data || response.data.type !== "text") {
+        return;
+      }
 
       dispatch({
         type: "SET_PREVIEW_CONTENT",
@@ -239,7 +258,9 @@ export function useFileBrowser(sessionId: string | null): {
   };
 
   const loadDirectoryContents = async (dirPath: string) => {
-    if (!client || browserState.loadedContents.has(dirPath)) return;
+    if (!client || browserState.loadedContents.has(dirPath)) {
+      return;
+    }
 
     try {
       const response = await client.file.list({ path: dirPath });
@@ -250,7 +271,11 @@ export function useFileBrowser(sessionId: string | null): {
           type: node.type,
           ignored: node.ignored,
         }));
-        dispatch({ type: "SET_LOADED_CONTENTS", path: dirPath, contents: nodes });
+        dispatch({
+          type: "SET_LOADED_CONTENTS",
+          path: dirPath,
+          contents: nodes,
+        });
       }
     } catch (error) {
       console.error(error);

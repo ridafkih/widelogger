@@ -1,27 +1,31 @@
-import Dockerode from "dockerode";
 import type {
-  SandboxProvider,
   ContainerCreateOptions,
+  ContainerEvent,
+  ContainerEventStream,
+  ContainerEventStreamOptions,
   ContainerInfo,
-  ExitResult,
-  LogChunk,
-  NetworkCreateOptions,
   ExecOptions,
   ExecResult,
+  ExitResult,
   ImageConfig,
+  LogChunk,
+  NetworkCreateOptions,
   NetworkInfo,
-  ContainerEventStream,
-  ContainerEvent,
-  ContainerEventStreamOptions,
+  SandboxProvider,
 } from "@lab/sandbox-sdk";
-import type { DockerClientOptions } from "../types/client";
-import { DockerImageManager } from "../modules/docker-image-manager";
+import Dockerode from "dockerode";
+import {
+  DEFAULT_DOCKER_PORT,
+  DEFAULT_DOCKER_PROTOCOL,
+  DEFAULT_SOCKET_PATH,
+} from "../constants";
 import { DockerContainerManager } from "../modules/docker-container-manager";
-import { DockerVolumeManager } from "../modules/docker-volume-manager";
-import { NetworkOperations } from "../modules/network-operations";
-import { ExecOperations } from "../modules/exec-operations";
 import { DockerEventStream } from "../modules/docker-event-stream";
-import { DEFAULT_SOCKET_PATH, DEFAULT_DOCKER_PORT, DEFAULT_DOCKER_PROTOCOL } from "../constants";
+import { DockerImageManager } from "../modules/docker-image-manager";
+import { DockerVolumeManager } from "../modules/docker-volume-manager";
+import { ExecOperations } from "../modules/exec-operations";
+import { NetworkOperations } from "../modules/network-operations";
+import type { DockerClientOptions } from "../types/client";
 
 export class DockerClient implements SandboxProvider, ContainerEventStream {
   private readonly docker: Dockerode;
@@ -47,7 +51,10 @@ export class DockerClient implements SandboxProvider, ContainerEventStream {
 
     this.imageManager = new DockerImageManager(this.docker);
     this.containerManager = new DockerContainerManager(this.docker);
-    this.volumeManager = new DockerVolumeManager(this.docker, this.containerManager);
+    this.volumeManager = new DockerVolumeManager(
+      this.docker,
+      this.containerManager
+    );
     this.networkOps = new NetworkOperations(this.docker);
     this.execOps = new ExecOperations(this.docker);
     this.eventStream = new DockerEventStream(this.docker);
@@ -59,7 +66,7 @@ export class DockerClient implements SandboxProvider, ContainerEventStream {
 
   pullImage(
     imageRef: string,
-    onProgress?: (event: { status: string; progress?: string }) => void,
+    onProgress?: (event: { status: string; progress?: string }) => void
   ): Promise<void> {
     return this.imageManager.pullImage(imageRef, onProgress);
   }
@@ -92,7 +99,10 @@ export class DockerClient implements SandboxProvider, ContainerEventStream {
     return this.containerManager.removeContainer(containerId, force);
   }
 
-  restartContainer(containerId: string, timeoutSeconds?: number): Promise<void> {
+  restartContainer(
+    containerId: string,
+    timeoutSeconds?: number
+  ): Promise<void> {
     return this.containerManager.restartContainer(containerId, timeoutSeconds);
   }
 
@@ -108,7 +118,10 @@ export class DockerClient implements SandboxProvider, ContainerEventStream {
     return this.containerManager.containerExists(containerId);
   }
 
-  streamLogs(containerId: string, options?: { tail?: number }): AsyncGenerator<LogChunk> {
+  streamLogs(
+    containerId: string,
+    options?: { tail?: number }
+  ): AsyncGenerator<LogChunk> {
     return this.containerManager.streamLogs(containerId, options);
   }
 
@@ -140,19 +153,25 @@ export class DockerClient implements SandboxProvider, ContainerEventStream {
     return this.networkOps.networkExists(name);
   }
 
-  isConnectedToNetwork(containerIdOrName: string, networkName: string): Promise<boolean> {
+  isConnectedToNetwork(
+    containerIdOrName: string,
+    networkName: string
+  ): Promise<boolean> {
     return this.networkOps.isConnectedToNetwork(containerIdOrName, networkName);
   }
 
   connectToNetwork(
     containerId: string,
     networkName: string,
-    options?: { aliases?: string[] },
+    options?: { aliases?: string[] }
   ): Promise<void> {
     return this.networkOps.connectToNetwork(containerId, networkName, options);
   }
 
-  disconnectFromNetwork(containerId: string, networkName: string): Promise<void> {
+  disconnectFromNetwork(
+    containerId: string,
+    networkName: string
+  ): Promise<void> {
     return this.networkOps.disconnectFromNetwork(containerId, networkName);
   }
 
@@ -164,7 +183,9 @@ export class DockerClient implements SandboxProvider, ContainerEventStream {
     return this.execOps.exec(containerId, options);
   }
 
-  streamContainerEvents(options?: ContainerEventStreamOptions): AsyncGenerator<ContainerEvent> {
+  streamContainerEvents(
+    options?: ContainerEventStreamOptions
+  ): AsyncGenerator<ContainerEvent> {
     return this.eventStream.streamContainerEvents(options);
   }
 }

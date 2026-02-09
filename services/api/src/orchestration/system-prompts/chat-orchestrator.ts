@@ -44,9 +44,12 @@ function formatTimestamp(timestamp?: string): string {
   });
 }
 
-export function buildChatOrchestratorPrompt(context: ChatOrchestratorPromptContext): string {
+export function buildChatOrchestratorPrompt(
+  context: ChatOrchestratorPromptContext
+): string {
   const platform = context.platformOrigin?.toLowerCase() ?? "";
-  const platformGuideline = platformGuidelines[platform] ?? defaultPlatformGuideline;
+  const platformGuideline =
+    platformGuidelines[platform] ?? defaultPlatformGuideline;
 
   const historySection = context.conversationHistory?.length
     ? `

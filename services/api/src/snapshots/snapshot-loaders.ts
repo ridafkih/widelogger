@@ -1,16 +1,19 @@
-import { CONTAINER_STATUS, isContainerStatus } from "../types/container";
-import { getChangeType } from "../types/file";
-import { formatProxyUrl } from "../shared/naming";
-import { findProjectSummaries } from "../repositories/project.repository";
-import { findAllSessionSummaries, findSessionById } from "../repositories/session.repository";
-import { getSessionContainersWithDetails } from "../repositories/container-session.repository";
-import { findPortsByContainerId } from "../repositories/container-port.repository";
-import type { SessionStateStore } from "../state/session-state-store";
-import { resolveWorkspacePathBySession } from "../shared/path-resolver";
-import type { BrowserService } from "../browser/browser-service";
 import type { AppSchema } from "@lab/multiplayer-sdk";
+import type { BrowserService } from "../browser/browser-service";
 import type { LogMonitor } from "../monitors/log.monitor";
+import { findPortsByContainerId } from "../repositories/container-port.repository";
+import { getSessionContainersWithDetails } from "../repositories/container-session.repository";
+import { findProjectSummaries } from "../repositories/project.repository";
+import {
+  findAllSessionSummaries,
+  findSessionById,
+} from "../repositories/session.repository";
+import { formatProxyUrl } from "../shared/naming";
+import { resolveWorkspacePathBySession } from "../shared/path-resolver";
+import type { SessionStateStore } from "../state/session-state-store";
+import { CONTAINER_STATUS, isContainerStatus } from "../types/container";
 import type { OpencodeClient } from "../types/dependencies";
+import { getChangeType } from "../types/file";
 
 export async function loadProjects() {
   return findProjectSummaries();
@@ -24,7 +27,10 @@ export async function loadSessions() {
   }));
 }
 
-export async function loadSessionContainers(sessionId: string, proxyBaseDomain: string) {
+export async function loadSessionContainers(
+  sessionId: string,
+  proxyBaseDomain: string
+) {
   const rows = await getSessionContainersWithDetails(sessionId);
 
   return Promise.all(
@@ -39,16 +45,23 @@ export async function loadSessionContainers(sessionId: string, proxyBaseDomain: 
       return {
         id: row.id,
         name,
-        status: isContainerStatus(row.status) ? row.status : CONTAINER_STATUS.ERROR,
+        status: isContainerStatus(row.status)
+          ? row.status
+          : CONTAINER_STATUS.ERROR,
         urls,
       };
-    }),
+    })
   );
 }
 
-export async function loadSessionChangedFiles(sessionId: string, opencode: OpencodeClient) {
+export async function loadSessionChangedFiles(
+  sessionId: string,
+  opencode: OpencodeClient
+) {
   const session = await findSessionById(sessionId);
-  if (!session?.opencodeSessionId) return [];
+  if (!session?.opencodeSessionId) {
+    return [];
+  }
 
   try {
     const directory = await resolveWorkspacePathBySession(sessionId);
@@ -56,7 +69,9 @@ export async function loadSessionChangedFiles(sessionId: string, opencode: Openc
       sessionID: session.opencodeSessionId,
       directory,
     });
-    if (!response.data) return [];
+    if (!response.data) {
+      return [];
+    }
 
     return response.data.map((diff) => ({
       path: diff.file,
@@ -77,7 +92,7 @@ export function loadSessionLogs(sessionId: string, logMonitor: LogMonitor) {
 export async function loadSessionMetadata(
   sessionId: string,
   opencode: OpencodeClient,
-  sessionStateStore: SessionStateStore,
+  sessionStateStore: SessionStateStore
 ) {
   const session = await findSessionById(sessionId);
   const title = session?.title ?? "";
@@ -87,7 +102,12 @@ export async function loadSessionMetadata(
   ]);
 
   if (!session?.opencodeSessionId) {
-    return { title, lastMessage: storedLastMessage, inferenceStatus, participantCount: 0 };
+    return {
+      title,
+      lastMessage: storedLastMessage,
+      inferenceStatus,
+      participantCount: 0,
+    };
   }
 
   try {
@@ -97,9 +117,10 @@ export async function loadSessionMetadata(
       directory,
     });
     const messages = response.data ?? [];
-    const lastMessage = messages[messages.length - 1];
+    const lastMessage = messages.at(-1);
     const textPart = lastMessage?.parts?.find(
-      (part: { type: string; text?: string }) => part.type === "text" && part.text,
+      (part: { type: string; text?: string }) =>
+        part.type === "text" && part.text
     );
 
     const text = textPart && "text" in textPart && textPart.text;
@@ -109,9 +130,19 @@ export async function loadSessionMetadata(
       return { title, lastMessage: text, inferenceStatus, participantCount: 0 };
     }
 
-    return { title, lastMessage: storedLastMessage, inferenceStatus, participantCount: 0 };
+    return {
+      title,
+      lastMessage: storedLastMessage,
+      inferenceStatus,
+      participantCount: 0,
+    };
   } catch {
-    return { title, lastMessage: storedLastMessage, inferenceStatus, participantCount: 0 };
+    return {
+      title,
+      lastMessage: storedLastMessage,
+      inferenceStatus,
+      participantCount: 0,
+    };
   }
 }
 
@@ -127,15 +158,23 @@ export interface SnapshotLoaderDeps {
 }
 
 export function createSnapshotLoaders(
-  deps: SnapshotLoaderDeps,
+  deps: SnapshotLoaderDeps
 ): Record<ChannelName, SnapshotLoader> {
-  const { browserService, opencode, logMonitor, proxyBaseDomain, sessionStateStore } = deps;
+  const {
+    browserService,
+    opencode,
+    logMonitor,
+    proxyBaseDomain,
+    sessionStateStore,
+  } = deps;
 
   return {
     projects: async () => loadProjects(),
     sessions: async () => loadSessions(),
     sessionMetadata: async (session) =>
-      session ? loadSessionMetadata(session, opencode, sessionStateStore) : null,
+      session
+        ? loadSessionMetadata(session, opencode, sessionStateStore)
+        : null,
     sessionContainers: async (session) =>
       session ? loadSessionContainers(session, proxyBaseDomain) : null,
     sessionTyping: async () => [],
@@ -145,12 +184,16 @@ export function createSnapshotLoaders(
     sessionBranches: async () => [],
     sessionLinks: async () => [],
     sessionLogs: async (session) =>
-      session ? loadSessionLogs(session, logMonitor) : { sources: [], recentLogs: {} },
+      session
+        ? loadSessionLogs(session, logMonitor)
+        : { sources: [], recentLogs: {} },
     sessionMessages: async () => [],
     sessionBrowserState: async (session) =>
       session ? browserService.getBrowserSnapshot(session) : null,
     sessionBrowserFrames: async (session) => {
-      if (!session) return null;
+      if (!session) {
+        return null;
+      }
       const frame = browserService.getCachedFrame(session);
       return { lastFrame: frame ?? null, timestamp: frame ? Date.now() : null };
     },

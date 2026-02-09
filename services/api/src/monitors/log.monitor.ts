@@ -1,34 +1,34 @@
 import { LIMITS } from "../config/constants";
+import { widelog } from "../logging";
 import { findAllRunningSessionContainers } from "../repositories/container-session.repository";
 import { CircularBuffer } from "../shared/circular-buffer";
-import { RateLimiter } from "../shared/rate-limiter";
-import type { Sandbox, Publisher } from "../types/dependencies";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
-import { widelog } from "../logging";
+import { RateLimiter } from "../shared/rate-limiter";
+import type { Publisher, Sandbox } from "../types/dependencies";
 
-type LogChunk = {
+interface LogChunk {
   stream: "stdout" | "stderr";
   data: Uint8Array;
-};
+}
 
-type LogSource = {
+interface LogSource {
   id: string;
   hostname: string;
   runtimeId: string;
   status: "streaming" | "stopped" | "error";
-};
+}
 
-type LogEntry = {
+interface LogEntry {
   containerId: string;
   stream: "stdout" | "stderr";
   text: string;
   timestamp: number;
-};
+}
 
 class LogStreamTracker {
   private abortController: AbortController | null = null;
-  private buffer: CircularBuffer<LogEntry>;
-  private rateLimiter: RateLimiter;
+  private readonly buffer: CircularBuffer<LogEntry>;
+  private readonly rateLimiter: RateLimiter;
   private isStreaming = false;
 
   constructor(
@@ -37,14 +37,16 @@ class LogStreamTracker {
     public readonly runtimeId: string,
     public readonly hostname: string,
     private readonly sandbox: Sandbox,
-    private readonly getPublisher: () => Publisher,
+    private readonly getPublisher: () => Publisher
   ) {
     this.buffer = new CircularBuffer(LIMITS.LOG_BUFFER_SIZE);
     this.rateLimiter = new RateLimiter(LIMITS.LOG_LINES_PER_SECOND);
   }
 
   async start(): Promise<void> {
-    if (this.isStreaming) return;
+    if (this.isStreaming) {
+      return;
+    }
 
     this.abortController = new AbortController();
     this.isStreaming = true;
@@ -80,8 +82,13 @@ class LogStreamTracker {
       widelog.time.start("duration_ms");
 
       try {
-        for await (const chunk of this.sandbox.provider.streamLogs(this.runtimeId, { tail: 100 })) {
-          if (!this.isStreaming) break;
+        for await (const chunk of this.sandbox.provider.streamLogs(
+          this.runtimeId,
+          { tail: 100 }
+        )) {
+          if (!this.isStreaming) {
+            break;
+          }
 
           const lines = this.parseChunk(chunk);
           for (const line of lines) {
@@ -107,7 +114,9 @@ class LogStreamTracker {
     });
   }
 
-  private parseChunk(chunk: LogChunk): { stream: "stdout" | "stderr"; text: string }[] {
+  private parseChunk(
+    chunk: LogChunk
+  ): { stream: "stdout" | "stderr"; text: string }[] {
     const text = new TextDecoder().decode(chunk.data);
     const lines = text.split("\n").filter((line) => line.length > 0);
 
@@ -128,7 +137,11 @@ class LogStreamTracker {
     this.buffer.push(entry);
 
     if (this.rateLimiter.canProceed()) {
-      this.getPublisher().publishEvent("sessionLogs", { uuid: this.sessionId }, entry);
+      this.getPublisher().publishEvent(
+        "sessionLogs",
+        { uuid: this.sessionId },
+        entry
+      );
     }
   }
 
@@ -140,30 +153,30 @@ class LogStreamTracker {
         type: "source_update",
         containerId: this.containerId,
         status,
-      },
+      }
     );
   }
 }
 
-type ContainerStartedEvent = {
+interface ContainerStartedEvent {
   sessionId: string;
   containerId: string;
   runtimeId: string;
   hostname: string;
-};
+}
 
-type ContainerStoppedEvent = {
+interface ContainerStoppedEvent {
   sessionId: string;
   containerId: string;
-};
+}
 
 export class LogMonitor {
-  private trackers = new Map<string, LogStreamTracker>();
-  private sessionTrackers = new Map<string, Set<string>>();
+  private readonly trackers = new Map<string, LogStreamTracker>();
+  private readonly sessionTrackers = new Map<string, Set<string>>();
 
   constructor(
     private readonly sandbox: Sandbox,
-    private readonly deferredPublisher: DeferredPublisher,
+    private readonly deferredPublisher: DeferredPublisher
   ) {}
 
   async start(): Promise<void> {
@@ -209,14 +222,14 @@ export class LogMonitor {
       runtimeId,
       hostname,
       this.sandbox,
-      () => this.deferredPublisher.get(),
+      () => this.deferredPublisher.get()
     );
     this.trackers.set(key, tracker);
 
     if (!this.sessionTrackers.has(sessionId)) {
       this.sessionTrackers.set(sessionId, new Set());
     }
-    this.sessionTrackers.get(sessionId)!.add(key);
+    this.sessionTrackers.get(sessionId)?.add(key);
 
     this.deferredPublisher.get().publishDelta(
       "sessionLogs",
@@ -224,7 +237,7 @@ export class LogMonitor {
       {
         type: "source_add",
         source: tracker.getSource(),
-      },
+      }
     );
 
     tracker.start();
@@ -257,7 +270,7 @@ export class LogMonitor {
         type: "source_update",
         containerId,
         status: "stopped",
-      },
+      }
     );
   }
 
@@ -286,7 +299,9 @@ export class LogMonitor {
 
   cleanup(sessionId: string): void {
     const trackerKeys = this.sessionTrackers.get(sessionId);
-    if (!trackerKeys) return;
+    if (!trackerKeys) {
+      return;
+    }
 
     for (const key of trackerKeys) {
       const tracker = this.trackers.get(key);

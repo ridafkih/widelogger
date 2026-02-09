@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api";
 import { useMultiplayer } from "./multiplayer";
 
@@ -23,7 +23,10 @@ interface OrchestrationState {
 
 interface UseOrchestrateResult {
   state: OrchestrationState;
-  submit: (content: string, options?: { channelId?: string; modelId?: string }) => Promise<void>;
+  submit: (
+    content: string,
+    options?: { channelId?: string; modelId?: string }
+  ) => Promise<void>;
   reset: () => void;
   isLoading: boolean;
 }
@@ -43,7 +46,7 @@ export function useOrchestrate(): UseOrchestrateResult {
   const orchestrationStatus = useChannel(
     "orchestrationStatus",
     state.orchestrationId ? { uuid: state.orchestrationId } : undefined,
-    { enabled: Boolean(state.orchestrationId) },
+    { enabled: Boolean(state.orchestrationId) }
   );
 
   const isLoading =
@@ -53,7 +56,9 @@ export function useOrchestrate(): UseOrchestrateResult {
     state.status === "starting";
 
   useEffect(() => {
-    if (!state.orchestrationId) return;
+    if (!state.orchestrationId) {
+      return;
+    }
 
     setState((prev) => ({
       ...prev,
@@ -74,7 +79,10 @@ export function useOrchestrate(): UseOrchestrateResult {
     setState(initialState);
   };
 
-  const submit = async (content: string, options?: { channelId?: string; modelId?: string }) => {
+  const submit = async (
+    content: string,
+    options?: { channelId?: string; modelId?: string }
+  ) => {
     reset();
     setState({
       status: "pending",
@@ -99,7 +107,8 @@ export function useOrchestrate(): UseOrchestrateResult {
         status: result.sessionId ? "complete" : prev.status,
       }));
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Orchestration failed";
+      const errorMessage =
+        error instanceof Error ? error.message : "Orchestration failed";
       setState({
         status: "error",
         projectName: null,

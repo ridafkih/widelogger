@@ -1,9 +1,12 @@
 import { db } from "@lab/database/client";
-import { githubSettings, type GitHubSettings } from "@lab/database/schema/github-settings";
+import {
+  type GitHubSettings,
+  githubSettings,
+} from "@lab/database/schema/github-settings";
 import { eq } from "drizzle-orm";
-import { encrypt, decrypt } from "../shared/crypto";
-import { InternalError } from "../shared/errors";
 import { widelog } from "../logging";
+import { decrypt, encrypt } from "../shared/crypto";
+import { InternalError } from "../shared/errors";
 
 function toSettingsOutput(settings: GitHubSettings): GitHubSettingsOutput {
   return {
@@ -57,14 +60,18 @@ interface GitHubOAuthInput {
 
 export async function getGitHubSettings(): Promise<GitHubSettingsOutput | null> {
   const [settings] = await db.select().from(githubSettings).limit(1);
-  if (!settings) return null;
+  if (!settings) {
+    return null;
+  }
 
   return toSettingsOutput(settings);
 }
 
 export async function getGitHubCredentials(): Promise<GitHubCredentials | null> {
   const [settings] = await db.select().from(githubSettings).limit(1);
-  if (!settings) return null;
+  if (!settings) {
+    return null;
+  }
 
   let token: string | null = null;
 
@@ -85,7 +92,10 @@ export async function getGitHubCredentials(): Promise<GitHubCredentials | null> 
       token = decrypt(settings.patEncrypted, settings.patNonce);
     } catch (error) {
       widelog.set("github.pat_decrypt_failed", true);
-      widelog.errorFields(error, { prefix: "github.pat_decrypt_error", includeStack: false });
+      widelog.errorFields(error, {
+        prefix: "github.pat_decrypt_error",
+        includeStack: false,
+      });
     }
   }
 
@@ -99,9 +109,12 @@ export async function getGitHubCredentials(): Promise<GitHubCredentials | null> 
 }
 
 export async function saveGitHubSettings(
-  input: GitHubSettingsInput,
+  input: GitHubSettingsInput
 ): Promise<GitHubSettingsOutput> {
-  const [existing] = await db.select({ id: githubSettings.id }).from(githubSettings).limit(1);
+  const [existing] = await db
+    .select({ id: githubSettings.id })
+    .from(githubSettings)
+    .limit(1);
 
   let patEncrypted: string | undefined;
   let patNonce: string | undefined;
@@ -133,7 +146,10 @@ export async function saveGitHubSettings(
   }
 
   if (!settings) {
-    throw new InternalError("Failed to save GitHub settings", "GITHUB_SETTINGS_SAVE_FAILED");
+    throw new InternalError(
+      "Failed to save GitHub settings",
+      "GITHUB_SETTINGS_SAVE_FAILED"
+    );
   }
 
   return toSettingsOutput(settings);
@@ -143,8 +159,13 @@ export async function deleteGitHubSettings(): Promise<void> {
   await db.delete(githubSettings);
 }
 
-export async function saveGitHubOAuthToken(input: GitHubOAuthInput): Promise<GitHubSettingsOutput> {
-  const [existing] = await db.select({ id: githubSettings.id }).from(githubSettings).limit(1);
+export async function saveGitHubOAuthToken(
+  input: GitHubOAuthInput
+): Promise<GitHubSettingsOutput> {
+  const [existing] = await db
+    .select({ id: githubSettings.id })
+    .from(githubSettings)
+    .limit(1);
 
   const encrypted = encrypt(input.accessToken);
 
@@ -169,15 +190,23 @@ export async function saveGitHubOAuthToken(input: GitHubOAuthInput): Promise<Git
   }
 
   if (!settings) {
-    throw new InternalError("Failed to save GitHub OAuth token", "GITHUB_OAUTH_SAVE_FAILED");
+    throw new InternalError(
+      "Failed to save GitHub OAuth token",
+      "GITHUB_OAUTH_SAVE_FAILED"
+    );
   }
 
   return toSettingsOutput(settings);
 }
 
 export async function clearGitHubOAuthToken(): Promise<void> {
-  const [existing] = await db.select({ id: githubSettings.id }).from(githubSettings).limit(1);
-  if (!existing) return;
+  const [existing] = await db
+    .select({ id: githubSettings.id })
+    .from(githubSettings)
+    .limit(1);
+  if (!existing) {
+    return;
+  }
 
   await db
     .update(githubSettings)

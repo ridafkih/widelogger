@@ -7,7 +7,10 @@ import { useMultiplayer } from "./multiplayer";
  * This hook consolidates the streaming title logic so that changes only need
  * to be made in one place.
  */
-export function useSessionTitle(sessionId: string, fallbackTitle?: string | null): string | null {
+export function useSessionTitle(
+  sessionId: string,
+  fallbackTitle?: string | null
+): string | null {
   const { useChannel } = useMultiplayer();
   const metadata = useChannel("sessionMetadata", { uuid: sessionId });
 

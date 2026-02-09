@@ -1,31 +1,38 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import type { Project, Session } from "@lab/client";
 import { Trash2 } from "lucide-react";
-import { SessionInfoPane } from "@/components/session-info-pane";
+import { useRouter } from "next/navigation";
 import { BrowserStreamView } from "@/components/browser-stream";
 import { DefaultContainerLogs } from "@/components/container-logs";
+import { SessionInfoPane } from "@/components/session-info-pane";
 import { useFileStatuses } from "@/lib/use-file-statuses";
-import type { Project, Session } from "@lab/client";
 
-type SessionContainer = {
+interface SessionContainer {
   id: string;
   name: string;
   status: "running" | "stopped" | "starting" | "error";
   urls: { port: number; url: string }[];
-};
+}
 
-type SessionInfoViewProps = {
+interface SessionInfoViewProps {
   session: Session;
   project: Project;
   containers: SessionContainer[];
   onDelete: () => void;
-};
+}
 
-export function SessionInfoView({ session, project, containers, onDelete }: SessionInfoViewProps) {
+export function SessionInfoView({
+  session,
+  project,
+  containers,
+  onDelete,
+}: SessionInfoViewProps) {
   const router = useRouter();
   const { files: changedFiles } = useFileStatuses(session.id);
-  const links = containers.flatMap((container) => container.urls.map(({ url }) => url));
+  const links = containers.flatMap((container) =>
+    container.urls.map(({ url }) => url)
+  );
 
   const projectContainers = project.containers ?? [];
   const hasSessionContainers = containers.length > 0;
@@ -38,19 +45,21 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
   return (
     <SessionInfoPane.Root>
       <SessionInfoPane.Section>
-        <SessionInfoPane.SectionHeader>Changed Files</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.SectionHeader>
+          Changed Files
+        </SessionInfoPane.SectionHeader>
         <SessionInfoPane.ItemList
-          items={changedFiles}
           emptyMessage="No changed files"
-          scrollable
+          items={changedFiles}
           renderItem={(file) => (
             <SessionInfoPane.FileItem
               key={file.path}
+              onClick={() => handleFileClick(file.path)}
               path={file.path}
               status={file.status}
-              onClick={() => handleFileClick(file.path)}
             />
           )}
+          scrollable
         />
       </SessionInfoPane.Section>
 
@@ -60,7 +69,9 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
       </SessionInfoPane.Section>
 
       <SessionInfoPane.Section>
-        <SessionInfoPane.SectionHeader>Containers</SessionInfoPane.SectionHeader>
+        <SessionInfoPane.SectionHeader>
+          Containers
+        </SessionInfoPane.SectionHeader>
         {hasSessionContainers ? (
           containers.map((container) => (
             <SessionInfoPane.ContainerItem
@@ -90,9 +101,11 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Links</SessionInfoPane.SectionHeader>
         <SessionInfoPane.ItemList
-          items={links}
           emptyMessage="No links"
-          renderItem={(url) => <SessionInfoPane.LinkItem key={url} href={url} />}
+          items={links}
+          renderItem={(url) => (
+            <SessionInfoPane.LinkItem href={url} key={url} />
+          )}
         />
       </SessionInfoPane.Section>
 
@@ -106,7 +119,11 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
 
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Controls</SessionInfoPane.SectionHeader>
-        <SessionInfoPane.ActionButton icon={Trash2} variant="danger" onClick={onDelete}>
+        <SessionInfoPane.ActionButton
+          icon={Trash2}
+          onClick={onDelete}
+          variant="danger"
+        >
           Delete
         </SessionInfoPane.ActionButton>
       </SessionInfoPane.Section>

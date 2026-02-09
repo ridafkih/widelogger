@@ -11,7 +11,7 @@ const navItems = [
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex h-screen flex-col">
       <Nav items={navItems} />
       <SettingsShell>{children}</SettingsShell>
     </div>

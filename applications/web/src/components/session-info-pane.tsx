@@ -1,7 +1,14 @@
 "use client";
 
+import {
+  Box,
+  CheckSquare,
+  ExternalLink,
+  FileText,
+  GitBranch,
+  type LucideIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
-import { ExternalLink, Box, GitBranch, FileText, CheckSquare, type LucideIcon } from "lucide-react";
 import { tv } from "tailwind-variants";
 import { Button } from "@/components/button";
 import { cn } from "@/lib/cn";
@@ -40,18 +47,30 @@ const row = tv({
 
 function SessionInfoPaneRoot({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex flex-col gap-px bg-border overflow-y-auto overflow-x-hidden min-w-0 h-fit">
+    <div className="flex h-fit min-w-0 flex-col gap-px overflow-y-auto overflow-x-hidden bg-border">
       {children}
     </div>
   );
 }
 
 function SessionInfoPaneSection({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-1 bg-bg px-3 py-2 min-w-0">{children}</div>;
+  return (
+    <div className="flex min-w-0 flex-col gap-1 bg-bg px-3 py-2">
+      {children}
+    </div>
+  );
 }
 
-function SessionInfoPaneScrollableContent({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-1 max-h-32 overflow-y-auto min-w-0">{children}</div>;
+function SessionInfoPaneScrollableContent({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex max-h-32 min-w-0 flex-col gap-1 overflow-y-auto">
+      {children}
+    </div>
+  );
 }
 
 function SessionInfoPaneSectionHeader({ children }: { children: ReactNode }) {
@@ -80,7 +99,11 @@ function SessionInfoPaneItemList<T>({
   const content = items.map(renderItem);
 
   if (scrollable) {
-    return <SessionInfoPaneScrollableContent>{content}</SessionInfoPaneScrollableContent>;
+    return (
+      <SessionInfoPaneScrollableContent>
+        {content}
+      </SessionInfoPaneScrollableContent>
+    );
   }
 
   return <>{content}</>;
@@ -88,7 +111,9 @@ function SessionInfoPaneItemList<T>({
 
 function splitPath(path: string): { directory: string; filename: string } {
   const lastSlash = path.lastIndexOf("/");
-  if (lastSlash === -1) return { directory: "", filename: path };
+  if (lastSlash === -1) {
+    return { directory: "", filename: path };
+  }
   return {
     directory: path.slice(0, lastSlash + 1),
     filename: path.slice(lastSlash + 1),
@@ -114,29 +139,45 @@ function SessionInfoPaneFileItem({
 
   return (
     <button
-      type="button"
+      className={row({
+        interactive: true,
+        className: "w-full min-w-0 text-left",
+      })}
       onClick={onClick}
-      className={row({ interactive: true, className: "w-full min-w-0 text-left" })}
+      type="button"
     >
-      <FileText size={12} className={cn(text({ color: "muted" }), "shrink-0")} />
+      <FileText
+        className={cn(text({ color: "muted" }), "shrink-0")}
+        size={12}
+      />
       <span className="flex min-w-0 flex-1">
-        <span className={cn(text({ color: "muted" }), "truncate")}>{directory}</span>
+        <span className={cn(text({ color: "muted" }), "truncate")}>
+          {directory}
+        </span>
         <span className="shrink-0">{filename}</span>
       </span>
       {status && (
         <span className={cn(text({ color: statusColor[status] }), "shrink-0")}>
-          {status[0]!.toUpperCase()}
+          {status[0]?.toUpperCase()}
         </span>
       )}
     </button>
   );
 }
 
-function SessionInfoPaneBranchItem({ name, current }: { name: string; current?: boolean }) {
+function SessionInfoPaneBranchItem({
+  name,
+  current,
+}: {
+  name: string;
+  current?: boolean;
+}) {
   return (
     <div className={row({ interactive: true })}>
-      <GitBranch size={12} className={text({ color: "muted" })} />
-      <span className={cn("flex-1 truncate", current && "font-medium")}>{name}</span>
+      <GitBranch className={text({ color: "muted" })} size={12} />
+      <span className={cn("flex-1 truncate", current && "font-medium")}>
+        {name}
+      </span>
       {current && <span className={text({ color: "muted" })}>current</span>}
     </div>
   );
@@ -159,8 +200,13 @@ function SessionInfoPaneContainerItem({
 
   return (
     <div className={row({ interactive: true })}>
-      <Box size={12} className={text({ color: statusColor[status] })} />
-      <span className={cn("flex-1 truncate", status === "pending" && "text-text-muted")}>
+      <Box className={text({ color: statusColor[status] })} size={12} />
+      <span
+        className={cn(
+          "flex-1 truncate",
+          status === "pending" && "text-text-muted"
+        )}
+      >
         {name}
       </span>
     </div>
@@ -182,18 +228,22 @@ function SessionInfoPaneTaskItem({
 
   return (
     <div className={row({ interactive: true })}>
-      <CheckSquare size={12} className={text({ color: "muted" })} />
+      <CheckSquare className={text({ color: "muted" })} size={12} />
       <span className="flex-1 truncate">{title}</span>
       <span className={text({ color: "muted" })}>{statusIcon[status]}</span>
     </div>
   );
 }
 
-function parseUrl(href: string): { protocol: string; subdomain: string; domain: string } | null {
+function parseUrl(
+  href: string
+): { protocol: string; subdomain: string; domain: string } | null {
   try {
     const url = new URL(href);
     const hostnameParts = url.hostname.split(".");
-    if (hostnameParts.length < 2) return null;
+    if (hostnameParts.length < 2) {
+      return null;
+    }
     const subdomain = hostnameParts.slice(0, -1).join(".");
     const tld = hostnameParts.at(-1) ?? "";
     return {
@@ -211,15 +261,15 @@ function SessionInfoPaneLinkItem({ href }: { href: string }) {
 
   return (
     <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
       className={row({
         interactive: true,
         className: cn(text({ color: "accent" }), "w-0 min-w-full"),
       })}
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
     >
-      <ExternalLink size={12} className="shrink-0" />
+      <ExternalLink className="shrink-0" size={12} />
       {parsed ? (
         <span className="flex min-w-0">
           <span className="shrink-0">{parsed.protocol}</span>
@@ -236,7 +286,9 @@ function SessionInfoPaneLinkItem({ href }: { href: string }) {
 function SessionInfoPaneStream({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col bg-bg pt-2">
-      <div className={cn("px-3 pb-2", text({ color: "secondary" }))}>Live Browser</div>
+      <div className={cn("px-3 pb-2", text({ color: "secondary" }))}>
+        Live Browser
+      </div>
       {children}
     </div>
   );
@@ -268,7 +320,11 @@ function SessionInfoPaneLogItem({
     error: "error",
   } as const;
 
-  return <div className={text({ color: levelColor[level], font: "mono" })}>{message}</div>;
+  return (
+    <div className={text({ color: levelColor[level], font: "mono" })}>
+      {message}
+    </div>
+  );
 }
 
 function SessionInfoPaneActionButton({
@@ -283,7 +339,11 @@ function SessionInfoPaneActionButton({
   variant?: "primary" | "danger";
 }) {
   return (
-    <Button variant={variant} onClick={onClick} className="w-full justify-center">
+    <Button
+      className="w-full justify-center"
+      onClick={onClick}
+      variant={variant}
+    >
       <Icon size={12} />
       {children}
     </Button>

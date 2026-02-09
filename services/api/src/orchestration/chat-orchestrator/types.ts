@@ -1,9 +1,9 @@
-import type { BrowserServiceManager } from "../../managers/browser-service.manager";
-import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
-import type { PoolManager } from "../../managers/pool.manager";
 import type { ImageStore } from "@lab/context";
-import type { OpencodeClient, Publisher } from "../../types/dependencies";
+import type { BrowserServiceManager } from "../../managers/browser-service.manager";
+import type { PoolManager } from "../../managers/pool.manager";
+import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
 import type { SessionStateStore } from "../../state/session-state-store";
+import type { OpencodeClient, Publisher } from "../../types/dependencies";
 
 export interface ChatOrchestratorInput {
   content: string;

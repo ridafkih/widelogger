@@ -1,11 +1,11 @@
-import { z } from "zod";
 import { tool } from "ai";
-import { findSessionById } from "../../repositories/session.repository";
-import { sendMessageToSession } from "../message-sender";
-import { getErrorMessage } from "../../shared/errors";
-import type { OpencodeClient, Publisher } from "../../types/dependencies";
-import type { SessionStateStore } from "../../state/session-state-store";
+import { z } from "zod";
 import { widelog } from "../../logging";
+import { findSessionById } from "../../repositories/session.repository";
+import { getErrorMessage } from "../../shared/errors";
+import type { SessionStateStore } from "../../state/session-state-store";
+import type { OpencodeClient, Publisher } from "../../types/dependencies";
+import { sendMessageToSession } from "../message-sender";
 
 const inputSchema = z.object({
   sessionId: z.string().describe("The session ID to send the message to"),
@@ -19,7 +19,9 @@ interface SendMessageToolContext {
   sessionStateStore: SessionStateStore;
 }
 
-export function createSendMessageToSessionTool(context: SendMessageToolContext) {
+export function createSendMessageToSessionTool(
+  context: SendMessageToolContext
+) {
   return tool({
     description:
       "Sends a message to an existing active session. Use this to forward the user's request or follow-up to a session that is already working on a task.",
@@ -48,7 +50,9 @@ export function createSendMessageToSessionTool(context: SendMessageToolContext) 
 
         return { success: true, sessionId };
       } catch (error) {
-        widelog.errorFields(error, { prefix: "orchestration.tool.send_message_to_session.error" });
+        widelog.errorFields(error, {
+          prefix: "orchestration.tool.send_message_to_session.error",
+        });
         return { success: false, error: getErrorMessage(error) };
       }
     },

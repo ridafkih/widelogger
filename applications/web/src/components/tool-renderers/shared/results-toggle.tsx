@@ -3,21 +3,26 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-type ResultsToggleProps = {
+interface ResultsToggleProps {
   expanded: boolean;
   onToggle: () => void;
   label: string;
   count?: number;
-};
+}
 
-function ResultsToggle({ expanded, onToggle, label, count }: ResultsToggleProps) {
+function ResultsToggle({
+  expanded,
+  onToggle,
+  label,
+  count,
+}: ResultsToggleProps) {
   return (
     <button
-      type="button"
+      className="flex items-center gap-1 text-text-muted text-xs hover:text-text-secondary"
       onClick={onToggle}
-      className="flex items-center gap-1 text-xs text-text-muted hover:text-text-secondary"
+      type="button"
     >
-      <ChevronRight size={12} className={cn(expanded && "rotate-90")} />
+      <ChevronRight className={cn(expanded && "rotate-90")} size={12} />
       <span>{label}</span>
       {count !== undefined && <span>({count})</span>}
     </button>

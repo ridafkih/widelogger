@@ -1,5 +1,5 @@
-import type { PromptFragment, PromptService } from "./types";
 import { PromptComposer } from "./composer";
+import type { PromptFragment, PromptService } from "./types";
 
 /**
  * Fluent builder for constructing a PromptService.
@@ -17,7 +17,7 @@ import { PromptComposer } from "./composer";
  */
 export class PromptBuilder<TContext> {
   private readonly fragments: PromptFragment<TContext>[] = [];
-  private separator: string = "\n\n";
+  private separator = "\n\n";
 
   private constructor(fragments: PromptFragment<TContext>[] = []) {
     this.fragments = [...fragments];
@@ -33,7 +33,9 @@ export class PromptBuilder<TContext> {
   /**
    * Create a builder with initial fragments.
    */
-  static from<TContext>(fragments: PromptFragment<TContext>[]): PromptBuilder<TContext> {
+  static from<TContext>(
+    fragments: PromptFragment<TContext>[]
+  ): PromptBuilder<TContext> {
     return new PromptBuilder<TContext>(fragments);
   }
 
@@ -48,7 +50,9 @@ export class PromptBuilder<TContext> {
   /**
    * Add multiple fragments to the builder.
    */
-  withFragments(fragments: PromptFragment<TContext>[]): PromptBuilder<TContext> {
+  withFragments(
+    fragments: PromptFragment<TContext>[]
+  ): PromptBuilder<TContext> {
     this.fragments.push(...fragments);
     return this;
   }

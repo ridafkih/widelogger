@@ -1,13 +1,16 @@
-import { assertRouteParam } from "@lab/router";
 import type { RouteHandler } from "@lab/router";
+import { assertRouteParam } from "@lab/router";
 
-export function withParams<TParams extends Record<string, string>, TContext = unknown>(
+export function withParams<
+  TParams extends Record<string, string>,
+  TContext = unknown,
+>(
   paramKeys: (keyof TParams & string)[],
   handler: (args: {
     params: TParams;
     request: Request;
     context: TContext;
-  }) => Response | Promise<Response>,
+  }) => Response | Promise<Response>
 ): RouteHandler<TContext> {
   return ({ request, params: rawParams, context }) => {
     const params = {} as Record<string, string>;

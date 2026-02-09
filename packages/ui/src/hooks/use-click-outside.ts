@@ -1,8 +1,8 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 
 export function useClickOutside<T extends HTMLElement>(
   handler: () => void,
-  enabled: boolean = true,
+  enabled = true
 ): RefObject<T | null> {
   const ref = useRef<T>(null);
   const handlerRef = useRef(handler);
@@ -12,18 +12,28 @@ export function useClickOutside<T extends HTMLElement>(
   }, [handler]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     function handleClick(event: MouseEvent) {
       const target = event.target;
-      if (ref.current && target instanceof Node && !ref.current.contains(target)) {
+      if (
+        ref.current &&
+        target instanceof Node &&
+        !ref.current.contains(target)
+      ) {
         handlerRef.current();
       }
     }
 
     function handleTouch(event: TouchEvent) {
       const target = event.target;
-      if (ref.current && target instanceof Node && !ref.current.contains(target)) {
+      if (
+        ref.current &&
+        target instanceof Node &&
+        !ref.current.contains(target)
+      ) {
         handlerRef.current();
       }
     }

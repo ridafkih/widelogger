@@ -3,7 +3,11 @@ import type { Context, FieldValue } from "./types";
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const setNested = (target: Record<string, unknown>, key: string, value: unknown) => {
+const setNested = (
+  target: Record<string, unknown>,
+  key: string,
+  value: unknown
+) => {
   if (!key.includes(".")) {
     target[key] = value;
     return;
@@ -11,7 +15,9 @@ const setNested = (target: Record<string, unknown>, key: string, value: unknown)
 
   const parts = key.split(".");
   const lastPart = parts.pop();
-  if (lastPart === undefined) return;
+  if (lastPart === undefined) {
+    return;
+  }
 
   let current = target;
 
@@ -29,15 +35,20 @@ const setNested = (target: Record<string, unknown>, key: string, value: unknown)
   current[lastPart] = value;
 };
 
-export const flush = (context: Context | undefined): Record<string, unknown> => {
-  if (!context) return {};
+export const flush = (
+  context: Context | undefined
+): Record<string, unknown> => {
+  if (!context) {
+    return {};
+  }
 
   const event: Record<string, unknown> = Object.create(null);
   const counters: Record<string, number> = Object.create(null);
   const arrays: Record<string, FieldValue[]> = Object.create(null);
   const maxValues: Record<string, number> = Object.create(null);
   const minValues: Record<string, number> = Object.create(null);
-  const timers: Record<string, { start: number; accumulated: number }> = Object.create(null);
+  const timers: Record<string, { start: number; accumulated: number }> =
+    Object.create(null);
 
   for (const entry of context.operations) {
     switch (entry.operation) {
@@ -80,13 +91,23 @@ export const flush = (context: Context | undefined): Record<string, unknown> => 
     }
   }
 
-  for (const key in counters) setNested(event, key, counters[key]);
-  for (const key in arrays) setNested(event, key, arrays[key]);
-  for (const key in maxValues) setNested(event, key, maxValues[key]);
-  for (const key in minValues) setNested(event, key, minValues[key]);
+  for (const key in counters) {
+    setNested(event, key, counters[key]);
+  }
+  for (const key in arrays) {
+    setNested(event, key, arrays[key]);
+  }
+  for (const key in maxValues) {
+    setNested(event, key, maxValues[key]);
+  }
+  for (const key in minValues) {
+    setNested(event, key, minValues[key]);
+  }
   for (const key in timers) {
     const timer = timers[key];
-    if (timer) setNested(event, key, Math.round(timer.accumulated * 100) / 100);
+    if (timer) {
+      setNested(event, key, Math.round(timer.accumulated * 100) / 100);
+    }
   }
 
   context.operations.length = 0;

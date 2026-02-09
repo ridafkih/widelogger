@@ -3,28 +3,28 @@
 import { useReducer, useRef } from "react";
 import { useMultiplayer } from "./multiplayer";
 
-type LogSource = {
+interface LogSource {
   id: string;
   hostname: string;
   runtimeId: string;
   status: "streaming" | "stopped" | "error";
-};
+}
 
-type LogEntry = {
+interface LogEntry {
   containerId: string;
   stream: "stdout" | "stderr";
   text: string;
   timestamp: number;
-};
+}
 
-type SessionLogsSnapshot = {
+interface SessionLogsSnapshot {
   sources: LogSource[];
   recentLogs: Record<string, LogEntry[]>;
-};
+}
 
-type LogsState = {
+interface LogsState {
   logs: Record<string, LogEntry[]>;
-};
+}
 
 type LogsAction =
   | { type: "initialize"; logs: Record<string, LogEntry[]> }
@@ -71,7 +71,9 @@ function logsReducer(state: LogsState, action: LogsAction): LogsState {
 export function useContainerLogs(sessionId: string) {
   const { useChannel, useChannelEvent } = useMultiplayer();
 
-  const snapshot = useChannel("sessionLogs", { uuid: sessionId }) as SessionLogsSnapshot;
+  const snapshot = useChannel("sessionLogs", {
+    uuid: sessionId,
+  }) as SessionLogsSnapshot;
 
   const [state, dispatch] = useReducer(logsReducer, { logs: {} });
   const initializedRef = useRef(false);
@@ -86,7 +88,7 @@ export function useContainerLogs(sessionId: string) {
     (event: LogEntry) => {
       dispatch({ type: "add", entry: event });
     },
-    { uuid: sessionId },
+    { uuid: sessionId }
   );
 
   const clearLogs = (containerId?: string) => {

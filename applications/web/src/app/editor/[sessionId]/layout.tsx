@@ -1,28 +1,28 @@
 "use client";
 
+import type { Project, Session } from "@lab/client";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { use, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { BrowserStreamProvider } from "@/components/browser-stream";
 import { SessionInfoView } from "@/components/session-info-view";
-import { useProjects, useSession, useDeleteSession } from "@/lib/hooks";
 import { fetchChannelSnapshot } from "@/lib/api";
+import { useDeleteSession, useProjects, useSession } from "@/lib/hooks";
 import { useMultiplayer } from "@/lib/multiplayer";
-import type { Session, Project } from "@lab/client";
 
-type SessionContainer = {
+interface SessionContainer {
   id: string;
   name: string;
   status: "running" | "stopped" | "starting" | "error";
   urls: { port: number; url: string }[];
-};
+}
 
 function useSessionData(sessionId: string) {
   const { data: projects } = useProjects();
   const { data: session } = useSession(sessionId);
 
-  if (!projects || !session) {
+  if (!(projects && session)) {
     return { data: null };
   }
 
@@ -35,8 +35,10 @@ function useSessionData(sessionId: string) {
 }
 
 function useSessionContainers(sessionId: string) {
-  const { data: initialContainers } = useSWR(`sessionContainers-${sessionId}`, () =>
-    fetchChannelSnapshot<SessionContainer[]>("sessionContainers", sessionId),
+  const { data: initialContainers } = useSWR(
+    `sessionContainers-${sessionId}`,
+    () =>
+      fetchChannelSnapshot<SessionContainer[]>("sessionContainers", sessionId)
   );
 
   const { useChannel } = useMultiplayer();
@@ -45,19 +47,24 @@ function useSessionContainers(sessionId: string) {
   return liveContainers.length > 0 ? liveContainers : (initialContainers ?? []);
 }
 
-type SessionLayoutProps = {
+interface SessionLayoutProps {
   children: ReactNode;
   params: Promise<{ sessionId: string }>;
-};
+}
 
-export default function SessionLayout({ children, params }: SessionLayoutProps) {
+export default function SessionLayout({
+  children,
+  params,
+}: SessionLayoutProps) {
   const router = useRouter();
   const { sessionId } = use(params);
   const { error: sessionError } = useSession(sessionId);
   const { data: sessionData } = useSessionData(sessionId);
   const containers = useSessionContainers(sessionId);
 
-  const containerUrls = containers.flatMap((container) => container.urls.map(({ url }) => url));
+  const containerUrls = containers.flatMap((container) =>
+    container.urls.map(({ url }) => url)
+  );
 
   const contextValue = {
     sessionId,
@@ -80,8 +87,10 @@ export default function SessionLayout({ children, params }: SessionLayoutProps) 
   return (
     <BrowserStreamProvider sessionId={sessionId}>
       <SessionContext.Provider value={contextValue}>
-        <div className="h-full grid grid-cols-[2fr_1fr]">
-          <div className="border-r border-border min-w-0 min-h-0">{children}</div>
+        <div className="grid h-full grid-cols-[2fr_1fr]">
+          <div className="min-h-0 min-w-0 border-border border-r">
+            {children}
+          </div>
           <SessionInfoPanel />
         </div>
       </SessionContext.Provider>
@@ -95,21 +104,23 @@ function SessionInfoPanel() {
   const deleteSession = useDeleteSession();
 
   const handleDelete = () => {
-    if (!session) return;
+    if (!session) {
+      return;
+    }
     deleteSession(session, () => router.push("/editor"));
   };
 
-  if (!session || !project) {
+  if (!(session && project)) {
     return null;
   }
 
   return (
-    <div className="min-w-64 bg-bg z-20 overflow-y-auto">
+    <div className="z-20 min-w-64 overflow-y-auto bg-bg">
       <SessionInfoView
-        session={session}
-        project={project}
         containers={containers}
         onDelete={handleDelete}
+        project={project}
+        session={session}
       />
     </div>
   );
@@ -117,13 +128,13 @@ function SessionInfoPanel() {
 
 import { createContext, useContext } from "react";
 
-type SessionContextValue = {
+interface SessionContextValue {
   sessionId: string;
   session: Session | null;
   project: Project | null;
   containers: SessionContainer[];
   containerUrls: string[];
-};
+}
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 

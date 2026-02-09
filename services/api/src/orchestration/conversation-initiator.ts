@@ -1,11 +1,14 @@
-import { findSessionById, updateSessionFields } from "../repositories/session.repository";
+import { createDefaultPromptService } from "../prompts/builder";
+import { createPromptContext } from "../prompts/context";
 import { getProjectSystemPrompt } from "../repositories/project.repository";
+import {
+  findSessionById,
+  updateSessionFields,
+} from "../repositories/session.repository";
+import { ExternalServiceError, throwOnOpencodeError } from "../shared/errors";
 import { resolveWorkspacePathBySession } from "../shared/path-resolver";
 import type { SessionStateStore } from "../state/session-state-store";
-import { createPromptContext } from "../prompts/context";
-import { createDefaultPromptService } from "../prompts/builder";
 import type { OpencodeClient, Publisher } from "../types/dependencies";
-import { ExternalServiceError, throwOnOpencodeError } from "../shared/errors";
 
 interface InitiateConversationOptions {
   sessionId: string;
@@ -16,9 +19,13 @@ interface InitiateConversationOptions {
   sessionStateStore: SessionStateStore;
 }
 
-async function composeSystemPrompt(sessionId: string): Promise<string | undefined> {
+async function composeSystemPrompt(
+  sessionId: string
+): Promise<string | undefined> {
   const session = await findSessionById(sessionId);
-  if (!session) return undefined;
+  if (!session) {
+    return undefined;
+  }
 
   const projectSystemPrompt = await getProjectSystemPrompt(session.projectId);
 
@@ -38,21 +45,28 @@ function getDefaultModelId(): string | undefined {
   return process.env.DEFAULT_CONVERSATION_MODEL_ID;
 }
 
-export async function initiateConversation(options: InitiateConversationOptions): Promise<void> {
+export async function initiateConversation(
+  options: InitiateConversationOptions
+): Promise<void> {
   const { sessionId, task, opencode, publisher, sessionStateStore } = options;
   const modelId = options.modelId ?? getDefaultModelId();
   const workspacePath = await resolveWorkspacePathBySession(sessionId);
 
-  const createResponse = await opencode.session.create({ directory: workspacePath });
+  const createResponse = await opencode.session.create({
+    directory: workspacePath,
+  });
   if (createResponse.error || !createResponse.data) {
     throw new ExternalServiceError(
       `Failed to create OpenCode session: ${JSON.stringify(createResponse.error)}`,
-      "OPENCODE_SESSION_CREATE_FAILED",
+      "OPENCODE_SESSION_CREATE_FAILED"
     );
   }
 
   const opencodeSessionId = createResponse.data.id;
-  await updateSessionFields(sessionId, { opencodeSessionId, workspaceDirectory: workspacePath });
+  await updateSessionFields(sessionId, {
+    opencodeSessionId,
+    workspaceDirectory: workspacePath,
+  });
 
   const [providerID, modelID] = modelId?.split("/") ?? [];
   const system = await composeSystemPrompt(sessionId);
@@ -69,9 +83,13 @@ export async function initiateConversation(options: InitiateConversationOptions)
   throwOnOpencodeError(
     promptResponse,
     "Failed to send initial message",
-    "OPENCODE_INITIAL_PROMPT_FAILED",
+    "OPENCODE_INITIAL_PROMPT_FAILED"
   );
 
   await sessionStateStore.setLastMessage(sessionId, task);
-  publisher.publishDelta("sessionMetadata", { uuid: sessionId }, { lastMessage: task });
+  publisher.publishDelta(
+    "sessionMetadata",
+    { uuid: sessionId },
+    { lastMessage: task }
+  );
 }

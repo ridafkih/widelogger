@@ -37,7 +37,9 @@ function buildDependencyGraph(containers: ContainerNode[]): DependencyGraph {
 
   for (const container of containers) {
     for (const depId of container.dependsOn) {
-      if (!nodeMap.has(depId)) continue;
+      if (!nodeMap.has(depId)) {
+        continue;
+      }
 
       const currentDegree = inDegree.get(container.id) || 0;
       inDegree.set(container.id, currentDegree + 1);
@@ -52,7 +54,10 @@ function buildDependencyGraph(containers: ContainerNode[]): DependencyGraph {
   return { nodeMap, inDegree, dependents };
 }
 
-function getInitialLevel(containers: ContainerNode[], inDegree: Map<string, number>): string[] {
+function getInitialLevel(
+  containers: ContainerNode[],
+  inDegree: Map<string, number>
+): string[] {
   return containers
     .filter((container) => inDegree.get(container.id) === 0)
     .map((container) => container.id);
@@ -61,7 +66,7 @@ function getInitialLevel(containers: ContainerNode[], inDegree: Map<string, numb
 function computeNextLevel(
   currentLevelIds: string[],
   dependents: Map<string, string[]>,
-  inDegree: Map<string, number>,
+  inDegree: Map<string, number>
 ): string[] {
   const nextLevel: string[] = [];
 
@@ -86,7 +91,7 @@ function buildLevelsRecursively(
   levelNumber: number,
   dependents: Map<string, string[]>,
   inDegree: Map<string, number>,
-  processed: Set<string>,
+  processed: Set<string>
 ): StartLevel[] {
   if (currentLevelIds.length === 0) {
     return [];
@@ -96,14 +101,17 @@ function buildLevelsRecursively(
     processed.add(id);
   }
 
-  const currentLevel: StartLevel = { level: levelNumber, containerIds: currentLevelIds };
+  const currentLevel: StartLevel = {
+    level: levelNumber,
+    containerIds: currentLevelIds,
+  };
   const nextLevelIds = computeNextLevel(currentLevelIds, dependents, inDegree);
   const remainingLevels = buildLevelsRecursively(
     nextLevelIds,
     levelNumber + 1,
     dependents,
     inDegree,
-    processed,
+    processed
   );
 
   return [currentLevel, ...remainingLevels];
@@ -118,13 +126,21 @@ function buildLevelsRecursively(
  * @throws CircularDependencyError if a cycle is detected
  */
 export function resolveStartOrder(containers: ContainerNode[]): StartLevel[] {
-  if (containers.length === 0) return [];
+  if (containers.length === 0) {
+    return [];
+  }
 
   const { inDegree, dependents } = buildDependencyGraph(containers);
   const processed = new Set<string>();
 
   const initialLevel = getInitialLevel(containers, inDegree);
-  const levels = buildLevelsRecursively(initialLevel, 0, dependents, inDegree, processed);
+  const levels = buildLevelsRecursively(
+    initialLevel,
+    0,
+    dependents,
+    inDegree,
+    processed
+  );
 
   if (processed.size !== containers.length) {
     const cycle = findCycle(containers, processed);
@@ -136,15 +152,17 @@ export function resolveStartOrder(containers: ContainerNode[]): StartLevel[] {
 
 function buildDependencyMapForUnprocessed(
   containers: ContainerNode[],
-  processed: Set<string>,
+  processed: Set<string>
 ): Map<string, string[]> {
-  const unprocessed = containers.filter((container) => !processed.has(container.id));
+  const unprocessed = containers.filter(
+    (container) => !processed.has(container.id)
+  );
   const dependencyMap = new Map<string, string[]>();
 
   for (const container of unprocessed) {
     dependencyMap.set(
       container.id,
-      container.dependsOn.filter((dep) => !processed.has(dep)),
+      container.dependsOn.filter((dep) => !processed.has(dep))
     );
   }
 
@@ -155,14 +173,16 @@ function findCycleWithDFS(
   startId: string,
   dependencyMap: Map<string, string[]>,
   visited: Set<string>,
-  path: string[],
+  path: string[]
 ): string[] | null {
   if (path.includes(startId)) {
     const cycleStart = path.indexOf(startId);
     return [...path.slice(cycleStart), startId];
   }
 
-  if (visited.has(startId)) return null;
+  if (visited.has(startId)) {
+    return null;
+  }
 
   visited.add(startId);
   const newPath = [...path, startId];
@@ -170,20 +190,29 @@ function findCycleWithDFS(
   const deps = dependencyMap.get(startId) || [];
   for (const dep of deps) {
     const result = findCycleWithDFS(dep, dependencyMap, visited, newPath);
-    if (result) return result;
+    if (result) {
+      return result;
+    }
   }
 
   return null;
 }
 
-function findCycle(containers: ContainerNode[], processed: Set<string>): string[] {
+function findCycle(
+  containers: ContainerNode[],
+  processed: Set<string>
+): string[] {
   const dependencyMap = buildDependencyMapForUnprocessed(containers, processed);
-  const unprocessed = containers.filter((container) => !processed.has(container.id));
+  const unprocessed = containers.filter(
+    (container) => !processed.has(container.id)
+  );
   const visited = new Set<string>();
 
   for (const container of unprocessed) {
     const result = findCycleWithDFS(container.id, dependencyMap, visited, []);
-    if (result) return result;
+    if (result) {
+      return result;
+    }
   }
 
   return unprocessed.map((container) => container.id);

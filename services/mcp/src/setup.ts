@@ -1,18 +1,18 @@
+import { DockerClient } from "@lab/sandbox-docker";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { DockerClient } from "@lab/sandbox-docker";
 import { MCP_SERVER } from "./config/constants";
-import { makeRegisterTool } from "./tools/register";
+import type { env } from "./env";
 import { bash } from "./tools/bash";
 import { browser } from "./tools/browser";
 import { container } from "./tools/container";
 import { github } from "./tools/github";
+import { makeRegisterTool } from "./tools/register";
 import { initializeBucket } from "./utils/rustfs";
-import type { env } from "./env";
 
-type SetupOptions = {
+interface SetupOptions {
   env: (typeof env)["inferOut"];
-};
+}
 
 type SetupFunction = (options: SetupOptions) => unknown;
 

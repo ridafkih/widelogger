@@ -15,7 +15,7 @@ export function isNotRunningError(err: unknown): boolean {
 export function wrapDockerError(
   err: unknown,
   operation: "container" | "volume" | "network" | "image",
-  resourceId: string,
+  resourceId: string
 ): SandboxError {
   if (isNotFoundError(err)) {
     switch (operation) {

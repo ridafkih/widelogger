@@ -5,8 +5,11 @@ export async function initializeContainerWorkspace(
   sessionId: string,
   containerId: string,
   image: string,
-  sandbox: Sandbox,
+  sandbox: Sandbox
 ): Promise<string> {
-  const containerWorkspace = formatContainerWorkspacePath(sessionId, containerId);
+  const containerWorkspace = formatContainerWorkspacePath(
+    sessionId,
+    containerId
+  );
   return sandbox.workspace.startWorkspace(containerWorkspace, image);
 }

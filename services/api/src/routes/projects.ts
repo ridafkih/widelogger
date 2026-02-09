@@ -1,8 +1,11 @@
-import { findAllProjectsWithContainers, createProject } from "../repositories/project.repository";
-import type { Handler, InfraContext, NoRouteContext } from "../types/route";
-import { parseRequestBody } from "../shared/validation";
-import { widelog } from "../logging";
 import { z } from "zod";
+import { widelog } from "../logging";
+import {
+  createProject,
+  findAllProjectsWithContainers,
+} from "../repositories/project.repository";
+import { parseRequestBody } from "../shared/validation";
+import type { Handler, InfraContext, NoRouteContext } from "../types/route";
 
 const createProjectSchema = z.object({
   name: z.string().min(1),

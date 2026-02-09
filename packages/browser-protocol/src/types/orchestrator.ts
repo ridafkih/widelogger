@@ -1,12 +1,16 @@
 import type {
   BrowserSessionState,
   CurrentState,
-  DesiredState,
   DaemonStatus,
+  DesiredState,
   SessionSnapshot,
 } from "./session";
 
-export type DaemonEventType = "daemon:started" | "daemon:ready" | "daemon:stopped" | "daemon:error";
+export type DaemonEventType =
+  | "daemon:started"
+  | "daemon:ready"
+  | "daemon:stopped"
+  | "daemon:error";
 
 export interface DaemonEvent {
   type: DaemonEventType;
@@ -29,15 +33,18 @@ export interface StateStoreOptions {
 export interface StateStore {
   getState(sessionId: string): Promise<BrowserSessionState | null>;
   setState(state: BrowserSessionState): Promise<void>;
-  setDesiredState(sessionId: string, desiredState: DesiredState): Promise<BrowserSessionState>;
+  setDesiredState(
+    sessionId: string,
+    desiredState: DesiredState
+  ): Promise<BrowserSessionState>;
   setCurrentState(
     sessionId: string,
     currentState: CurrentState,
-    options?: StateStoreOptions,
+    options?: StateStoreOptions
   ): Promise<BrowserSessionState>;
   transitionState(
     sessionId: string,
-    transition: (current: BrowserSessionState) => BrowserSessionState,
+    transition: (current: BrowserSessionState) => BrowserSessionState
   ): Promise<BrowserSessionState>;
   getAllSessions(): Promise<BrowserSessionState[]>;
   deleteSession(sessionId: string): Promise<void>;
@@ -68,14 +75,17 @@ export interface DaemonController {
   isHealthy(): Promise<boolean>;
   executeCommand<T = unknown>(
     sessionId: string,
-    command: BrowserCommand,
+    command: BrowserCommand
   ): Promise<CommandResult<T>>;
 }
 
 export interface ReconcilerConfig {
   maxRetries: number;
   getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
-  getInitialNavigationUrl?: (sessionId: string, port: number) => string | Promise<string>;
+  getInitialNavigationUrl?: (
+    sessionId: string,
+    port: number
+  ) => string | Promise<string>;
   waitForService?: (sessionId: string, port: number) => Promise<void>;
 }
 
@@ -89,11 +99,17 @@ export interface OrchestratorConfig {
   reconcileIntervalMs: number;
   cleanupDelayMs: number;
   getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
-  getInitialNavigationUrl?: (sessionId: string, port: number) => string | Promise<string>;
+  getInitialNavigationUrl?: (
+    sessionId: string,
+    port: number
+  ) => string | Promise<string>;
   waitForService?: (sessionId: string, port: number) => Promise<void>;
 }
 
-export type StateChangeHandler = (sessionId: string, state: BrowserSessionState) => void;
+export type StateChangeHandler = (
+  sessionId: string,
+  state: BrowserSessionState
+) => void;
 export type ErrorHandler = (error: unknown) => void;
 
 export interface Orchestrator {
@@ -116,7 +132,11 @@ export interface SessionManager {
   getSubscriberCount(sessionId: string): number;
   incrementSubscribers(sessionId: string): number;
   decrementSubscribers(sessionId: string): number;
-  setCleanupTimer(sessionId: string, callback: () => void, delayMs: number): void;
+  setCleanupTimer(
+    sessionId: string,
+    callback: () => void,
+    delayMs: number
+  ): void;
   clearCleanupTimer(sessionId: string): void;
   resetSession(sessionId: string): void;
   delete(sessionId: string): void;

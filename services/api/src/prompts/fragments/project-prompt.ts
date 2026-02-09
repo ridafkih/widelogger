@@ -7,5 +7,6 @@ export const projectPromptFragment: PromptFragment = createFragment({
   priority: 100,
   render: (context) => context.projectSystemPrompt,
   shouldInclude: (context) =>
-    context.projectSystemPrompt !== null && context.projectSystemPrompt.length > 0,
+    context.projectSystemPrompt !== null &&
+    context.projectSystemPrompt.length > 0,
 });

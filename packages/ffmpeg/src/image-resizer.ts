@@ -39,7 +39,10 @@ export interface ResizeResult {
  * @param maxDimension - Maximum width/height (default: 1568px for optimal Claude token usage)
  * @returns Resized image buffer with dimensions and resize status
  */
-export function resizeImage(input: Buffer, maxDimension = MAX_DIMENSION): ResizeResult {
+export function resizeImage(
+  input: Buffer,
+  maxDimension = MAX_DIMENSION
+): ResizeResult {
   const outputPtr = new BigUint64Array(1);
   const outputLen = new BigUint64Array(1);
   const outWidth = new Int32Array(1);
@@ -52,7 +55,7 @@ export function resizeImage(input: Buffer, maxDimension = MAX_DIMENSION): Resize
     ptr(outputPtr),
     ptr(outputLen),
     ptr(outWidth),
-    ptr(outHeight),
+    ptr(outHeight)
   );
 
   if (result < 0) {
@@ -87,7 +90,10 @@ export function resizeImage(input: Buffer, maxDimension = MAX_DIMENSION): Resize
  * @param maxDimension - Maximum width/height (default: 1568px)
  * @returns Base64-encoded resized image
  */
-export function resizeBase64(base64: string, maxDimension = MAX_DIMENSION): string {
+export function resizeBase64(
+  base64: string,
+  maxDimension = MAX_DIMENSION
+): string {
   const input = Buffer.from(base64, "base64");
   const { buffer } = resizeImage(input, maxDimension);
   return buffer.toString("base64");
@@ -102,7 +108,7 @@ export function resizeBase64(base64: string, maxDimension = MAX_DIMENSION): stri
  */
 export function resizeBase64WithInfo(
   base64: string,
-  maxDimension = MAX_DIMENSION,
+  maxDimension = MAX_DIMENSION
 ): ResizeResult & { base64: string } {
   const input = Buffer.from(base64, "base64");
   const result = resizeImage(input, maxDimension);

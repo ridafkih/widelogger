@@ -9,7 +9,7 @@ export const createFrameReceiver = (
   port: number,
   onFrame: (frame: string, timestamp: number) => void,
   onClose: () => void,
-  config?: FrameReceiverConfig,
+  config?: FrameReceiverConfig
 ): FrameReceiver => {
   const wsHost = config?.wsHost ?? DEFAULT_WS_HOST;
   const ws = new WebSocket(`ws://${wsHost}:${port}`);
@@ -17,7 +17,9 @@ export const createFrameReceiver = (
   const handleMessage = (event: MessageEvent) => {
     const data = event.data.toString();
     const parsed = FrameResponse.safeParse(JSON.parse(data));
-    if (!parsed.success) return;
+    if (!parsed.success) {
+      return;
+    }
     onFrame(parsed.data.data, Date.now());
   };
 

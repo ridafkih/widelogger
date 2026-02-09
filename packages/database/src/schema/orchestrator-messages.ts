@@ -9,12 +9,17 @@ export const orchestratorMessages = pgTable(
     role: text("role").notNull(),
     content: text("content").notNull(),
     sessionId: uuid("session_id"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
-    index("orchestrator_messages_chat_idx").on(table.platform, table.platformChatId),
+    index("orchestrator_messages_chat_idx").on(
+      table.platform,
+      table.platformChatId
+    ),
     index("orchestrator_messages_created_idx").on(table.createdAt),
-  ],
+  ]
 );
 
 export type OrchestratorMessage = typeof orchestratorMessages.$inferSelect;

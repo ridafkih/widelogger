@@ -1,5 +1,5 @@
-import type Dockerode from "dockerode";
 import type { NetworkCreateOptions, NetworkInfo } from "@lab/sandbox-sdk";
+import type Dockerode from "dockerode";
 import { hasStatusCode, isNotFoundError } from "../utils/error-handling";
 
 interface NetworkContainer {
@@ -14,11 +14,19 @@ function hasContainerName(value: unknown): value is NetworkContainer {
   return "Name" in value;
 }
 
-function matchesContainerId(connectedId: string, targetIdOrName: string): boolean {
-  return connectedId === targetIdOrName || connectedId.startsWith(targetIdOrName);
+function matchesContainerId(
+  connectedId: string,
+  targetIdOrName: string
+): boolean {
+  return (
+    connectedId === targetIdOrName || connectedId.startsWith(targetIdOrName)
+  );
 }
 
-function matchesContainerName(containerInfo: unknown, targetIdOrName: string): boolean {
+function matchesContainerName(
+  containerInfo: unknown,
+  targetIdOrName: string
+): boolean {
   if (!hasContainerName(containerInfo)) {
     return false;
   }
@@ -29,7 +37,7 @@ function matchesContainerName(containerInfo: unknown, targetIdOrName: string): b
 function isContainerMatch(
   connectedId: string,
   containerInfo: unknown,
-  targetIdOrName: string,
+  targetIdOrName: string
 ): boolean {
   return (
     matchesContainerId(connectedId, targetIdOrName) ||
@@ -47,17 +55,27 @@ function isActiveEndpointsError(error: unknown): boolean {
   }
 
   const payload = error.json;
-  if (typeof payload !== "object" || payload === null || !("message" in payload)) {
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("message" in payload)
+  ) {
     return false;
   }
 
-  return typeof payload.message === "string" && payload.message.includes("active endpoints");
+  return (
+    typeof payload.message === "string" &&
+    payload.message.includes("active endpoints")
+  );
 }
 
 export class NetworkOperations {
   constructor(private readonly docker: Dockerode) {}
 
-  async createNetwork(name: string, options: NetworkCreateOptions = {}): Promise<void> {
+  async createNetwork(
+    name: string,
+    options: NetworkCreateOptions = {}
+  ): Promise<void> {
     await this.docker.createNetwork({
       Name: name,
       Driver: options.driver ?? "bridge",
@@ -102,16 +120,22 @@ export class NetworkOperations {
     }
   }
 
-  async isConnectedToNetwork(containerIdOrName: string, networkName: string): Promise<boolean> {
+  async isConnectedToNetwork(
+    containerIdOrName: string,
+    networkName: string
+  ): Promise<boolean> {
     try {
       const networkInfo = await this.docker.getNetwork(networkName).inspect();
       const connectedContainers = networkInfo.Containers ?? {};
 
-      return Object.entries(connectedContainers).some(([connectedId, containerInfo]) =>
-        isContainerMatch(connectedId, containerInfo, containerIdOrName),
+      return Object.entries(connectedContainers).some(
+        ([connectedId, containerInfo]) =>
+          isContainerMatch(connectedId, containerInfo, containerIdOrName)
       );
     } catch (error) {
-      if (isNotFoundError(error)) return false;
+      if (isNotFoundError(error)) {
+        return false;
+      }
       throw error;
     }
   }
@@ -119,9 +143,11 @@ export class NetworkOperations {
   async connectToNetwork(
     containerId: string,
     networkName: string,
-    options?: { aliases?: string[] },
+    options?: { aliases?: string[] }
   ): Promise<void> {
-    const endpointConfig = options?.aliases ? { Aliases: options.aliases } : undefined;
+    const endpointConfig = options?.aliases
+      ? { Aliases: options.aliases }
+      : undefined;
 
     await this.docker.getNetwork(networkName).connect({
       Container: containerId,
@@ -129,16 +155,25 @@ export class NetworkOperations {
     });
   }
 
-  async disconnectFromNetwork(containerId: string, networkName: string): Promise<void> {
+  async disconnectFromNetwork(
+    containerId: string,
+    networkName: string
+  ): Promise<void> {
     try {
-      await this.docker.getNetwork(networkName).disconnect({ Container: containerId });
+      await this.docker
+        .getNetwork(networkName)
+        .disconnect({ Container: containerId });
     } catch (error) {
-      if (isNotFoundError(error)) return;
+      if (isNotFoundError(error)) {
+        return;
+      }
       throw error;
     }
   }
 
-  private async disconnectAllNetworkEndpoints(networkName: string): Promise<void> {
+  private async disconnectAllNetworkEndpoints(
+    networkName: string
+  ): Promise<void> {
     const networkInfo = await this.docker.getNetwork(networkName).inspect();
     const connectedContainers = networkInfo.Containers ?? {};
 
@@ -149,10 +184,12 @@ export class NetworkOperations {
             .getNetwork(networkName)
             .disconnect({ Container: containerId, Force: true } as any);
         } catch (error) {
-          if (isNotFoundError(error)) return;
+          if (isNotFoundError(error)) {
+            return;
+          }
           throw error;
         }
-      }),
+      })
     );
   }
 

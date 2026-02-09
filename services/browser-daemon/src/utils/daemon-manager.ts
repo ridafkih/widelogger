@@ -1,5 +1,6 @@
 import { cleanupSocket } from "agent-browser";
 import type { Command, Response } from "agent-browser/dist/types.js";
+import { widelog } from "../logging";
 import type {
   DaemonManager,
   DaemonManagerConfig,
@@ -8,17 +9,22 @@ import type {
   StopResult,
 } from "../types/daemon";
 import type { DaemonEvent, DaemonEventHandler } from "../types/events";
-import { widelog } from "../logging";
 
-import { spawnDaemon, killByPidFile, type DaemonWorkerHandle } from "./daemon-process";
-import { recoverSession, discoverExistingSessions } from "./daemon-recovery";
+import {
+  type DaemonWorkerHandle,
+  killByPidFile,
+  spawnDaemon,
+} from "./daemon-process";
+import { discoverExistingSessions, recoverSession } from "./daemon-recovery";
 
 interface SessionPorts {
   streamPort: number;
   cdpPort: number;
 }
 
-export function createDaemonManager(config: DaemonManagerConfig): DaemonManager {
+export function createDaemonManager(
+  config: DaemonManagerConfig
+): DaemonManager {
   const activeSessions = new Map<string, SessionPorts>();
   const daemonWorkers = new Map<string, DaemonWorkerHandle>();
   const sessionUrls = new Map<string, string>();
@@ -82,7 +88,12 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
       const { streamPort, cdpPort } = allocatePorts();
       activeSessions.set(sessionId, { streamPort, cdpPort });
 
-      const handle = spawnDaemon({ sessionId, streamPort, cdpPort, profileDir: config.profileDir });
+      const handle = spawnDaemon({
+        sessionId,
+        streamPort,
+        cdpPort,
+        profileDir: config.profileDir,
+      });
       daemonWorkers.set(sessionId, handle);
 
       emit({
@@ -113,7 +124,9 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
 
             case "daemon:error":
               widelog.set("outcome", "error");
-              if (message.error) widelog.set("error_message", message.error);
+              if (message.error) {
+                widelog.set("error_message", message.error);
+              }
               daemonWorkers.delete(sessionId);
               activeSessions.delete(sessionId);
               emit({
@@ -163,7 +176,13 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
         });
       });
 
-      return { type: "started", sessionId, port: streamPort, cdpPort, ready: false };
+      return {
+        type: "started",
+        sessionId,
+        port: streamPort,
+        cdpPort,
+        ready: false,
+      };
     },
 
     stop(sessionId: string): StopResult {
@@ -172,7 +191,7 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
       activeSessions.delete(sessionId);
       sessionUrls.delete(sessionId);
 
-      if (!wasTracked && !killed) {
+      if (!(wasTracked || killed)) {
         return { type: "not_found", sessionId };
       }
 
@@ -181,7 +200,9 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
 
     getSession(sessionId: string): DaemonSession | null {
       const ports = activeSessions.get(sessionId);
-      if (ports === undefined) return null;
+      if (ports === undefined) {
+        return null;
+      }
       return {
         sessionId,
         port: ports.streamPort,
@@ -191,7 +212,10 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
     },
 
     getOrRecoverSession(sessionId: string): DaemonSession | null {
-      return this.getSession(sessionId) ?? recoverSession(sessionId, recoveryCallbacks);
+      return (
+        this.getSession(sessionId) ??
+        recoverSession(sessionId, recoveryCallbacks)
+      );
     },
 
     getAllSessions(): DaemonSession[] {
@@ -213,15 +237,24 @@ export function createDaemonManager(config: DaemonManagerConfig): DaemonManager 
 
     navigate(sessionId: string, url: string): boolean {
       const handle = daemonWorkers.get(sessionId);
-      if (!handle) return false;
+      if (!handle) {
+        return false;
+      }
       handle.navigate(url);
       return true;
     },
 
-    async executeCommand(sessionId: string, command: Command): Promise<Response> {
+    async executeCommand(
+      sessionId: string,
+      command: Command
+    ): Promise<Response> {
       const handle = daemonWorkers.get(sessionId);
       if (!handle) {
-        return { id: command.id, success: false, error: "Session not found or not ready" };
+        return {
+          id: command.id,
+          success: false,
+          error: "Session not found or not ready",
+        };
       }
       return handle.executeCommand(command);
     },

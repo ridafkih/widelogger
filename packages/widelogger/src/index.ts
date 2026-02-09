@@ -24,7 +24,10 @@ interface ParsedErrorFields {
   error_stack?: string;
 }
 
-function getErrorFields(error: unknown, includeStack = true): ParsedErrorFields {
+function getErrorFields(
+  error: unknown,
+  includeStack = true
+): ParsedErrorFields {
   if (error instanceof Error) {
     return {
       error_name: error.name,
@@ -47,7 +50,8 @@ function getErrorFields(error: unknown, includeStack = true): ParsedErrorFields 
 }
 
 export const widelogger = (options: WideloggerOptions) => {
-  const environment = options.environment ?? process.env.NODE_ENV ?? "development";
+  const environment =
+    options.environment ?? process.env.NODE_ENV ?? "development";
   const isDevelopment = environment !== "production";
 
   const pinoTransport = isDevelopment
@@ -74,16 +78,20 @@ export const widelogger = (options: WideloggerOptions) => {
         environment,
       },
     },
-    pinoTransport,
+    pinoTransport
   );
 
   const storage = new AsyncLocalStorage<Context>();
 
   const transport = (event: Record<string, unknown>) => {
-    if (Object.keys(event).length === 0) return;
+    if (Object.keys(event).length === 0) {
+      return;
+    }
 
-    const statusCode = typeof event.status_code === "number" ? event.status_code : undefined;
-    const isError = statusCode !== undefined ? statusCode >= 500 : event.outcome === "error";
+    const statusCode =
+      typeof event.status_code === "number" ? event.status_code : undefined;
+    const isError =
+      statusCode !== undefined ? statusCode >= 500 : event.outcome === "error";
     const payload = { event_name: options.defaultEventName, ...event };
 
     if (isError) {
@@ -120,21 +128,33 @@ export const widelogger = (options: WideloggerOptions) => {
     },
     time: {
       start: <K extends string>(key: DottedKey<K>) => {
-        getContext()?.operations.push({ operation: "time.start", key, time: performance.now() });
+        getContext()?.operations.push({
+          operation: "time.start",
+          key,
+          time: performance.now(),
+        });
       },
       stop: <K extends string>(key: DottedKey<K>) => {
-        getContext()?.operations.push({ operation: "time.stop", key, time: performance.now() });
+        getContext()?.operations.push({
+          operation: "time.stop",
+          key,
+          time: performance.now(),
+        });
       },
     },
     errorFields: (error: unknown, options: ErrorFieldsOptions = {}) => {
       const context = getContext();
-      if (!context) return;
+      if (!context) {
+        return;
+      }
 
       const prefix = options.prefix ?? "error";
       const fields = getErrorFields(error, options.includeStack ?? true);
 
       for (const [field, value] of Object.entries(fields)) {
-        if (typeof value === "undefined") continue;
+        if (typeof value === "undefined") {
+          continue;
+        }
         context.operations.push({
           operation: "set",
           key: `${prefix}.${field}`,

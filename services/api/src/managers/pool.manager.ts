@@ -1,5 +1,8 @@
+import type { Session } from "@lab/database/schema/sessions";
 import { TIMING } from "../config/constants";
-import { CONTAINER_STATUS } from "../types/container";
+import { widelog } from "../logging";
+import { findContainersByProjectId } from "../repositories/container-definition.repository";
+import { createSessionContainer } from "../repositories/container-session.repository";
 import {
   claimPooledSession as claimFromDb,
   countPooledSessions,
@@ -7,12 +10,9 @@ import {
   findPooledSessions,
 } from "../repositories/pool.repository";
 import { findAllProjects } from "../repositories/project.repository";
-import { findContainersByProjectId } from "../repositories/container-definition.repository";
-import { createSessionContainer } from "../repositories/container-session.repository";
+import { CONTAINER_STATUS } from "../types/container";
 import type { BrowserServiceManager } from "./browser-service.manager";
 import type { SessionLifecycleManager } from "./session-lifecycle.manager";
-import type { Session } from "@lab/database/schema/sessions";
-import { widelog } from "../logging";
 
 interface PoolStats {
   available: number;
@@ -22,8 +22,12 @@ interface PoolStats {
 /**
  * Computes exponential backoff duration with a ceiling.
  */
-function computeBackoffMs(failures: number, baseMs: number, maxMs: number): number {
-  return Math.min(baseMs * Math.pow(2, failures), maxMs);
+function computeBackoffMs(
+  failures: number,
+  baseMs: number,
+  maxMs: number
+): number {
+  return Math.min(baseMs * 2 ** failures, maxMs);
 }
 
 /**
@@ -38,7 +42,7 @@ export class PoolManager {
   constructor(
     private readonly poolSize: number,
     private readonly browserService: BrowserServiceManager,
-    private readonly sessionLifecycle: SessionLifecycleManager,
+    private readonly sessionLifecycle: SessionLifecycleManager
   ) {}
 
   getTargetPoolSize(): number {
@@ -73,7 +77,10 @@ export class PoolManager {
 
   async createPooledSession(projectId: string): Promise<Session | null> {
     return widelog.context(async () => {
-      widelog.set("event_name", "pool_manager.initialize_pooled_session.completed");
+      widelog.set(
+        "event_name",
+        "pool_manager.initialize_pooled_session.completed"
+      );
       widelog.set("project_id", projectId);
       widelog.time.start("duration_ms");
       let warmed = false;
@@ -94,8 +101,8 @@ export class PoolManager {
               containerId: containerDefinition.id,
               runtimeId: "",
               status: CONTAINER_STATUS.STARTING,
-            }),
-          ),
+            })
+          )
         );
 
         await this.sessionLifecycle.initializeSession(session.id, projectId);
@@ -132,9 +139,12 @@ export class PoolManager {
       this.doReconcile(projectId),
       new Promise<void>((_, reject) =>
         setTimeout(
-          () => reject(new Error(`Pool reconciliation timeout for project ${projectId}`)),
-          TIMING.POOL_RECONCILIATION_TIMEOUT_MS,
-        ),
+          () =>
+            reject(
+              new Error(`Pool reconciliation timeout for project ${projectId}`)
+            ),
+          TIMING.POOL_RECONCILIATION_TIMEOUT_MS
+        )
       ),
     ]).finally(() => {
       this.reconcileLocks.delete(projectId);
@@ -166,14 +176,17 @@ export class PoolManager {
    * Attempts to create one pooled session. Returns the updated consecutive failure count.
    * On success, resets failures to 0. On failure, increments and applies backoff delay.
    */
-  private async fillOne(projectId: string, consecutiveFailures: number): Promise<number> {
+  private async fillOne(
+    projectId: string,
+    consecutiveFailures: number
+  ): Promise<number> {
     const session = await this.createPooledSession(projectId);
     if (!session) {
       const failures = consecutiveFailures + 1;
       const delay = computeBackoffMs(
         failures,
         TIMING.POOL_BACKOFF_BASE_MS,
-        TIMING.POOL_BACKOFF_MAX_MS,
+        TIMING.POOL_BACKOFF_MAX_MS
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
       return failures;
@@ -184,7 +197,10 @@ export class PoolManager {
   /**
    * Removes excess pooled sessions beyond the target size.
    */
-  private async drainExcess(projectId: string, excess: number): Promise<number> {
+  private async drainExcess(
+    projectId: string,
+    excess: number
+  ): Promise<number> {
     const sessionsToRemove = await findPooledSessions(projectId, excess);
     for (const session of sessionsToRemove) {
       await this.sessionLifecycle.cleanupSession(session.id);
@@ -222,25 +238,34 @@ export class PoolManager {
           }
 
           if (currentSize < targetSize) {
-            consecutiveFailures = await this.fillOne(projectId, consecutiveFailures);
+            consecutiveFailures = await this.fillOne(
+              projectId,
+              consecutiveFailures
+            );
             if (consecutiveFailures === 0) {
               sessionsCreated++;
             } else {
               widelog.count("error_count");
               widelog.set(
                 `errors.fill_attempt_${i}`,
-                `creation failed, consecutive_failures=${consecutiveFailures}`,
+                `creation failed, consecutive_failures=${consecutiveFailures}`
               );
             }
           } else {
-            const drained = await this.drainExcess(projectId, currentSize - targetSize);
+            const drained = await this.drainExcess(
+              projectId,
+              currentSize - targetSize
+            );
             sessionsDrained += drained;
           }
         }
 
         if (!settled) {
           widelog.count("error_count");
-          widelog.set("errors.iteration_limit", `reached max_iterations=${maxIterations}`);
+          widelog.set(
+            "errors.iteration_limit",
+            `reached max_iterations=${maxIterations}`
+          );
         }
 
         widelog.set("outcome", settled ? "success" : "completed_with_errors");

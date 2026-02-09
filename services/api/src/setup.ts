@@ -1,32 +1,32 @@
-import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { createImageStoreFromEnv } from "@lab/context";
-import { ApiServer } from "./clients/server";
-import { ContainerMonitor } from "./monitors/container.monitor";
-import { OpenCodeMonitor } from "./monitors/opencode.monitor";
-import { LogMonitor } from "./monitors/log.monitor";
-import { NetworkReconcileMonitor } from "./monitors/network-reconcile.monitor";
-import { PoolManager } from "./managers/pool.manager";
-import { BrowserServiceManager } from "./managers/browser-service.manager";
-import { SessionLifecycleManager } from "./managers/session-lifecycle.manager";
-import { ProxyManager } from "./services/proxy.service";
-import { createDefaultPromptService } from "./prompts/builder";
-import { DeferredPublisher } from "./shared/deferred-publisher";
-import { SessionStateStore } from "./state/session-state-store";
-import { RedisClient } from "bun";
-import { widelog } from "./logging";
 import {
   DockerClient,
   DockerNetworkManager,
-  DockerWorkspaceManager,
   DockerRuntimeManager,
   DockerSessionManager,
+  DockerWorkspaceManager,
 } from "@lab/sandbox-docker";
 import { Sandbox } from "@lab/sandbox-sdk";
+import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
+import { RedisClient } from "bun";
+import { ApiServer } from "./clients/server";
 import type { env } from "./env";
+import { widelog } from "./logging";
+import { BrowserServiceManager } from "./managers/browser-service.manager";
+import { PoolManager } from "./managers/pool.manager";
+import { SessionLifecycleManager } from "./managers/session-lifecycle.manager";
+import { ContainerMonitor } from "./monitors/container.monitor";
+import { LogMonitor } from "./monitors/log.monitor";
+import { NetworkReconcileMonitor } from "./monitors/network-reconcile.monitor";
+import { OpenCodeMonitor } from "./monitors/opencode.monitor";
+import { createDefaultPromptService } from "./prompts/builder";
+import { ProxyManager } from "./services/proxy.service";
+import { DeferredPublisher } from "./shared/deferred-publisher";
+import { SessionStateStore } from "./state/session-state-store";
 
-type SetupOptions = {
+interface SetupOptions {
   env: (typeof env)["inferOut"];
-};
+}
 
 type SetupFunction = (options: SetupOptions) => void;
 
@@ -76,7 +76,7 @@ export const setup = (({ env }) => {
       proxyPort: env.PROXY_PORT,
       proxyBaseDomain: env.PROXY_BASE_DOMAIN,
     },
-    deferredPublisher,
+    deferredPublisher
   );
 
   const sessionLifecycle = new SessionLifecycleManager(
@@ -84,17 +84,25 @@ export const setup = (({ env }) => {
     proxyManager,
     browserService,
     deferredPublisher,
-    sessionStateStore,
+    sessionStateStore
   );
 
   const logMonitor = new LogMonitor(sandbox, deferredPublisher);
   const containerMonitor = new ContainerMonitor(sandbox, deferredPublisher);
-  const openCodeMonitor = new OpenCodeMonitor(opencode, deferredPublisher, sessionStateStore);
+  const openCodeMonitor = new OpenCodeMonitor(
+    opencode,
+    deferredPublisher,
+    sessionStateStore
+  );
 
   const promptService = createDefaultPromptService();
   const imageStore = createImageStoreFromEnv();
 
-  const poolManager = new PoolManager(env.POOL_SIZE, browserService, sessionLifecycle);
+  const poolManager = new PoolManager(
+    env.POOL_SIZE,
+    browserService,
+    sessionLifecycle
+  );
 
   const server = new ApiServer(
     {
@@ -118,7 +126,7 @@ export const setup = (({ env }) => {
       imageStore,
       widelog,
       sessionStateStore,
-    },
+    }
   );
 
   return {

@@ -1,9 +1,9 @@
-import { findPortsByContainerId } from "../repositories/container-port.repository";
-import { findEnvVarsByContainerId } from "../repositories/container-env-var.repository";
-import { initializeContainerWorkspace } from "./workspace";
-import { resolveStartOrder, type ContainerNode } from "@lab/sandbox-sdk";
+import { type ContainerNode, resolveStartOrder } from "@lab/sandbox-sdk";
 import type { ContainerWithDependencies } from "../repositories/container-dependency.repository";
+import { findEnvVarsByContainerId } from "../repositories/container-env-var.repository";
+import { findPortsByContainerId } from "../repositories/container-port.repository";
 import type { Sandbox } from "../types/dependencies";
+import { initializeContainerWorkspace } from "./workspace";
 
 export interface PreparedContainer {
   containerDefinition: ContainerWithDependencies;
@@ -12,17 +12,21 @@ export interface PreparedContainer {
   containerWorkspace: string;
 }
 
-export function buildContainerNodes(containers: ContainerWithDependencies[]): ContainerNode[] {
+export function buildContainerNodes(
+  containers: ContainerWithDependencies[]
+): ContainerNode[] {
   return containers.map((container) => ({
     id: container.id,
-    dependsOn: container.dependencies.map((dependency) => dependency.dependsOnContainerId),
+    dependsOn: container.dependencies.map(
+      (dependency) => dependency.dependsOnContainerId
+    ),
   }));
 }
 
 export async function prepareContainerData(
   sessionId: string,
   containerDefinition: ContainerWithDependencies,
-  sandbox: Sandbox,
+  sandbox: Sandbox
 ): Promise<PreparedContainer> {
   const [ports, envVars, containerWorkspace] = await Promise.all([
     findPortsByContainerId(containerDefinition.id),
@@ -31,7 +35,7 @@ export async function prepareContainerData(
       sessionId,
       containerDefinition.id,
       containerDefinition.image,
-      sandbox,
+      sandbox
     ),
   ]);
 

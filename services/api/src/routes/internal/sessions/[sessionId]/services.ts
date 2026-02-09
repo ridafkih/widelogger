@@ -1,8 +1,8 @@
+import { widelog } from "../../../../logging";
 import { getSessionServices } from "../../../../repositories/container-session.repository";
 import { findSessionByIdOrThrow } from "../../../../repositories/session.repository";
 import { withParams } from "../../../../shared/route-helpers";
 import type { ProxyContext } from "../../../../types/route";
-import { widelog } from "../../../../logging";
 
 const GET = withParams<{ sessionId: string }, ProxyContext>(
   ["sessionId"],
@@ -24,7 +24,7 @@ const GET = withParams<{ sessionId: string }, ProxyContext>(
         ports: service.ports,
       })),
     });
-  },
+  }
 );
 
 export { GET };

@@ -1,9 +1,13 @@
-import { widelog } from "../logging";
 import { apiClient } from "../clients/api";
-import { sessionTracker } from "./session-tracker";
-import { responseSubscriber } from "./response-subscriber";
-import type { IncomingPlatformMessage, MessagingMode, PlatformType } from "../types/messages";
+import { widelog } from "../logging";
 import { getAdapter } from "../platforms";
+import type {
+  IncomingPlatformMessage,
+  MessagingMode,
+  PlatformType,
+} from "../types/messages";
+import { responseSubscriber } from "./response-subscriber";
+import { sessionTracker } from "./session-tracker";
 
 class MessageRouter {
   async handleIncomingMessage(message: IncomingPlatformMessage): Promise<void> {
@@ -16,7 +20,14 @@ class MessageRouter {
       widelog.time.start("duration_ms");
 
       try {
-        await this.routeToChatOrchestrator(platform, chatId, userId, messageId, content, timestamp);
+        await this.routeToChatOrchestrator(
+          platform,
+          chatId,
+          userId,
+          messageId,
+          content,
+          timestamp
+        );
         widelog.set("outcome", "success");
       } catch (error) {
         widelog.set("outcome", "error");
@@ -35,7 +46,7 @@ class MessageRouter {
     userId: string | undefined,
     messageId: string | undefined,
     content: string,
-    timestamp: Date,
+    timestamp: Date
   ): Promise<void> {
     const adapter = getAdapter(platform);
     const messagingMode: MessagingMode = adapter?.messagingMode ?? "passive";
@@ -58,7 +69,7 @@ class MessageRouter {
             content: chunkText,
           });
         }
-      },
+      }
     );
 
     widelog.set("chunk_count", chunkCount);
@@ -68,13 +79,19 @@ class MessageRouter {
       widelog.set("session_id", result.sessionId);
       widelog.set("project_name", result.projectName ?? "unknown");
 
-      await sessionTracker.setMapping(platform, chatId, result.sessionId, userId, messageId);
+      await sessionTracker.setMapping(
+        platform,
+        chatId,
+        result.sessionId,
+        userId,
+        messageId
+      );
       responseSubscriber.subscribeToSession(
         result.sessionId,
         platform,
         chatId,
         messageId,
-        messagingMode,
+        messagingMode
       );
     }
 

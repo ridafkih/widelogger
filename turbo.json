@@ -23,14 +23,6 @@
     },
     "migrate": {
       "cache": false
-    },
-    "lint": {
-      "inputs": ["src/**", ".oxlintrc.json"],
-      "cache": true
-    },
-    "format": {
-      "inputs": ["src/**"],
-      "cache": true
     }
   }
 }

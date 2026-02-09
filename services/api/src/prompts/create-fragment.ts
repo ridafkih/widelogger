@@ -13,5 +13,6 @@ interface CreateFragmentOptions {
 /**
  * Create a prompt fragment for the API service context.
  */
-export const createFragment = (options: CreateFragmentOptions): PromptFragment =>
-  baseCreateFragment<PromptContext>(options);
+export const createFragment = (
+  options: CreateFragmentOptions
+): PromptFragment => baseCreateFragment<PromptContext>(options);

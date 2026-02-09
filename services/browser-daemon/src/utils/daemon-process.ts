@@ -1,10 +1,10 @@
-import { cleanupSocket, getSocketDir, getPidFile } from "agent-browser";
-import type { Command, Response } from "agent-browser/dist/types.js";
-import { existsSync, readFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { cleanupSocket, getPidFile, getSocketDir } from "agent-browser";
+import type { Command, Response } from "agent-browser/dist/types.js";
+import { TIMING } from "../config/constants";
 import { widelog } from "../logging";
 import { getErrorMessage } from "../shared/errors";
-import { TIMING } from "../config/constants";
 
 interface SpawnOptions {
   sessionId: string;
@@ -44,7 +44,7 @@ function buildWorkerConfig(
   sessionId: string,
   port: number,
   cdpPort: number,
-  profileDir?: string,
+  profileDir?: string
 ): DaemonWorkerConfig {
   const config: DaemonWorkerConfig = {
     sessionId,
@@ -85,7 +85,10 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
     }
 
     if (event.data.type === "log") {
-      const { level, ...logData } = event.data.data as { level: string; [key: string]: unknown };
+      const { level, ...logData } = event.data.data as {
+        level: string;
+        [key: string]: unknown;
+      };
       widelog.context(() => {
         for (const [key, value] of Object.entries(logData)) {
           if (
@@ -105,7 +108,9 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
     }
 
     if (event.data.type === "commandResponse") {
-      const data = event.data.data as { requestId: string; response: Response } | undefined;
+      const data = event.data.data as
+        | { requestId: string; response: Response }
+        | undefined;
       if (data?.requestId) {
         const pending = pendingCommands.get(data.requestId);
         if (pending) {
@@ -139,7 +144,8 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
   };
 
   worker.addEventListener("close", (event: Event) => {
-    const code = "code" in event && typeof event.code === "number" ? event.code : 0;
+    const code =
+      "code" in event && typeof event.code === "number" ? event.code : 0;
     for (const handler of closeHandlers) {
       try {
         handler(code);
@@ -159,7 +165,10 @@ export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
       return new Promise((resolve, reject) => {
         const requestId = `${command.id}-${Date.now()}`;
         pendingCommands.set(requestId, { resolve, reject });
-        worker.postMessage({ type: "executeCommand", data: { requestId, command } });
+        worker.postMessage({
+          type: "executeCommand",
+          data: { requestId, command },
+        });
 
         setTimeout(() => {
           if (pendingCommands.has(requestId)) {
@@ -197,10 +206,10 @@ export function killByPidFile(sessionId: string): boolean {
         return false;
       }
 
-      const pid = parseInt(readFileSync(pidFile, "utf-8").trim(), 10);
+      const pid = Number.parseInt(readFileSync(pidFile, "utf-8").trim(), 10);
       widelog.set("pid", pid);
 
-      if (isNaN(pid)) {
+      if (Number.isNaN(pid)) {
         widelog.set("outcome", "invalid_pid");
         return false;
       }

@@ -1,8 +1,12 @@
-import { widelog } from "../logging";
 import { multiplayerClient } from "../clients/multiplayer";
-import { completionListener } from "./completion-listener";
+import { widelog } from "../logging";
 import { getAdapter } from "../platforms";
-import type { PlatformType, SessionMessage, MessagingMode } from "../types/messages";
+import type {
+  MessagingMode,
+  PlatformType,
+  SessionMessage,
+} from "../types/messages";
+import { completionListener } from "./completion-listener";
 
 interface SubscriptionInfo {
   platform: PlatformType;
@@ -13,14 +17,14 @@ interface SubscriptionInfo {
 }
 
 class ResponseSubscriber {
-  private subscriptions = new Map<string, SubscriptionInfo>();
+  private readonly subscriptions = new Map<string, SubscriptionInfo>();
 
   subscribeToSession(
     sessionId: string,
     platform: PlatformType,
     chatId: string,
     threadId: string | undefined,
-    messagingMode: MessagingMode = "passive",
+    messagingMode: MessagingMode = "passive"
   ): void {
     if (this.subscriptions.has(sessionId)) {
       const existing = this.subscriptions.get(sessionId)!;
@@ -30,11 +34,20 @@ class ResponseSubscriber {
       existing.unsubscribe();
     }
 
-    const unsubscribe = multiplayerClient.subscribeToSession(sessionId, (message) => {
-      this.handleSessionMessage(sessionId, message);
-    });
+    const unsubscribe = multiplayerClient.subscribeToSession(
+      sessionId,
+      (message) => {
+        this.handleSessionMessage(sessionId, message);
+      }
+    );
 
-    this.subscriptions.set(sessionId, { platform, chatId, threadId, messagingMode, unsubscribe });
+    this.subscriptions.set(sessionId, {
+      platform,
+      chatId,
+      threadId,
+      messagingMode,
+      unsubscribe,
+    });
 
     if (messagingMode === "passive") {
       completionListener.subscribeToSession(sessionId);
@@ -52,11 +65,18 @@ class ResponseSubscriber {
     }
   }
 
-  private async handleSessionMessage(sessionId: string, message: SessionMessage): Promise<void> {
-    if (message.role !== "assistant") return;
+  private async handleSessionMessage(
+    sessionId: string,
+    message: SessionMessage
+  ): Promise<void> {
+    if (message.role !== "assistant") {
+      return;
+    }
 
     const subscription = this.subscriptions.get(sessionId);
-    if (!subscription) return;
+    if (!subscription) {
+      return;
+    }
 
     return widelog.context(async () => {
       widelog.set("event_name", "response_subscriber.message_handled");
@@ -97,8 +117,14 @@ class ResponseSubscriber {
     });
   }
 
-  getActiveSubscriptions(): Map<string, { platform: PlatformType; chatId: string }> {
-    const result = new Map<string, { platform: PlatformType; chatId: string }>();
+  getActiveSubscriptions(): Map<
+    string,
+    { platform: PlatformType; chatId: string }
+  > {
+    const result = new Map<
+      string,
+      { platform: PlatformType; chatId: string }
+    >();
     for (const [sessionId, info] of this.subscriptions) {
       result.set(sessionId, { platform: info.platform, chatId: info.chatId });
     }

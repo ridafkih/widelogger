@@ -1,41 +1,56 @@
 "use client";
 
-import { createContext, use, useState, memo, type ReactNode } from "react";
 import type {
-  Part,
-  TextPart,
-  ReasoningPart,
-  ToolPart,
   FilePart,
+  Part,
+  ReasoningPart,
   SnapshotPart,
+  TextPart,
+  ToolPart,
 } from "@opencode-ai/sdk/v2/client";
-import { Check, ChevronRight, Loader2, File, FilePlus, FileEdit } from "lucide-react";
-import { tv } from "tailwind-variants";
-import { Markdown } from "./markdown";
-import { cn } from "@/lib/cn";
-import { getToolRenderer } from "@/components/tool-renderers";
 import {
-  isTextPart,
-  isReasoningPart,
-  isToolPart,
-  isFilePart,
-  isStepStartPart,
-  isStepFinishPart,
-  isSnapshotPart,
-  isPatchPart,
+  Check,
+  ChevronRight,
+  File,
+  FileEdit,
+  FilePlus,
+  Loader2,
+} from "lucide-react";
+import { createContext, memo, type ReactNode, use, useState } from "react";
+import { tv } from "tailwind-variants";
+import { getToolRenderer } from "@/components/tool-renderers";
+import { cn } from "@/lib/cn";
+import {
   isAgentPart,
-  isSubtaskPart,
-  isRetryPart,
   isCompactionPart,
+  isFilePart,
+  isPatchPart,
+  isReasoningPart,
+  isRetryPart,
+  isSnapshotPart,
+  isStepFinishPart,
+  isStepStartPart,
+  isSubtaskPart,
+  isTextPart,
+  isToolPart,
   type SubtaskPart,
 } from "@/lib/opencode";
+import { Markdown } from "./markdown";
 
 const contentBlock = tv({
   base: "px-4 py-3 text-sm",
 });
 
-function MessagePartText({ part, isStreaming }: { part: TextPart; isStreaming?: boolean }) {
-  if (part.text.trim().length === 0) return null;
+function MessagePartText({
+  part,
+  isStreaming,
+}: {
+  part: TextPart;
+  isStreaming?: boolean;
+}) {
+  if (part.text.trim().length === 0) {
+    return null;
+  }
 
   return (
     <div className={contentBlock()} data-opencode-component="Text">
@@ -44,26 +59,36 @@ function MessagePartText({ part, isStreaming }: { part: TextPart; isStreaming?: 
   );
 }
 
-type ReasoningContextValue = {
+interface ReasoningContextValue {
   state: { expanded: boolean };
   actions: { toggle: () => void };
   meta: { part: ReasoningPart };
-};
+}
 
 const ReasoningContext = createContext<ReasoningContextValue | null>(null);
 
 function useReasoning() {
   const context = use(ReasoningContext);
   if (!context) {
-    throw new Error("Reasoning components must be used within MessagePart.Reasoning");
+    throw new Error(
+      "Reasoning components must be used within MessagePart.Reasoning"
+    );
   }
   return context;
 }
 
-function MessagePartReasoning({ part, children }: { part: ReasoningPart; children: ReactNode }) {
+function MessagePartReasoning({
+  part,
+  children,
+}: {
+  part: ReasoningPart;
+  children: ReactNode;
+}) {
   const [expanded, setExpanded] = useState(false);
 
-  if (part.text.trim().length === 0) return null;
+  if (part.text.trim().length === 0) {
+    return null;
+  }
 
   return (
     <ReasoningContext
@@ -83,9 +108,9 @@ function MessagePartReasoningHeader({ children }: { children: ReactNode }) {
 
   return (
     <button
-      type="button"
+      className="flex w-full cursor-pointer items-center gap-1.5 px-3 py-1 text-xs hover:bg-bg-hover"
       onClick={actions.toggle}
-      className="flex items-center gap-1.5 w-full px-3 py-1 text-xs cursor-pointer hover:bg-bg-hover"
+      type="button"
     >
       {children}
     </button>
@@ -96,17 +121,19 @@ function MessagePartReasoningChevron() {
   const { state } = useReasoning();
   return (
     <ChevronRight
-      size={12}
       className={cn("shrink-0 text-text-muted", state.expanded && "rotate-90")}
+      size={12}
     />
   );
 }
 
 function MessagePartReasoningPreview() {
   const { state, meta } = useReasoning();
-  if (state.expanded) return null;
+  if (state.expanded) {
+    return null;
+  }
   return (
-    <span className="flex-1 truncate text-text-muted whitespace-nowrap italic text-right overflow-hidden">
+    <span className="flex-1 overflow-hidden truncate whitespace-nowrap text-right text-text-muted italic">
       {meta.part.text}
     </span>
   );
@@ -114,7 +141,9 @@ function MessagePartReasoningPreview() {
 
 function MessagePartReasoningContent() {
   const { state, meta } = useReasoning();
-  if (!state.expanded) return null;
+  if (!state.expanded) {
+    return null;
+  }
   return (
     <div className={cn(contentBlock(), "text-text-muted")}>
       <Markdown>{meta.part.text}</Markdown>
@@ -131,18 +160,18 @@ const toolStatus = tv({
   variants: {
     status: {
       pending: "text-text-muted",
-      running: "text-text-muted animate-spin",
+      running: "animate-spin text-text-muted",
       completed: "text-green-500",
       error: "text-red-500",
     },
   },
 });
 
-type ToolContextValue = {
+interface ToolContextValue {
   state: { expanded: boolean };
   actions: { toggle: () => void };
   meta: { part: ToolPart };
-};
+}
 
 const ToolContext = createContext<ToolContextValue | null>(null);
 
@@ -160,7 +189,11 @@ interface MessagePartToolProps {
   defaultExpanded?: boolean;
 }
 
-function MessagePartTool({ part, children, defaultExpanded = false }: MessagePartToolProps) {
+function MessagePartTool({
+  part,
+  children,
+  defaultExpanded = false,
+}: MessagePartToolProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -192,16 +225,30 @@ function MessagePartToolStatus() {
   if (status === "running" || status === "pending") {
     if (fileToolConfig) {
       const Icon = fileToolConfig.icon;
-      return <Icon size={12} className={cn("shrink-0 animate-pulse", fileToolConfig.color)} />;
+      return (
+        <Icon
+          className={cn("shrink-0 animate-pulse", fileToolConfig.color)}
+          size={12}
+        />
+      );
     }
-    return <Loader2 size={12} className={cn("shrink-0", toolStatus({ status: "running" }))} />;
+    return (
+      <Loader2
+        className={cn("shrink-0", toolStatus({ status: "running" }))}
+        size={12}
+      />
+    );
   }
   if (status === "completed") {
     if (fileToolConfig) {
       const Icon = fileToolConfig.icon;
-      return <Icon size={12} className={cn("shrink-0", fileToolConfig.color)} />;
+      return (
+        <Icon className={cn("shrink-0", fileToolConfig.color)} size={12} />
+      );
     }
-    return <Check size={12} className={cn("shrink-0", toolStatus({ status }))} />;
+    return (
+      <Check className={cn("shrink-0", toolStatus({ status }))} size={12} />
+    );
   }
   if (status === "error") {
     return <span className={cn("shrink-0", toolStatus({ status }))}>✕</span>;
@@ -215,7 +262,9 @@ function MessagePartToolName() {
 }
 
 function getString(obj: unknown, key: string): string | null {
-  if (typeof obj !== "object" || obj === null) return null;
+  if (typeof obj !== "object" || obj === null) {
+    return null;
+  }
   const value = (obj as Record<string, unknown>)[key];
   return typeof value === "string" ? value : null;
 }
@@ -224,7 +273,9 @@ function MessagePartToolPath() {
   const { meta } = useTool();
   const input = meta.part.state.input;
   const path = getString(input, "filePath") ?? getString(input, "path");
-  if (!path) return null;
+  if (!path) {
+    return null;
+  }
   return <span className="truncate text-left">{path}</span>;
 }
 
@@ -238,15 +289,23 @@ function MessagePartToolSummary() {
     getString(input, "pattern") ??
     getString(input, "subject");
 
-  if (!description) return <span className="flex-1" />;
+  if (!description) {
+    return <span className="flex-1" />;
+  }
 
-  return <span className="flex-1 truncate text-left text-text-muted">{description}</span>;
+  return (
+    <span className="flex-1 truncate text-left text-text-muted">
+      {description}
+    </span>
+  );
 }
 
 function MessagePartToolDuration() {
   const { meta } = useTool();
   const status = meta.part.state.status;
-  if (status !== "completed" && status !== "error") return null;
+  if (status !== "completed" && status !== "error") {
+    return null;
+  }
   const duration = meta.part.state.time.end - meta.part.state.time.start;
   return <span className="text-text-muted">{duration}ms</span>;
 }
@@ -254,7 +313,10 @@ function MessagePartToolDuration() {
 function MessagePartToolChevron() {
   const { state } = useTool();
   return (
-    <ChevronRight size={12} className={cn("text-text-muted", state.expanded && "rotate-90")} />
+    <ChevronRight
+      className={cn("text-text-muted", state.expanded && "rotate-90")}
+      size={12}
+    />
   );
 }
 
@@ -263,9 +325,9 @@ function MessagePartToolHeader({ children }: { children: ReactNode }) {
 
   return (
     <button
-      type="button"
+      className="flex w-full cursor-pointer items-center gap-1.5 px-3 py-1 text-xs hover:bg-bg-hover"
       onClick={actions.toggle}
-      className="flex items-center gap-1.5 w-full px-3 py-1 text-xs cursor-pointer hover:bg-bg-hover"
+      type="button"
     >
       {children}
     </button>
@@ -274,12 +336,14 @@ function MessagePartToolHeader({ children }: { children: ReactNode }) {
 
 function MessagePartToolDetails({ children }: { children: ReactNode }) {
   const { state } = useTool();
-  if (!state.expanded) return null;
+  if (!state.expanded) {
+    return null;
+  }
   return <div className="flex flex-col">{children}</div>;
 }
 
 const detailBlock = tv({
-  base: "px-4 py-2 text-xs bg-bg-muted overflow-x-auto font-mono w-0 min-w-full",
+  base: "w-0 min-w-full overflow-x-auto bg-bg-muted px-4 py-2 font-mono text-xs",
 });
 
 function MessagePartToolInput({ input }: { input: Record<string, unknown> }) {
@@ -287,21 +351,25 @@ function MessagePartToolInput({ input }: { input: Record<string, unknown> }) {
 }
 
 function MessagePartToolOutput({ output }: { output: string }) {
-  return <pre className={cn(detailBlock(), "max-h-40 overflow-y-auto")}>{output}</pre>;
+  return (
+    <pre className={cn(detailBlock(), "max-h-40 overflow-y-auto")}>
+      {output}
+    </pre>
+  );
 }
 
 function MessagePartToolError({ error }: { error: string }) {
   return <div className={cn(detailBlock(), "text-red-500")}>{error}</div>;
 }
 
-type ToolRendererProps = {
+interface ToolRendererProps {
   tool: string;
   callId: string;
   input?: Record<string, unknown>;
   output?: string | null;
   error?: string | null;
   status: string;
-};
+}
 
 function MessagePartToolRenderer({
   tool,
@@ -314,12 +382,12 @@ function MessagePartToolRenderer({
   const Renderer = getToolRenderer(tool);
   return (
     <Renderer
-      tool={tool}
       callId={callId}
+      error={error}
       input={input}
       output={output}
-      error={error}
       status={status as "pending" | "running" | "completed" | "error"}
+      tool={tool}
     />
   );
 }
@@ -328,19 +396,25 @@ function isImageMimeType(mime: string | undefined): boolean {
   return mime?.startsWith("image/") ?? false;
 }
 
-const MessagePartFile = memo(function MessagePartFile({ part }: { part: FilePart }) {
+const MessagePartFile = memo(function MessagePartFile({
+  part,
+}: {
+  part: FilePart;
+}) {
   const isImage = isImageMimeType(part.mime);
 
   if (isImage && part.url) {
     return (
       <div className="px-4 py-3" data-opencode-component="File">
         <img
-          src={part.url}
           alt={part.filename ?? "Uploaded image"}
-          className="max-w-xs max-h-48 rounded border border-border"
+          className="max-h-48 max-w-xs rounded border border-border"
+          src={part.url}
         />
         {part.filename && (
-          <span className="block mt-1 text-xs text-text-muted">{part.filename}</span>
+          <span className="mt-1 block text-text-muted text-xs">
+            {part.filename}
+          </span>
         )}
       </div>
     );
@@ -352,13 +426,13 @@ const MessagePartFile = memo(function MessagePartFile({ part }: { part: FilePart
       {part.source && "path" in part.source && (
         <span className="text-text-muted">{part.source.path}</span>
       )}
-      <ChevronRight size={14} className="text-text-muted ml-auto" />
+      <ChevronRight className="ml-auto text-text-muted" size={14} />
     </div>
   );
 });
 
 const metaRow = tv({
-  base: "flex items-center gap-3 px-4 py-1.5 text-xs text-text-muted",
+  base: "flex items-center gap-3 px-4 py-1.5 text-text-muted text-xs",
 });
 
 function MessagePartStepStart() {
@@ -369,7 +443,11 @@ function MessagePartStepFinish() {
   return null;
 }
 
-const MessagePartSnapshot = memo(function MessagePartSnapshot({ part }: { part: SnapshotPart }) {
+const MessagePartSnapshot = memo(function MessagePartSnapshot({
+  part,
+}: {
+  part: SnapshotPart;
+}) {
   return (
     <div className={metaRow()} data-opencode-component="Snapshot">
       <span>Snapshot</span>
@@ -389,9 +467,9 @@ function MessagePartPatch() {
 function MessagePartAgent() {
   return (
     <div className={actionRow()} data-opencode-component="Agent">
-      <Loader2 size={14} className="text-text-muted animate-spin" />
+      <Loader2 className="animate-spin text-text-muted" size={14} />
       <span>Agent task</span>
-      <ChevronRight size={14} className="text-text-muted ml-auto" />
+      <ChevronRight className="ml-auto text-text-muted" size={14} />
     </div>
   );
 }
@@ -399,17 +477,20 @@ function MessagePartAgent() {
 function MessagePartSubtask({ part }: { part: SubtaskPart }) {
   return (
     <div className={actionRow()} data-opencode-component="Subtask">
-      <Loader2 size={14} className="text-text-muted animate-spin" />
+      <Loader2 className="animate-spin text-text-muted" size={14} />
       <span>{part.description}</span>
-      <ChevronRight size={14} className="text-text-muted ml-auto" />
+      <ChevronRight className="ml-auto text-text-muted" size={14} />
     </div>
   );
 }
 
 function MessagePartRetry() {
   return (
-    <div className={cn(actionRow(), "text-yellow-500")} data-opencode-component="Retry">
-      <Loader2 size={14} className="animate-spin" />
+    <div
+      className={cn(actionRow(), "text-yellow-500")}
+      data-opencode-component="Retry"
+    >
+      <Loader2 className="animate-spin" size={14} />
       <span>Retrying...</span>
     </div>
   );
@@ -437,7 +518,7 @@ function MessagePartRoot({
   }
 
   if (isTextPart(part)) {
-    return <MessagePartText part={part} isStreaming={isStreaming} />;
+    return <MessagePartText isStreaming={isStreaming} part={part} />;
   }
 
   if (isReasoningPart(part)) {
@@ -445,7 +526,7 @@ function MessagePartRoot({
       <MessagePartReasoning part={part}>
         <MessagePartReasoningHeader>
           <MessagePartReasoningChevron />
-          <span className="text-text-muted shrink-0">Thinking</span>
+          <span className="shrink-0 text-text-muted">Thinking</span>
           <MessagePartReasoningPreview />
         </MessagePartReasoningHeader>
         <MessagePartReasoningContent />
@@ -458,11 +539,12 @@ function MessagePartRoot({
     const input = part.state.input;
     const output = status === "completed" ? part.state.output : null;
     const error = status === "error" ? part.state.error : null;
-    const isQuestionTool = part.tool === "askuserquestion" || part.tool === "question";
+    const isQuestionTool =
+      part.tool === "askuserquestion" || part.tool === "question";
     const shouldAutoExpand = isQuestionTool && status === "running";
 
     return (
-      <MessagePartTool part={part} defaultExpanded={shouldAutoExpand}>
+      <MessagePartTool defaultExpanded={shouldAutoExpand} part={part}>
         <MessagePartToolHeader>
           <MessagePartToolStatus />
           <MessagePartToolName />
@@ -473,12 +555,12 @@ function MessagePartRoot({
         </MessagePartToolHeader>
         <MessagePartToolDetails>
           <MessagePartToolRenderer
-            tool={part.tool}
             callId={part.callID}
+            error={error}
             input={input}
             output={output}
-            error={error}
             status={status}
+            tool={part.tool}
           />
         </MessagePartToolDetails>
       </MessagePartTool>

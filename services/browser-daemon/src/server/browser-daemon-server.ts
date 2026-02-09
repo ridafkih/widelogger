@@ -1,17 +1,17 @@
-import type { Server as BunServer } from "bun";
 import { join } from "node:path";
-import { isHttpMethod, isRouteModule } from "@lab/router";
 import {
-  withCors,
-  optionsResponse,
-  notFoundResponse,
   errorResponse,
   methodNotAllowedResponse,
+  notFoundResponse,
+  optionsResponse,
+  withCors,
 } from "@lab/http-utilities";
+import { isHttpMethod, isRouteModule } from "@lab/router";
+import type { Server as BunServer } from "bun";
+import { TIMING } from "../config/constants";
+import { AppError } from "../shared/errors";
 import type { DaemonManager } from "../types/daemon";
 import type { RouteContext, Widelog } from "../types/route";
-import { AppError } from "../shared/errors";
-import { TIMING } from "../config/constants";
 
 interface BrowserDaemonServerConfig {
   daemonManager: DaemonManager;
@@ -48,7 +48,7 @@ export class BrowserDaemonServer {
   private async handleRouteRequest(
     request: Request,
     url: URL,
-    routeContext: RouteContext,
+    routeContext: RouteContext
   ): Promise<Response> {
     return this.handleRequestWithWideEvent(request, url, async () => {
       const { widelog } = this.config;
@@ -83,14 +83,16 @@ export class BrowserDaemonServer {
         return withCors(methodNotAllowedResponse());
       }
 
-      return withCors(await handler({ request, params: match.params, context: routeContext }));
+      return withCors(
+        await handler({ request, params: match.params, context: routeContext })
+      );
     });
   }
 
   private async handleRequestWithWideEvent(
     request: Request,
     url: URL,
-    handler: () => Promise<Response>,
+    handler: () => Promise<Response>
   ): Promise<Response> {
     const { widelog } = this.config;
     const requestId = crypto.randomUUID();
@@ -115,7 +117,9 @@ export class BrowserDaemonServer {
       } catch (error) {
         const status = error instanceof AppError ? error.statusCode : 500;
         const message =
-          error instanceof Error && status < 500 ? error.message : "Internal server error";
+          error instanceof Error && status < 500
+            ? error.message
+            : "Internal server error";
 
         this.setStatusOutcome(status);
         widelog.errorFields(error);
@@ -124,7 +128,9 @@ export class BrowserDaemonServer {
           widelog.set("error.code", error.code);
         }
 
-        const response = withCors(Response.json({ error: message, requestId }, { status }));
+        const response = withCors(
+          Response.json({ error: message, requestId }, { status })
+        );
         response.headers.set("X-Request-Id", requestId);
         return response;
       } finally {

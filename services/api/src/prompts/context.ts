@@ -6,7 +6,9 @@ interface CreatePromptContextParams {
   projectSystemPrompt: string | null;
 }
 
-export function createPromptContext(params: CreatePromptContextParams): PromptContext {
+export function createPromptContext(
+  params: CreatePromptContextParams
+): PromptContext {
   return {
     sessionId: params.sessionId,
     projectId: params.projectId,

@@ -1,27 +1,27 @@
-import { schema, type AppSchema } from "@lab/multiplayer-sdk";
+import { type AppSchema, schema } from "@lab/multiplayer-sdk";
 import {
   createWebSocketHandler,
-  type SchemaHandlers,
   type HandlerOptions,
+  type SchemaHandlers,
 } from "@lab/multiplayer-server";
-import type { Publisher, OpencodeClient } from "../types/dependencies";
 import type { BrowserService } from "../browser/browser-service";
+import { widelog } from "../logging";
 import type { LogMonitor } from "../monitors/log.monitor";
-import type { SessionStateStore } from "../state/session-state-store";
-import type { Auth } from "../types/websocket";
+import { ValidationError } from "../shared/errors";
 import {
   loadProjects,
-  loadSessions,
-  loadSessionContainers,
   loadSessionChangedFiles,
-  loadSessionMetadata,
+  loadSessionContainers,
   loadSessionLogs,
+  loadSessionMetadata,
+  loadSessions,
 } from "../snapshots/snapshot-loaders";
+import type { SessionStateStore } from "../state/session-state-store";
+import type { OpencodeClient, Publisher } from "../types/dependencies";
 import { MESSAGE_ROLE } from "../types/message";
-import { ValidationError } from "../shared/errors";
-import { widelog } from "../logging";
+import type { Auth } from "../types/websocket";
 
-export { type Auth } from "../types/websocket";
+export type { Auth } from "../types/websocket";
 
 interface WebSocketHandlerDeps {
   browserService: BrowserService;
@@ -33,8 +33,14 @@ interface WebSocketHandlerDeps {
 }
 
 export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
-  const { browserService, publisher, opencode, logMonitor, proxyBaseDomain, sessionStateStore } =
-    deps;
+  const {
+    browserService,
+    publisher,
+    opencode,
+    logMonitor,
+    proxyBaseDomain,
+    sessionStateStore,
+  } = deps;
   const sessionSubscribers = new Map<string, Set<object>>();
 
   const handlers: SchemaHandlers<AppSchema, Auth> = {
@@ -46,13 +52,17 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
     },
     sessionMetadata: {
       getSnapshot: async ({ params }) => {
-        if (!params.uuid) throw new ValidationError("Missing uuid parameter");
+        if (!params.uuid) {
+          throw new ValidationError("Missing uuid parameter");
+        }
         return loadSessionMetadata(params.uuid, opencode, sessionStateStore);
       },
     },
     sessionContainers: {
       getSnapshot: async ({ params }) => {
-        if (!params.uuid) throw new ValidationError("Missing uuid parameter");
+        if (!params.uuid) {
+          throw new ValidationError("Missing uuid parameter");
+        }
         return loadSessionContainers(params.uuid, proxyBaseDomain);
       },
     },
@@ -64,7 +74,9 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
     },
     sessionChangedFiles: {
       getSnapshot: async ({ params }) => {
-        if (!params.uuid) throw new ValidationError("Missing uuid parameter");
+        if (!params.uuid) {
+          throw new ValidationError("Missing uuid parameter");
+        }
         return loadSessionChangedFiles(params.uuid, opencode);
       },
     },
@@ -76,7 +88,9 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
     },
     sessionLogs: {
       getSnapshot: async ({ params }) => {
-        if (!params.uuid) return { sources: [], recentLogs: {} };
+        if (!params.uuid) {
+          return { sources: [], recentLogs: {} };
+        }
         return loadSessionLogs(params.uuid, logMonitor);
       },
     },
@@ -85,7 +99,9 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
     },
     sessionBrowserState: {
       getSnapshot: async ({ params }) => {
-        if (!params.uuid) throw new ValidationError("Missing uuid parameter");
+        if (!params.uuid) {
+          throw new ValidationError("Missing uuid parameter");
+        }
         return browserService.getBrowserSnapshot(params.uuid);
       },
       onSubscribe: ({ params, ws }) => {
@@ -143,7 +159,7 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
 
           const subscribers = sessionSubscribers.get(sessionId);
 
-          if (!subscribers || !subscribers.has(ws)) {
+          if (!subscribers?.has(ws)) {
             widelog.set("outcome", "not_subscribed");
             widelog.flush();
             return;
@@ -169,9 +185,13 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
     },
     sessionBrowserFrames: {
       getSnapshot: async ({ params }) => {
-        if (!params.uuid) return { lastFrame: null, timestamp: null };
+        if (!params.uuid) {
+          return { lastFrame: null, timestamp: null };
+        }
         const frame = browserService.getCachedFrame(params.uuid);
-        if (!frame) return { lastFrame: null, timestamp: null };
+        if (!frame) {
+          return { lastFrame: null, timestamp: null };
+        }
         return { lastFrame: frame, timestamp: Date.now() };
       },
     },
@@ -204,7 +224,7 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
             content: message.content,
             timestamp: message.timestamp,
             senderId: context.auth.userId,
-          },
+          }
         );
       }
     },

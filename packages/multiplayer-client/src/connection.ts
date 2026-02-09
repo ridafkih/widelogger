@@ -1,4 +1,7 @@
-import type { WireClientMessage, WireServerMessage } from "@lab/multiplayer-sdk";
+import type {
+  WireClientMessage,
+  WireServerMessage,
+} from "@lab/multiplayer-sdk";
 
 function hasType(value: object): value is { type: unknown } {
   return "type" in value;
@@ -13,15 +16,25 @@ function hasError(value: object): value is { error: unknown } {
 }
 
 function isServerMessage(value: unknown): value is WireServerMessage {
-  if (typeof value !== "object" || value === null) return false;
-  if (!hasType(value)) return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!hasType(value)) {
+    return false;
+  }
 
   const { type } = value;
 
-  if (type === "pong") return true;
+  if (type === "pong") {
+    return true;
+  }
 
-  if (!hasChannel(value)) return false;
-  if (typeof value.channel !== "string") return false;
+  if (!hasChannel(value)) {
+    return false;
+  }
+  if (typeof value.channel !== "string") {
+    return false;
+  }
 
   switch (type) {
     case "snapshot":
@@ -55,11 +68,11 @@ type StateListener = (state: ConnectionState) => void;
 
 export class ConnectionManager {
   private ws: WebSocket | null = null;
-  private config: Required<ConnectionConfig>;
+  private readonly config: Required<ConnectionConfig>;
   private state: ConnectionState = { status: "disconnected" };
-  private messageListeners = new Map<string, Set<MessageListener>>();
-  private stateListeners = new Set<StateListener>();
-  private subscriptionCounts = new Map<string, number>();
+  private readonly messageListeners = new Map<string, Set<MessageListener>>();
+  private readonly stateListeners = new Set<StateListener>();
+  private readonly subscriptionCounts = new Map<string, number>();
   private messageQueue: WireClientMessage[] = [];
   private reconnectAttempt = 0;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -71,13 +84,15 @@ export class ConnectionManager {
       reconnect: true,
       maxReconnectAttempts: 10,
       reconnectInterval: 1000,
-      heartbeatInterval: 30000,
+      heartbeatInterval: 30_000,
       ...config,
     };
   }
 
   connect(): void {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      return;
+    }
 
     this.setState({ status: "connecting" });
 
@@ -115,7 +130,7 @@ export class ConnectionManager {
     if (!this.messageListeners.has(channel)) {
       this.messageListeners.set(channel, new Set());
     }
-    this.messageListeners.get(channel)!.add(listener);
+    this.messageListeners.get(channel)?.add(listener);
 
     if (count === 0) {
       this.send({ type: "subscribe", channel });
@@ -181,12 +196,15 @@ export class ConnectionManager {
     this.clearHeartbeat();
     this.ws = null;
 
-    if (this.config.reconnect && this.reconnectAttempt < this.config.maxReconnectAttempts) {
+    if (
+      this.config.reconnect &&
+      this.reconnectAttempt < this.config.maxReconnectAttempts
+    ) {
       this.reconnectAttempt++;
       this.setState({ status: "reconnecting", attempt: this.reconnectAttempt });
       const delay = Math.min(
-        this.config.reconnectInterval * Math.pow(2, this.reconnectAttempt - 1),
-        30000,
+        this.config.reconnectInterval * 2 ** (this.reconnectAttempt - 1),
+        30_000
       );
       this.reconnectTimeout = setTimeout(() => this.connect(), delay);
     } else {

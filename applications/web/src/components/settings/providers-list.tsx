@@ -1,23 +1,23 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
+import { Circle } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Circle } from "lucide-react";
+import { createContext, type ReactNode, use } from "react";
 import useSWR from "swr";
 import { tv } from "tailwind-variants";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/use-session-client";
 
-type Provider = {
+interface Provider {
   id: string;
   name: string;
-};
+}
 
-type ProvidersListData = {
+interface ProvidersListData {
   providers: Provider[];
   connected: string[];
-};
+}
 
 interface ProvidersListContextValue {
   state: {
@@ -31,12 +31,16 @@ interface ProvidersListContextValue {
   };
 }
 
-const ProvidersListContext = createContext<ProvidersListContextValue | null>(null);
+const ProvidersListContext = createContext<ProvidersListContextValue | null>(
+  null
+);
 
 function useProvidersList() {
   const context = use(ProvidersListContext);
   if (!context) {
-    throw new Error("ProvidersList components must be used within ProvidersList.Provider");
+    throw new Error(
+      "ProvidersList components must be used within ProvidersList.Provider"
+    );
   }
   return context;
 }
@@ -64,7 +68,10 @@ async function fetchProvidersList(): Promise<ProvidersListData> {
 }
 
 function ProvidersListProvider({ children }: { children: ReactNode }) {
-  const { data, error, isLoading, mutate } = useSWR("providers-list", fetchProvidersList);
+  const { data, error, isLoading, mutate } = useSWR(
+    "providers-list",
+    fetchProvidersList
+  );
 
   const contextValue: ProvidersListContextValue = {
     state: {
@@ -78,7 +85,9 @@ function ProvidersListProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <ProvidersListContext value={contextValue}>{children}</ProvidersListContext>;
+  return (
+    <ProvidersListContext value={contextValue}>{children}</ProvidersListContext>
+  );
 }
 
 function ProvidersListRoot({ children }: { children: ReactNode }) {
@@ -88,27 +97,41 @@ function ProvidersListRoot({ children }: { children: ReactNode }) {
 function ProvidersListHeader({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center justify-between px-2 py-1.5">
-      <span className="text-xs text-text-secondary">{children}</span>
+      <span className="text-text-secondary text-xs">{children}</span>
     </div>
   );
 }
 
 function ProvidersListLoading() {
   const { state } = useProvidersList();
-  if (!state.isLoading) return null;
-  return <span className="px-2 py-1.5 text-xs text-text-muted">Loading...</span>;
+  if (!state.isLoading) {
+    return null;
+  }
+  return (
+    <span className="px-2 py-1.5 text-text-muted text-xs">Loading...</span>
+  );
 }
 
 function ProvidersListError() {
   const { state } = useProvidersList();
-  if (!state.error) return null;
-  return <span className="px-2 py-1.5 text-xs text-red-500">Failed to load</span>;
+  if (!state.error) {
+    return null;
+  }
+  return (
+    <span className="px-2 py-1.5 text-red-500 text-xs">Failed to load</span>
+  );
 }
 
 function ProvidersListEmpty() {
   const { state } = useProvidersList();
-  if (state.isLoading || state.error || state.providers.length > 0) return null;
-  return <span className="px-2 py-1.5 text-xs text-text-muted">No providers available</span>;
+  if (state.isLoading || state.error || state.providers.length > 0) {
+    return null;
+  }
+  return (
+    <span className="px-2 py-1.5 text-text-muted text-xs">
+      No providers available
+    </span>
+  );
 }
 
 const itemStyles = tv({
@@ -130,22 +153,24 @@ function ProvidersListItem({ provider }: { provider: Provider }) {
   const isActive = pathname === href;
 
   return (
-    <Link href={href} className={itemStyles({ active: isActive })}>
+    <Link className={itemStyles({ active: isActive })} href={href}>
       <Circle
-        size={6}
         className={cn(
           "shrink-0",
-          isConnected ? "text-green-500 fill-green-500" : "text-text-muted",
+          isConnected ? "fill-green-500 text-green-500" : "text-text-muted"
         )}
+        size={6}
       />
-      <span className="text-text truncate">{provider.name}</span>
+      <span className="truncate text-text">{provider.name}</span>
     </Link>
   );
 }
 
 function ProvidersListItems() {
   const { state } = useProvidersList();
-  if (state.isLoading || state.error || state.providers.length === 0) return null;
+  if (state.isLoading || state.error || state.providers.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col">

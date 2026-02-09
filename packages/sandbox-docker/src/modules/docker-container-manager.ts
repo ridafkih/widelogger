@@ -1,11 +1,11 @@
-import type Dockerode from "dockerode";
 import type {
-  ContainerManager,
   ContainerCreateOptions,
   ContainerInfo,
+  ContainerManager,
   ExitResult,
   LogChunk,
 } from "@lab/sandbox-sdk";
+import type Dockerode from "dockerode";
 import { toContainerState } from "../utils/container-state";
 import { isNotFoundError, isNotRunningError } from "../utils/error-handling";
 
@@ -22,7 +22,9 @@ function formatEnvVar(key: string, value: string): string {
   return `${key}=${value}`;
 }
 
-function formatEnvVars(env: Record<string, string> | undefined): string[] | undefined {
+function formatEnvVars(
+  env: Record<string, string> | undefined
+): string[] | undefined {
   if (!env) {
     return undefined;
   }
@@ -40,7 +42,7 @@ function orUndefinedIfEmptyArray<T>(arr: T[]): T[] | undefined {
 
 function parseContainerPort(portKey: string): number {
   const portString = portKey.split("/")[0];
-  return parseInt(portString!, 10);
+  return Number.parseInt(portString!, 10);
 }
 
 function parseHostPort(binding: PortBinding): number | null {
@@ -48,11 +50,11 @@ function parseHostPort(binding: PortBinding): number | null {
     return null;
   }
 
-  return parseInt(binding.HostPort, 10);
+  return Number.parseInt(binding.HostPort, 10);
 }
 
 function extractPortMappings(
-  portBindings: Record<string, PortBinding[] | null> | undefined,
+  portBindings: Record<string, PortBinding[] | null> | undefined
 ): Record<number, number> {
   const ports: Record<number, number> = {};
 
@@ -81,7 +83,9 @@ function stripLeadingSlash(name: string): string {
   return name.replace(/^\//, "");
 }
 
-function determineStreamType(streamTypeByte: number | undefined): "stdout" | "stderr" {
+function determineStreamType(
+  streamTypeByte: number | undefined
+): "stdout" | "stderr" {
   return streamTypeByte === STDOUT_STREAM_TYPE ? "stdout" : "stderr";
 }
 
@@ -89,7 +93,9 @@ export class DockerContainerManager implements ContainerManager {
   constructor(private readonly docker: Dockerode) {}
 
   async createContainer(options: ContainerCreateOptions): Promise<string> {
-    const { exposedPorts, portBindings } = this.buildPortConfiguration(options.ports);
+    const { exposedPorts, portBindings } = this.buildPortConfiguration(
+      options.ports
+    );
     const volumeBinds = this.buildVolumeBinds(options.volumes);
     const restartPolicy = this.buildRestartPolicy(options.restartPolicy);
 
@@ -130,13 +136,17 @@ export class DockerContainerManager implements ContainerManager {
       const protocol = portMapping.protocol ?? DEFAULT_PROTOCOL;
       const portKey = `${portMapping.container}/${protocol}`;
       exposedPorts[portKey] = {};
-      portBindings[portKey] = [{ HostPort: portMapping.host?.toString() ?? "" }];
+      portBindings[portKey] = [
+        { HostPort: portMapping.host?.toString() ?? "" },
+      ];
     }
 
     return { exposedPorts, portBindings };
   }
 
-  private buildVolumeBinds(volumes?: ContainerCreateOptions["volumes"]): string[] {
+  private buildVolumeBinds(
+    volumes?: ContainerCreateOptions["volumes"]
+  ): string[] {
     if (!volumes) {
       return [];
     }
@@ -147,7 +157,9 @@ export class DockerContainerManager implements ContainerManager {
     });
   }
 
-  private buildRestartPolicy(restartPolicy?: ContainerCreateOptions["restartPolicy"]):
+  private buildRestartPolicy(
+    restartPolicy?: ContainerCreateOptions["restartPolicy"]
+  ):
     | {
         Name: string;
         MaximumRetryCount?: number;
@@ -189,7 +201,10 @@ export class DockerContainerManager implements ContainerManager {
     }
   }
 
-  async restartContainer(containerId: string, timeoutSeconds = 10): Promise<void> {
+  async restartContainer(
+    containerId: string,
+    timeoutSeconds = 10
+  ): Promise<void> {
     await this.docker.getContainer(containerId).restart({ t: timeoutSeconds });
   }
 
@@ -227,7 +242,7 @@ export class DockerContainerManager implements ContainerManager {
 
   async *streamLogs(
     containerId: string,
-    options: { tail?: number } = {},
+    options: { tail?: number } = {}
   ): AsyncGenerator<LogChunk> {
     const logStream = (await this.docker.getContainer(containerId).logs({
       follow: true,
@@ -239,7 +254,9 @@ export class DockerContainerManager implements ContainerManager {
     yield* this.parseLogStream(logStream);
   }
 
-  private async *parseLogStream(logStream: NodeJS.ReadableStream): AsyncGenerator<LogChunk> {
+  private async *parseLogStream(
+    logStream: NodeJS.ReadableStream
+  ): AsyncGenerator<LogChunk> {
     let buffer: Buffer<ArrayBufferLike> = Buffer.alloc(0);
     const pendingChunks: LogChunk[] = [];
     let resolveWait: (() => void) | null = null;
@@ -262,7 +279,8 @@ export class DockerContainerManager implements ContainerManager {
     };
 
     logStream.on("data", (chunk: Buffer | string) => {
-      const chunkBuffer = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+      const chunkBuffer =
+        typeof chunk === "string" ? Buffer.from(chunk) : chunk;
       buffer = Buffer.concat([buffer, chunkBuffer]);
       parseFramesFromBuffer();
       tryResolveWait();
@@ -312,7 +330,10 @@ export class DockerContainerManager implements ContainerManager {
   } {
     const streamType = buffer[0];
     const frameSize = buffer.readUInt32BE(DOCKER_LOG_SIZE_OFFSET);
-    const frameData = buffer.subarray(DOCKER_LOG_HEADER_SIZE, DOCKER_LOG_HEADER_SIZE + frameSize);
+    const frameData = buffer.subarray(
+      DOCKER_LOG_HEADER_SIZE,
+      DOCKER_LOG_HEADER_SIZE + frameSize
+    );
     const remainingBuffer = buffer.subarray(DOCKER_LOG_HEADER_SIZE + frameSize);
 
     return {

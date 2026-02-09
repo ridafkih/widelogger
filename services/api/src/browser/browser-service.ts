@@ -1,13 +1,13 @@
 import {
-  type Orchestrator,
   type BrowserSessionState,
-  type SessionSnapshot,
-  type StateStore,
+  createDaemonEventSubscriber,
+  createFrameReceiver,
+  createOrchestrator,
   type DaemonController,
   type FrameReceiver,
-  createOrchestrator,
-  createFrameReceiver,
-  createDaemonEventSubscriber,
+  type Orchestrator,
+  type SessionSnapshot,
+  type StateStore,
 } from "@lab/browser-protocol";
 import { widelog } from "../logging";
 
@@ -25,7 +25,10 @@ interface BrowserServiceDependencies {
   publishFrame: (sessionId: string, frame: string, timestamp: number) => void;
   publishStateChange: (sessionId: string, state: BrowserSessionState) => void;
   getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
-  getInitialNavigationUrl?: (sessionId: string, port: number) => string | Promise<string>;
+  getInitialNavigationUrl?: (
+    sessionId: string,
+    port: number
+  ) => string | Promise<string>;
   waitForService?: (sessionId: string, port: number) => Promise<void>;
 }
 
@@ -42,11 +45,17 @@ export interface BrowserService {
 
 export const createBrowserService = async (
   config: BrowserServiceConfig,
-  deps: BrowserServiceDependencies,
+  deps: BrowserServiceDependencies
 ): Promise<BrowserService> => {
-  const { stateStore, daemonController, publishFrame, publishStateChange } = deps;
-  const { browserWsHost, browserDaemonUrl, cleanupDelayMs, reconcileIntervalMs, maxRetries } =
-    config;
+  const { stateStore, daemonController, publishFrame, publishStateChange } =
+    deps;
+  const {
+    browserWsHost,
+    browserDaemonUrl,
+    cleanupDelayMs,
+    reconcileIntervalMs,
+    maxRetries,
+  } = config;
 
   const eventSubscriber = createDaemonEventSubscriber({ browserDaemonUrl });
 
@@ -55,7 +64,7 @@ export const createBrowserService = async (
   const connectFrameReceiver = async (
     sessionId: string,
     port: number,
-    orchestrator: Orchestrator,
+    orchestrator: Orchestrator
   ) => {
     return widelog.context(async () => {
       widelog.set("event_name", "browser.frame_receiver.connect");
@@ -73,7 +82,9 @@ export const createBrowserService = async (
         if (!status?.running) {
           widelog.set("daemon_running", false);
           widelog.set("outcome", "skipped");
-          await stateStore.setCurrentState(sessionId, "stopped", { streamPort: null });
+          await stateStore.setCurrentState(sessionId, "stopped", {
+            streamPort: null,
+          });
           return;
         }
 
@@ -87,7 +98,7 @@ export const createBrowserService = async (
             publishFrame(sessionId, frame, timestamp);
           },
           () => frameReceivers.delete(sessionId),
-          { wsHost: browserWsHost },
+          { wsHost: browserWsHost }
         );
 
         frameReceivers.set(sessionId, receiver);
@@ -104,7 +115,9 @@ export const createBrowserService = async (
 
   const disconnectFrameReceiver = (sessionId: string) => {
     const receiver = frameReceivers.get(sessionId);
-    if (!receiver) return;
+    if (!receiver) {
+      return;
+    }
     receiver.close();
     frameReceivers.delete(sessionId);
   };
@@ -116,24 +129,28 @@ export const createBrowserService = async (
     cleanupDelayMs,
   });
 
-  orchestrator.onStateChange((sessionId: string, state: BrowserSessionState) => {
-    widelog.context(async () => {
-      widelog.set("event_name", "browser.state_change");
-      widelog.set("session_id", sessionId);
-      widelog.set("current_state", state.currentState);
-      if (state.streamPort) widelog.set("stream_port", state.streamPort);
+  orchestrator.onStateChange(
+    (sessionId: string, state: BrowserSessionState) => {
+      widelog.context(async () => {
+        widelog.set("event_name", "browser.state_change");
+        widelog.set("session_id", sessionId);
+        widelog.set("current_state", state.currentState);
+        if (state.streamPort) {
+          widelog.set("stream_port", state.streamPort);
+        }
 
-      publishStateChange(sessionId, state);
+        publishStateChange(sessionId, state);
 
-      if (state.currentState === "running" && state.streamPort) {
-        await connectFrameReceiver(sessionId, state.streamPort, orchestrator);
-      } else {
-        disconnectFrameReceiver(sessionId);
-      }
+        if (state.currentState === "running" && state.streamPort) {
+          await connectFrameReceiver(sessionId, state.streamPort, orchestrator);
+        } else {
+          disconnectFrameReceiver(sessionId);
+        }
 
-      widelog.flush();
-    });
-  });
+        widelog.flush();
+      });
+    }
+  );
 
   orchestrator.onError((error: unknown) => {
     widelog.context(() => {

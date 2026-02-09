@@ -18,9 +18,15 @@ async function transformScreenshotResponse(response: {
   data?: unknown;
   error?: string;
 }): Promise<typeof response> {
-  if (!response.success) return response;
-  if (typeof response.data !== "object" || response.data === null) return response;
-  if (!("path" in response.data) || typeof response.data.path !== "string") return response;
+  if (!response.success) {
+    return response;
+  }
+  if (typeof response.data !== "object" || response.data === null) {
+    return response;
+  }
+  if (!("path" in response.data) || typeof response.data.path !== "string") {
+    return response;
+  }
 
   try {
     const buffer = await fs.readFile(response.data.path);
@@ -41,9 +47,15 @@ async function transformRecordingResponse(response: {
   data?: unknown;
   error?: string;
 }): Promise<typeof response> {
-  if (!response.success) return response;
-  if (typeof response.data !== "object" || response.data === null) return response;
-  if (!("path" in response.data) || typeof response.data.path !== "string") return response;
+  if (!response.success) {
+    return response;
+  }
+  if (typeof response.data !== "object" || response.data === null) {
+    return response;
+  }
+  if (!("path" in response.data) || typeof response.data.path !== "string") {
+    return response;
+  }
 
   const data = response.data as { path: string; frames?: number };
 
@@ -60,7 +72,11 @@ async function transformRecordingResponse(response: {
       },
     };
   } catch {
-    return { ...response, success: false, error: `Failed to read recording file: ${data.path}` };
+    return {
+      ...response,
+      success: false,
+      error: `Failed to read recording file: ${data.path}`,
+    };
   }
 }
 

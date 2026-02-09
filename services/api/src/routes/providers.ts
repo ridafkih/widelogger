@@ -1,5 +1,5 @@
-import type { Handler, InfraContext } from "../types/route";
 import { widelog } from "../logging";
+import type { Handler, InfraContext } from "../types/route";
 
 const GET: Handler<InfraContext> = async ({ context: ctx }) => {
   const { data } = await ctx.opencode.provider.list();

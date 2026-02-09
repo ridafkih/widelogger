@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, type DragEvent } from "react";
-import { validateImageFile, fileToBase64, isImageFile } from "./file-utils";
+import { type DragEvent, useCallback, useRef, useState } from "react";
+import { fileToBase64, isImageFile, validateImageFile } from "./file-utils";
 
 export interface Attachment {
   id: string;
@@ -41,16 +41,16 @@ function createLoadingAttachment(file: File): Attachment {
 function updateAttachmentById(
   attachments: Attachment[],
   targetId: string,
-  updates: Partial<Attachment>,
+  updates: Partial<Attachment>
 ): Attachment[] {
   return attachments.map((attachment) =>
-    attachment.id === targetId ? { ...attachment, ...updates } : attachment,
+    attachment.id === targetId ? { ...attachment, ...updates } : attachment
   );
 }
 
 async function processAttachment(
   attachment: Attachment,
-  onUpdate: (id: string, updates: Partial<Attachment>) => void,
+  onUpdate: (id: string, updates: Partial<Attachment>) => void
 ): Promise<void> {
   const validation = validateImageFile(attachment.file);
 
@@ -72,28 +72,40 @@ export function useAttachments(): UseAttachmentsReturn {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
-  const updateAttachment = useCallback((id: string, updates: Partial<Attachment>) => {
-    setAttachments((currentAttachments) => updateAttachmentById(currentAttachments, id, updates));
-  }, []);
+  const updateAttachment = useCallback(
+    (id: string, updates: Partial<Attachment>) => {
+      setAttachments((currentAttachments) =>
+        updateAttachmentById(currentAttachments, id, updates)
+      );
+    },
+    []
+  );
 
   const addFiles = useCallback(
     async (files: FileList | File[]) => {
       const imageFiles = Array.from(files).filter(isImageFile);
-      if (imageFiles.length === 0) return;
+      if (imageFiles.length === 0) {
+        return;
+      }
 
       const newAttachments = imageFiles.map(createLoadingAttachment);
-      setAttachments((currentAttachments) => [...currentAttachments, ...newAttachments]);
+      setAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...newAttachments,
+      ]);
 
       await Promise.all(
-        newAttachments.map((attachment) => processAttachment(attachment, updateAttachment)),
+        newAttachments.map((attachment) =>
+          processAttachment(attachment, updateAttachment)
+        )
       );
     },
-    [updateAttachment],
+    [updateAttachment]
   );
 
   const removeAttachment = useCallback((id: string) => {
     setAttachments((currentAttachments) =>
-      currentAttachments.filter((attachment) => attachment.id !== id),
+      currentAttachments.filter((attachment) => attachment.id !== id)
     );
   }, []);
 
@@ -134,7 +146,7 @@ export function useAttachments(): UseAttachmentsReturn {
         addFiles(files);
       }
     },
-    [addFiles],
+    [addFiles]
   );
 
   return {

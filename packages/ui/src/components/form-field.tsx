@@ -11,11 +11,11 @@ export function FormField({ label, hint, children }: FormFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div>
-        <Copy size="sm" className="font-medium">
+        <Copy className="font-medium" size="sm">
           {label}
         </Copy>
         {hint && (
-          <Copy size="xs" muted>
+          <Copy muted size="xs">
             {hint}
           </Copy>
         )}

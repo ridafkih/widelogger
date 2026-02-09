@@ -1,27 +1,27 @@
-import { type BrowserSessionState, type SessionSnapshot } from "../types/session";
 import type {
-  StateStore,
   DaemonController,
+  DaemonEvent,
+  ErrorHandler,
   Orchestrator,
   OrchestratorConfig,
   StateChangeHandler,
-  ErrorHandler,
-  DaemonEvent,
+  StateStore,
 } from "../types/orchestrator";
+import type { BrowserSessionState, SessionSnapshot } from "../types/session";
 import { createEventDrivenReconciler } from "./event-driven-reconciler";
 import { createSessionManager } from "./session-manager";
 
 export type {
+  ErrorHandler,
   Orchestrator,
   OrchestratorConfig,
   StateChangeHandler,
-  ErrorHandler,
 } from "../types/orchestrator";
 
 export const createOrchestrator = (
   stateStore: StateStore,
   daemonController: DaemonController,
-  config: OrchestratorConfig,
+  config: OrchestratorConfig
 ): Orchestrator => {
   const sessions = createSessionManager();
   const stoppedSessions = new Set<string>();
@@ -31,12 +31,17 @@ export const createOrchestrator = (
   const notifyStateChange = (sessionId: string, state: BrowserSessionState) =>
     stateChangeHandlers.forEach((h) => h(sessionId, state));
 
-  const notifyError = (error: unknown) => errorHandlers.forEach((h) => h(error));
+  const notifyError = (error: unknown) =>
+    errorHandlers.forEach((h) => h(error));
 
   const notifyingStateStore: StateStore = {
     ...stateStore,
     async setCurrentState(sessionId, currentState, options) {
-      const state = await stateStore.setCurrentState(sessionId, currentState, options);
+      const state = await stateStore.setCurrentState(
+        sessionId,
+        currentState,
+        options
+      );
       notifyStateChange(sessionId, state);
       return state;
     },
@@ -47,19 +52,28 @@ export const createOrchestrator = (
     },
   };
 
-  const reconciler = createEventDrivenReconciler(notifyingStateStore, daemonController, {
-    maxRetries: config.maxRetries,
-    getFirstExposedPort: config.getFirstExposedPort,
-    getInitialNavigationUrl: config.getInitialNavigationUrl,
-    waitForService: config.waitForService,
-  });
+  const reconciler = createEventDrivenReconciler(
+    notifyingStateStore,
+    daemonController,
+    {
+      maxRetries: config.maxRetries,
+      getFirstExposedPort: config.getFirstExposedPort,
+      getInitialNavigationUrl: config.getInitialNavigationUrl,
+      waitForService: config.waitForService,
+    }
+  );
 
   const getSnapshot = async (sessionId: string): Promise<SessionSnapshot> => {
     const dbState = await stateStore.getState(sessionId);
     const subscriberCount = sessions.getSubscriberCount(sessionId);
 
     if (!dbState) {
-      return { sessionId, desiredState: "stopped", currentState: "stopped", subscriberCount };
+      return {
+        sessionId,
+        desiredState: "stopped",
+        currentState: "stopped",
+        subscriberCount,
+      };
     }
 
     return {
@@ -104,11 +118,14 @@ export const createOrchestrator = (
                 await notifyingStateStore.setDesiredState(sessionId, "stopped");
                 await reconciler.handleDesiredStateChange(sessionId);
               } catch (error) {
-                console.warn(`[Orchestrator] Failed to set desired state for ${sessionId}:`, error);
+                console.warn(
+                  `[Orchestrator] Failed to set desired state for ${sessionId}:`,
+                  error
+                );
               }
             }
           },
-          config.cleanupDelayMs,
+          config.cleanupDelayMs
         );
       }
 
@@ -121,7 +138,10 @@ export const createOrchestrator = (
       try {
         await daemonController.stop(sessionId);
       } catch (error) {
-        console.warn(`[Orchestrator] Failed to stop daemon for ${sessionId}:`, error);
+        console.warn(
+          `[Orchestrator] Failed to stop daemon for ${sessionId}:`,
+          error
+        );
       }
       await stateStore.deleteSession(sessionId);
     },
@@ -143,12 +163,16 @@ export const createOrchestrator = (
     onError: (handler) => errorHandlers.push(handler),
 
     async handleDaemonEvent(event: DaemonEvent) {
-      if (stoppedSessions.has(event.sessionId)) return;
+      if (stoppedSessions.has(event.sessionId)) {
+        return;
+      }
 
       try {
         await reconciler.handleDaemonEvent(event);
       } catch (error) {
-        if (stoppedSessions.has(event.sessionId)) return;
+        if (stoppedSessions.has(event.sessionId)) {
+          return;
+        }
         notifyError(error);
       }
     },

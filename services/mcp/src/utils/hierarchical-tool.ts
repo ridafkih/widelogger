@@ -1,8 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 
-type TextContent = { type: "text"; text: string };
-type ImageContent = { type: "image"; data: string; mimeType: "image/png" };
+interface TextContent {
+  type: "text";
+  text: string;
+}
+interface ImageContent {
+  type: "image";
+  data: string;
+  mimeType: "image/png";
+}
 type Content = TextContent | ImageContent;
 
 export interface ToolResult {
@@ -15,7 +22,10 @@ export interface CommandNode {
   description: string;
   children?: Record<string, CommandNode>;
   params?: z.ZodRawShape;
-  handler?: (args: Record<string, unknown>, context: CommandContext) => Promise<ToolResult>;
+  handler?: (
+    args: Record<string, unknown>,
+    context: CommandContext
+  ) => Promise<ToolResult>;
 }
 
 interface CommandContext {
@@ -45,10 +55,12 @@ function parseCommandPath(input: string): string[] {
  */
 function formatHelp(
   node: CommandNode | Record<string, CommandNode>,
-  currentPath: string[],
+  currentPath: string[]
 ): string {
   const children = "children" in node ? node.children : node;
-  if (!children) return "";
+  if (!children) {
+    return "";
+  }
 
   const pathStr = currentPath.length > 0 ? currentPath.join(" ") : "";
   const prefix = pathStr ? `${pathStr} ` : "";
@@ -62,19 +74,22 @@ function formatHelp(
   }
 
   for (const [name, child] of Object.entries(children)) {
-    const hasChildren = child.children && Object.keys(child.children).length > 0;
+    const hasChildren =
+      child.children && Object.keys(child.children).length > 0;
     const hasHandler = !!child.handler;
 
     if (hasChildren && !hasHandler) {
       lines.push(`- \`${name}\`: ${child.description} (has subcommands)`);
     } else if (hasHandler && child.params) {
       lines.push(`- \`${name}\`: ${child.description}`);
-      lines.push(`  Parameters (pass in subcommandArguments):`);
+      lines.push("  Parameters (pass in subcommandArguments):");
       for (const [paramName, paramSchema] of Object.entries(child.params)) {
         // Extract description from zod schema if available
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const desc =
-          (paramSchema as any)?.description || (paramSchema as any)?._zod?.def?.description || "";
+          (paramSchema as any)?.description ||
+          (paramSchema as any)?._zod?.def?.description ||
+          "";
         lines.push(`    - \`${paramName}\`: ${desc}`);
       }
     } else if (hasHandler) {
@@ -91,7 +106,7 @@ function formatHelp(
 }
 
 function getChildren(
-  node: CommandNode | Record<string, CommandNode>,
+  node: CommandNode | Record<string, CommandNode>
 ): Record<string, CommandNode> | undefined {
   // If it has a description, it's a CommandNode
   if ("description" in node) {
@@ -106,7 +121,7 @@ function getChildren(
  */
 function navigateTree(
   tree: Record<string, CommandNode>,
-  path: string[],
+  path: string[]
 ): {
   node: CommandNode | Record<string, CommandNode>;
   remainingPath: string[];
@@ -119,7 +134,7 @@ function navigateTree(
     const segment = path[i]!;
     const children = getChildren(current);
 
-    if (!children || !(segment in children)) {
+    if (!(children && segment in children)) {
       return { node: current, remainingPath: path.slice(i), traversedPath };
     }
 
@@ -135,8 +150,10 @@ function navigateTree(
  */
 function validateParams(
   params: Record<string, unknown>,
-  schema: z.ZodRawShape,
-): { success: true; data: Record<string, unknown> } | { success: false; error: string } {
+  schema: z.ZodRawShape
+):
+  | { success: true; data: Record<string, unknown> }
+  | { success: false; error: string } {
   const zodSchema = z.object(schema);
   const result = zodSchema.safeParse(params);
 
@@ -144,7 +161,9 @@ function validateParams(
     return { success: true, data: result.data as Record<string, unknown> };
   }
 
-  const issues = result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");
+  const issues = result.error.issues
+    .map((i) => `${i.path.join(".")}: ${i.message}`)
+    .join(", ");
   return { success: false, error: `Invalid parameters: ${issues}` };
 }
 
@@ -155,7 +174,10 @@ function generateCommandId(): string {
 /**
  * Create and register a hierarchical tool with the MCP server
  */
-export function createHierarchicalTool(server: McpServer, config: HierarchicalToolConfig): void {
+export function createHierarchicalTool(
+  server: McpServer,
+  config: HierarchicalToolConfig
+): void {
   const { name, description, tree, contextFactory } = config;
 
   server.registerTool(
@@ -198,7 +220,10 @@ export function createHierarchicalTool(server: McpServer, config: HierarchicalTo
 
       // If we have remaining path segments, the command path is invalid
       if (remainingPath.length > 0) {
-        const available = "children" in node ? Object.keys(node.children || {}) : Object.keys(node);
+        const available =
+          "children" in node
+            ? Object.keys(node.children || {})
+            : Object.keys(node);
         return {
           isError: true,
           content: [
@@ -243,6 +268,6 @@ export function createHierarchicalTool(server: McpServer, config: HierarchicalTo
       return {
         content: [{ type: "text", text: formatHelp(node, traversedPath) }],
       };
-    },
+    }
   );
 }

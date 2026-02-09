@@ -1,23 +1,23 @@
-import type { LanguageModel } from "ai";
-import {
-  listProjectsTool,
-  listSessionsTool,
-  createGetSessionStatusTool,
-  getContainersTool,
-  createCreateSessionTool,
-  createSendMessageToSessionTool,
-  createGetSessionScreenshotTool,
-  createRunBrowserTaskTool,
-  createGetSessionMessagesTool,
-  createSearchSessionsTool,
-} from "../tools";
-import type { BrowserServiceManager } from "../../managers/browser-service.manager";
-import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
-import type { PoolManager } from "../../managers/pool.manager";
 import type { ImageStore } from "@lab/context";
 import type { ImageAnalyzerContext } from "@lab/subagents/vision";
-import type { OpencodeClient, Publisher } from "../../types/dependencies";
+import type { LanguageModel } from "ai";
+import type { BrowserServiceManager } from "../../managers/browser-service.manager";
+import type { PoolManager } from "../../managers/pool.manager";
+import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
 import type { SessionStateStore } from "../../state/session-state-store";
+import type { OpencodeClient, Publisher } from "../../types/dependencies";
+import {
+  createCreateSessionTool,
+  createGetSessionMessagesTool,
+  createGetSessionScreenshotTool,
+  createGetSessionStatusTool,
+  createRunBrowserTaskTool,
+  createSearchSessionsTool,
+  createSendMessageToSessionTool,
+  getContainersTool,
+  listProjectsTool,
+  listSessionsTool,
+} from "../tools";
 
 interface BuildOrchestratorToolsConfig {
   browserService: BrowserServiceManager;
@@ -32,7 +32,9 @@ interface BuildOrchestratorToolsConfig {
   sessionStateStore: SessionStateStore;
 }
 
-export async function buildOrchestratorTools(toolsConfig: BuildOrchestratorToolsConfig) {
+export async function buildOrchestratorTools(
+  toolsConfig: BuildOrchestratorToolsConfig
+) {
   const createSessionTool = createCreateSessionTool({
     browserService: toolsConfig.browserService,
     sessionLifecycle: toolsConfig.sessionLifecycle,
@@ -50,7 +52,9 @@ export async function buildOrchestratorTools(toolsConfig: BuildOrchestratorTools
     sessionStateStore: toolsConfig.sessionStateStore,
   });
 
-  const getSessionStatusTool = createGetSessionStatusTool(toolsConfig.sessionStateStore);
+  const getSessionStatusTool = createGetSessionStatusTool(
+    toolsConfig.sessionStateStore
+  );
 
   const getSessionScreenshotTool = createGetSessionScreenshotTool({
     daemonController: toolsConfig.browserService.daemonController,
@@ -63,7 +67,9 @@ export async function buildOrchestratorTools(toolsConfig: BuildOrchestratorTools
     imageStore: toolsConfig.imageStore,
   });
 
-  const getSessionMessagesTool = createGetSessionMessagesTool(toolsConfig.opencode);
+  const getSessionMessagesTool = createGetSessionMessagesTool(
+    toolsConfig.opencode
+  );
   const searchSessionsTool = createSearchSessionsTool(toolsConfig.opencode);
 
   const baseTools = {

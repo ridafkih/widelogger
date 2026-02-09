@@ -43,17 +43,21 @@ const extensionToLanguage: Record<string, string> = {
 };
 
 function inferLanguage(filename?: string): string | undefined {
-  if (!filename) return undefined;
+  if (!filename) {
+    return undefined;
+  }
   const ext = filename.split(".").pop()?.toLowerCase();
-  if (!ext) return undefined;
+  if (!ext) {
+    return undefined;
+  }
   return extensionToLanguage[ext];
 }
 
-type ContentCodeProps = {
+interface ContentCodeProps {
   content: string;
   filename?: string;
   language?: string;
-};
+}
 
 function ContentCode({ content, filename, language }: ContentCodeProps) {
   const effectiveLanguage = language ?? inferLanguage(filename);

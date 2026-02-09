@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 import { tv } from "tailwind-variants";
 
 const breadcrumbItem = tv({
-  base: "text-nowrap overflow-x-hidden truncate",
+  base: "overflow-x-hidden truncate text-nowrap",
   variants: {
     muted: {
       true: "text-text-muted italic",
-      false: "text-text font-medium",
+      false: "font-medium text-text",
     },
   },
   defaultVariants: {
@@ -15,16 +15,24 @@ const breadcrumbItem = tv({
 });
 
 function BreadcrumbRoot({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-1 overflow-x-hidden">{children}</div>;
+  return (
+    <div className="flex items-center gap-1 overflow-x-hidden">{children}</div>
+  );
 }
 
-function BreadcrumbItem({ children, muted = false }: { children: ReactNode; muted?: boolean }) {
+function BreadcrumbItem({
+  children,
+  muted = false,
+}: {
+  children: ReactNode;
+  muted?: boolean;
+}) {
   return <span className={breadcrumbItem({ muted })}>{children}</span>;
 }
 
 function BreadcrumbMutedItem({ children }: { children: ReactNode }) {
   return (
-    <span className="text-text-muted text-nowrap overflow-x-hidden shrink-0 truncate">
+    <span className="shrink-0 overflow-x-hidden truncate text-nowrap text-text-muted">
       {children}
     </span>
   );

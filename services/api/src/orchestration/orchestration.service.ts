@@ -1,24 +1,30 @@
-import {
-  type OrchestrationStatus,
-  type ResolutionConfidence,
-  type MessagingMode,
+import type {
+  MessagingMode,
+  OrchestrationStatus,
+  ResolutionConfidence,
 } from "@lab/database/schema/orchestration-requests";
-import { findAllProjects, findProjectById } from "../repositories/project.repository";
-import { resolveProject, type ProjectResolutionResult } from "./project-resolver";
-import { spawnSession } from "./session-spawner";
-import { initiateConversation } from "./conversation-initiator";
-import { sendMessageToSession } from "./message-sender";
-import { findSessionById } from "../repositories/session.repository";
+import type { BrowserServiceManager } from "../managers/browser-service.manager";
+import type { PoolManager } from "../managers/pool.manager";
+import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
 import {
   createOrchestrationRequest,
   updateOrchestrationStatus,
 } from "../repositories/orchestration-request.repository";
-import type { BrowserServiceManager } from "../managers/browser-service.manager";
-import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
-import type { PoolManager } from "../managers/pool.manager";
-import type { OpencodeClient, Publisher } from "../types/dependencies";
-import type { SessionStateStore } from "../state/session-state-store";
+import {
+  findAllProjects,
+  findProjectById,
+} from "../repositories/project.repository";
+import { findSessionById } from "../repositories/session.repository";
 import { NotFoundError } from "../shared/errors";
+import type { SessionStateStore } from "../state/session-state-store";
+import type { OpencodeClient, Publisher } from "../types/dependencies";
+import { initiateConversation } from "./conversation-initiator";
+import { sendMessageToSession } from "./message-sender";
+import {
+  type ProjectResolutionResult,
+  resolveProject,
+} from "./project-resolver";
+import { spawnSession } from "./session-spawner";
 
 interface OrchestrationInput {
   content: string;
@@ -66,7 +72,7 @@ async function transitionTo(
     projectName?: string | null;
     sessionId?: string | null;
     errorMessage?: string | null;
-  },
+  }
 ): Promise<void> {
   await updateOrchestrationStatus(orchestrationId, status, {
     resolvedProjectId: data?.resolvedProjectId,
@@ -84,11 +90,14 @@ async function transitionTo(
       projectName: data?.projectName,
       sessionId: data?.sessionId,
       errorMessage: data?.errorMessage,
-    },
+    }
   );
 }
 
-function initializeStatusChannel(orchestrationId: string, publisher: Publisher): void {
+function initializeStatusChannel(
+  orchestrationId: string,
+  publisher: Publisher
+): void {
   publisher.publishSnapshot(
     "orchestrationStatus",
     { uuid: orchestrationId },
@@ -97,11 +106,13 @@ function initializeStatusChannel(orchestrationId: string, publisher: Publisher):
       projectName: null,
       sessionId: null,
       errorMessage: null,
-    },
+    }
   );
 }
 
-async function resolveTargetProject(ctx: OrchestrationContext): Promise<ProjectResolutionResult> {
+async function resolveTargetProject(
+  ctx: OrchestrationContext
+): Promise<ProjectResolutionResult> {
   await transitionTo(ctx.id, "thinking", ctx.publisher);
 
   const projects = await findAllProjects();
@@ -123,9 +134,11 @@ async function resolveTargetProject(ctx: OrchestrationContext): Promise<ProjectR
 
 async function spawnSessionForProject(
   ctx: OrchestrationContext,
-  resolution: ProjectResolutionResult,
+  resolution: ProjectResolutionResult
 ): Promise<string> {
-  await transitionTo(ctx.id, "starting", ctx.publisher, { projectName: resolution.projectName });
+  await transitionTo(ctx.id, "starting", ctx.publisher, {
+    projectName: resolution.projectName,
+  });
 
   const { session } = await spawnSession({
     projectId: resolution.projectId,
@@ -139,7 +152,10 @@ async function spawnSessionForProject(
   return session.id;
 }
 
-async function startConversation(ctx: OrchestrationContext, sessionId: string): Promise<void> {
+async function startConversation(
+  ctx: OrchestrationContext,
+  sessionId: string
+): Promise<void> {
   await initiateConversation({
     sessionId,
     task: ctx.content,
@@ -153,7 +169,7 @@ async function startConversation(ctx: OrchestrationContext, sessionId: string): 
 async function markComplete(
   ctx: OrchestrationContext,
   sessionId: string,
-  projectName: string,
+  projectName: string
 ): Promise<void> {
   await transitionTo(ctx.id, "complete", ctx.publisher, {
     resolvedSessionId: sessionId,
@@ -165,18 +181,20 @@ async function markComplete(
 async function markFailed(
   orchestrationId: string,
   error: unknown,
-  publisher: Publisher,
+  publisher: Publisher
 ): Promise<void> {
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
   await transitionTo(orchestrationId, "error", publisher, { errorMessage });
 }
 
-export async function orchestrate(input: OrchestrationInput): Promise<OrchestrationResult> {
+export async function orchestrate(
+  input: OrchestrationInput
+): Promise<OrchestrationResult> {
   const { opencode, publisher, sessionStateStore } = input;
 
   if (input.channelId) {
     const existingSession = await findSessionById(input.channelId);
-    if (existingSession && existingSession.opencodeSessionId) {
+    if (existingSession?.opencodeSessionId) {
       await sendMessageToSession({
         sessionId: input.channelId,
         opencodeSessionId: existingSession.opencodeSessionId,
@@ -191,7 +209,8 @@ export async function orchestrate(input: OrchestrationInput): Promise<Orchestrat
         orchestrationId: null,
         sessionId: input.channelId,
         projectId: existingSession.projectId,
-        projectName: (await findProjectById(existingSession.projectId))?.name ?? null,
+        projectName:
+          (await findProjectById(existingSession.projectId))?.name ?? null,
       };
     }
   }

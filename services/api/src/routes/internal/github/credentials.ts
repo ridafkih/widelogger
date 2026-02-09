@@ -1,7 +1,7 @@
-import type { Handler, NoRouteContext } from "../../../types/route";
+import { widelog } from "../../../logging";
 import { getGitHubCredentials } from "../../../repositories/github-settings.repository";
 import { NotFoundError } from "../../../shared/errors";
-import { widelog } from "../../../logging";
+import type { Handler, NoRouteContext } from "../../../types/route";
 
 const GET: Handler<NoRouteContext> = async () => {
   widelog.set("github.action", "get_credentials");

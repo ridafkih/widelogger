@@ -1,11 +1,14 @@
-import type { ZodSchema, ZodError } from "zod";
+import type { ZodError, ZodSchema } from "zod";
 import { ValidationError } from "./errors";
 
 /**
  * Parses and validates a request body against a Zod schema.
  * Throws ValidationError on invalid JSON or failed validation.
  */
-export async function parseRequestBody<T>(request: Request, schema: ZodSchema<T>): Promise<T> {
+export async function parseRequestBody<T>(
+  request: Request,
+  schema: ZodSchema<T>
+): Promise<T> {
   let body: unknown;
   try {
     body = await request.json();
@@ -13,7 +16,9 @@ export async function parseRequestBody<T>(request: Request, schema: ZodSchema<T>
     throw new ValidationError("Invalid JSON body");
   }
   const result = schema.safeParse(body);
-  if (!result.success) throw new ValidationError(formatZodError(result.error));
+  if (!result.success) {
+    throw new ValidationError(formatZodError(result.error));
+  }
   return result.data;
 }
 

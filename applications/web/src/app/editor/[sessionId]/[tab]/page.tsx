@@ -1,16 +1,16 @@
 "use client";
 
 import { Suspense, use } from "react";
-import { Chat } from "@/components/chat";
-import { StatusIcon } from "@/components/status-icon";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { NavTabs } from "@/components/nav-tabs";
+import { Chat } from "@/components/chat";
 import { ChatTabContent } from "@/components/chat-tab-content";
-import { ReviewTabContent } from "@/components/review-tab-content";
 import { FrameTabContent } from "@/components/frame-tab-content";
+import { Header, PageContent, PageFrame } from "@/components/layout-primitives";
+import { NavTabs } from "@/components/nav-tabs";
+import { ReviewTabContent } from "@/components/review-tab-content";
+import { StatusIcon } from "@/components/status-icon";
 import { StreamTabContent } from "@/components/stream-tab-content";
 import { ChatLoadingFallback } from "@/components/suspense-fallbacks";
-import { PageFrame, Header, PageContent } from "@/components/layout-primitives";
 import { useAgent } from "@/lib/use-agent";
 import { useQuestions } from "@/lib/use-questions";
 import { useSessionStatus } from "@/lib/use-session-status";
@@ -55,8 +55,13 @@ function SessionTabs() {
 
 function TabContent({ tab }: { tab: TabValue }) {
   const { sessionId, containerUrls } = useSessionContext();
-  const { messages, sendMessage, abortSession, sessionStatus, questionRequests } =
-    useAgent(sessionId);
+  const {
+    messages,
+    sendMessage,
+    abortSession,
+    sessionStatus,
+    questionRequests,
+  } = useAgent(sessionId);
   const {
     reply: replyToQuestion,
     reject: rejectQuestion,
@@ -66,15 +71,19 @@ function TabContent({ tab }: { tab: TabValue }) {
   switch (tab) {
     case "chat":
       return (
-        <Chat.Provider key={sessionId} onSubmit={sendMessage} onAbort={abortSession}>
+        <Chat.Provider
+          key={sessionId}
+          onAbort={abortSession}
+          onSubmit={sendMessage}
+        >
           <ChatTabContent
-            messages={messages}
-            onQuestionReply={replyToQuestion}
-            onQuestionReject={rejectQuestion}
             isQuestionSubmitting={isQuestionSubmitting}
-            sessionStatus={sessionStatus}
+            messages={messages}
             onAbort={abortSession}
+            onQuestionReject={rejectQuestion}
+            onQuestionReply={replyToQuestion}
             questionRequests={questionRequests}
+            sessionStatus={sessionStatus}
           />
         </Chat.Provider>
       );
@@ -84,7 +93,11 @@ function TabContent({ tab }: { tab: TabValue }) {
       return <FrameTabContent frameUrl={containerUrls[0]} />;
     case "stream":
       return (
-        <Chat.Provider key={`stream-${sessionId}`} onSubmit={sendMessage} onAbort={abortSession}>
+        <Chat.Provider
+          key={`stream-${sessionId}`}
+          onAbort={abortSession}
+          onSubmit={sendMessage}
+        >
           <StreamTabContent />
         </Chat.Provider>
       );
@@ -93,14 +106,16 @@ function TabContent({ tab }: { tab: TabValue }) {
   }
 }
 
-type TabPageProps = {
+interface TabPageProps {
   params: Promise<{ sessionId: string; tab: string }>;
-};
+}
 
 export default function TabPage({ params }: TabPageProps) {
   const { tab } = use(params);
   const validTabs: TabValue[] = ["chat", "review", "frame", "stream"];
-  const currentTab = validTabs.includes(tab as TabValue) ? (tab as TabValue) : "chat";
+  const currentTab = validTabs.includes(tab as TabValue)
+    ? (tab as TabValue)
+    : "chat";
 
   return (
     <PageFrame position="relative">

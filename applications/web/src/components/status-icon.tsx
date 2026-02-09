@@ -1,8 +1,19 @@
-import { Loader2, Check, AlertCircle, Trash2, CircleDashed } from "lucide-react";
-import { tv } from "tailwind-variants";
 import type { SessionStatus as BaseSessionStatus } from "@lab/client";
+import {
+  AlertCircle,
+  Check,
+  CircleDashed,
+  Loader2,
+  Trash2,
+} from "lucide-react";
+import { tv } from "tailwind-variants";
 
-type UnifiedSessionStatus = "starting" | "running" | "generating" | "error" | "deleting";
+type UnifiedSessionStatus =
+  | "starting"
+  | "running"
+  | "generating"
+  | "error"
+  | "deleting";
 type StatusIconStatus = BaseSessionStatus | UnifiedSessionStatus;
 
 const statusIcon = tv({
@@ -22,10 +33,10 @@ const statusIcon = tv({
   },
 });
 
-type StatusIconProps = {
+interface StatusIconProps {
   status: StatusIconStatus;
   size?: number;
-};
+}
 
 export function StatusIcon({ status, size = 14 }: StatusIconProps) {
   const className = statusIcon({ status });
@@ -35,15 +46,15 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
     case "loading":
     case "starting":
     case "generating":
-      return <Loader2 size={size} className={className} />;
+      return <Loader2 className={className} size={size} />;
     case "idle":
     case "running":
-      return <CircleDashed size={size} className={className} />;
+      return <CircleDashed className={className} size={size} />;
     case "complete":
-      return <Check size={size} className={className} />;
+      return <Check className={className} size={size} />;
     case "error":
-      return <AlertCircle size={size} className={className} />;
+      return <AlertCircle className={className} size={size} />;
     case "deleting":
-      return <Trash2 size={size} className={className} />;
+      return <Trash2 className={className} size={size} />;
   }
 }

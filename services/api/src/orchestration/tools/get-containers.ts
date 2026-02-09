@@ -1,14 +1,15 @@
-import { z } from "zod";
 import { tool } from "ai";
-import { findSessionById } from "../../repositories/session.repository";
+import { z } from "zod";
 import { getSessionContainersWithDetails } from "../../repositories/container-session.repository";
+import { findSessionById } from "../../repositories/session.repository";
 
 const inputSchema = z.object({
   sessionId: z.string().describe("The session ID to get containers for"),
 });
 
 export const getContainersTool = tool({
-  description: "Gets container information for a session including name, image, status, and ports.",
+  description:
+    "Gets container information for a session including name, image, status, and ports.",
   inputSchema,
   execute: async ({ sessionId }) => {
     const session = await findSessionById(sessionId);
@@ -22,7 +23,8 @@ export const getContainersTool = tool({
     return {
       containers: containers.map((container) => ({
         id: container.id,
-        name: container.hostname ?? container.image.split("/").pop()?.split(":")[0],
+        name:
+          container.hostname ?? container.image.split("/").pop()?.split(":")[0],
         image: container.image,
         status: container.status,
       })),

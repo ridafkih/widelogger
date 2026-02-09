@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { widelog } from "../../../../logging";
 import { createContainerWithDetails } from "../../../../repositories/container-definition.repository";
 import {
   findContainersWithDependencies,
@@ -6,8 +8,6 @@ import {
 import { ValidationError } from "../../../../shared/errors";
 import { withParams } from "../../../../shared/route-helpers";
 import { parseRequestBody } from "../../../../shared/validation";
-import { widelog } from "../../../../logging";
-import { z } from "zod";
 
 interface DependencyInput {
   containerId: string;
@@ -32,9 +32,9 @@ const createContainerSchema = z.object({
 });
 
 function normalizeDependencies(
-  dependsOn: DependsOnInput | undefined,
+  dependsOn: DependsOnInput | undefined
 ): { dependsOnContainerId: string; condition?: string }[] {
-  if (!dependsOn || !Array.isArray(dependsOn)) {
+  if (!(dependsOn && Array.isArray(dependsOn))) {
     return [];
   }
 
@@ -50,17 +50,20 @@ function normalizeDependencies(
 }
 
 function extractDependsOnIds(
-  dependencies: { dependsOnContainerId: string; condition?: string }[],
+  dependencies: { dependsOnContainerId: string; condition?: string }[]
 ): string[] {
   return dependencies.map((dependency) => dependency.dependsOnContainerId);
 }
 
-const GET = withParams<{ projectId: string }>(["projectId"], async ({ params: { projectId } }) => {
-  widelog.set("project.id", projectId);
-  const containers = await findContainersWithDependencies(projectId);
-  widelog.set("container.count", containers.length);
-  return Response.json(containers);
-});
+const GET = withParams<{ projectId: string }>(
+  ["projectId"],
+  async ({ params: { projectId } }) => {
+    widelog.set("project.id", projectId);
+    const containers = await findContainersWithDependencies(projectId);
+    widelog.set("container.count", containers.length);
+    return Response.json(containers);
+  }
+);
 
 const POST = withParams<{ projectId: string }>(
   ["projectId"],
@@ -74,7 +77,11 @@ const POST = withParams<{ projectId: string }>(
     if (normalizedDependencies.length > 0) {
       const dependsOnIds = extractDependsOnIds(normalizedDependencies);
       // We need a temporary ID for self-dependency check - use empty string since container doesn't exist yet
-      const validation = await validateDependencies(projectId, "", dependsOnIds);
+      const validation = await validateDependencies(
+        projectId,
+        "",
+        dependsOnIds
+      );
       if (!validation.valid) {
         throw new ValidationError(validation.errors.join(", "));
       }
@@ -90,7 +97,8 @@ const POST = withParams<{ projectId: string }>(
       image: body.image,
       hostname: body.hostname,
       ports,
-      dependencies: normalizedDependencies.length > 0 ? normalizedDependencies : undefined,
+      dependencies:
+        normalizedDependencies.length > 0 ? normalizedDependencies : undefined,
     });
 
     return Response.json(
@@ -101,9 +109,9 @@ const POST = withParams<{ projectId: string }>(
           condition: dependency.condition || "service_started",
         })),
       },
-      { status: 201 },
+      { status: 201 }
     );
-  },
+  }
 );
 
 export { GET, POST };

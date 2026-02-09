@@ -1,6 +1,6 @@
-import type Dockerode from "dockerode";
+import { Writable } from "node:stream";
 import type { ExecOptions, ExecResult } from "@lab/sandbox-sdk";
-import { Writable } from "stream";
+import type Dockerode from "dockerode";
 
 export class ExecOperations {
   private readonly modem: Dockerode["modem"];

@@ -1,15 +1,15 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
-import Link from "next/link";
 import type { Session } from "@lab/client";
-import { useMultiplayer } from "@/lib/multiplayer";
-import { useSessionStatus, type SessionStatus } from "@/lib/use-session-status";
-import { useSessionTitle } from "@/lib/use-session-title";
+import Link from "next/link";
+import { createContext, type ReactNode, use } from "react";
 import { prefetchSessionContainers } from "@/lib/api";
-import { StatusIcon } from "./status-icon";
+import { useMultiplayer } from "@/lib/multiplayer";
+import { type SessionStatus, useSessionStatus } from "@/lib/use-session-status";
+import { useSessionTitle } from "@/lib/use-session-title";
 import { Hash } from "./hash";
 import { ProjectNavigator } from "./project-navigator-list";
+import { StatusIcon } from "./status-icon";
 
 interface SessionItemContextValue {
   session: Session;
@@ -25,7 +25,9 @@ const SessionItemContext = createContext<SessionItemContextValue | null>(null);
 function useSessionItemContext() {
   const context = use(SessionItemContext);
   if (!context) {
-    throw new Error("SessionItem components must be used within SessionItem.Provider");
+    throw new Error(
+      "SessionItem components must be used within SessionItem.Provider"
+    );
   }
   return context;
 }
@@ -73,12 +75,20 @@ function SessionItemHash() {
 
 function SessionItemTitle() {
   const { title } = useSessionItemContext();
-  return <ProjectNavigator.ItemTitle empty={!title}>{title}</ProjectNavigator.ItemTitle>;
+  return (
+    <ProjectNavigator.ItemTitle empty={!title}>
+      {title}
+    </ProjectNavigator.ItemTitle>
+  );
 }
 
 function SessionItemLastMessage() {
   const { lastMessage } = useSessionItemContext();
-  return <ProjectNavigator.ItemDescription>{lastMessage}</ProjectNavigator.ItemDescription>;
+  return (
+    <ProjectNavigator.ItemDescription>
+      {lastMessage}
+    </ProjectNavigator.ItemDescription>
+  );
 }
 
 interface SessionItemLinkProps {
@@ -90,7 +100,11 @@ function SessionItemLink({ children, className }: SessionItemLinkProps) {
   const { sessionId, prefetch } = useSessionItemContext();
 
   return (
-    <Link href={`/editor/${sessionId}/chat`} className={className} onMouseDown={prefetch}>
+    <Link
+      className={className}
+      href={`/editor/${sessionId}/chat`}
+      onMouseDown={prefetch}
+    >
       {children}
     </Link>
   );

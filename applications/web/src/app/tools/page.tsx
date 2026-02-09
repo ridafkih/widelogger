@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/cn";
-import { getToolRenderer } from "@/components/tool-renderers";
 import type { ToolRendererProps } from "@/components/tool-renderers";
+import { getToolRenderer } from "@/components/tool-renderers";
+import { cn } from "@/lib/cn";
 
-type MockTool = {
+interface MockTool {
   name: string;
   description: string;
   examples: Array<{
     label: string;
     props: ToolRendererProps;
   }>;
-};
+}
 
 const mockTools: MockTool[] = [
   {
@@ -62,7 +62,8 @@ no changes added to commit (use "git add" and/or "git commit -a")`,
           input: {
             command: "npm run nonexistent",
           },
-          error: 'Error: Command failed with exit code 1\nnpm ERR! Missing script: "nonexistent"',
+          error:
+            'Error: Command failed with exit code 1\nnpm ERR! Missing script: "nonexistent"',
           status: "error",
         },
       },
@@ -336,8 +337,16 @@ The auth flow uses JWT tokens stored in httpOnly cookies.`,
           tool: "TodoWrite",
           input: {
             todos: [
-              { id: "1", content: "Set up project structure", status: "completed" },
-              { id: "2", content: "Implement core features", status: "in_progress" },
+              {
+                id: "1",
+                content: "Set up project structure",
+                status: "completed",
+              },
+              {
+                id: "2",
+                content: "Implement core features",
+                status: "in_progress",
+              },
               { id: "3", content: "Write tests", status: "pending" },
               { id: "4", content: "Deploy to production", status: "pending" },
             ],
@@ -373,23 +382,23 @@ function ToolPreviewCard({ tool }: { tool: MockTool }) {
   const [expandedExample, setExpandedExample] = useState<number>(0);
 
   return (
-    <div className="border border-border overflow-hidden">
-      <div className="px-4 py-2 bg-bg-muted border-b border-border">
-        <h3 className="text-xs font-medium">{tool.name}</h3>
-        <p className="text-xs text-text-muted mt-0.5">{tool.description}</p>
+    <div className="overflow-hidden border border-border">
+      <div className="border-border border-b bg-bg-muted px-4 py-2">
+        <h3 className="font-medium text-xs">{tool.name}</h3>
+        <p className="mt-0.5 text-text-muted text-xs">{tool.description}</p>
       </div>
-      <div className="flex border-b border-border">
+      <div className="flex border-border border-b">
         {tool.examples.map((example, index) => (
           <button
-            key={index}
-            type="button"
-            onClick={() => setExpandedExample(index)}
             className={cn(
               "px-3 py-1.5 text-xs",
               expandedExample === index
                 ? "bg-bg text-text"
-                : "text-text-muted hover:text-text-secondary hover:bg-bg-hover",
+                : "text-text-muted hover:bg-bg-hover hover:text-text-secondary"
             )}
+            key={index}
+            onClick={() => setExpandedExample(index)}
+            type="button"
           >
             {example.label}
           </button>
@@ -398,8 +407,8 @@ function ToolPreviewCard({ tool }: { tool: MockTool }) {
       <div className="bg-bg">
         {(() => {
           const example = tool.examples[expandedExample]!;
-          const Renderer = getToolRenderer(example!.props.tool);
-          return <Renderer {...example!.props} />;
+          const Renderer = getToolRenderer(example?.props.tool);
+          return <Renderer {...example?.props} />;
         })()}
       </div>
     </div>
@@ -409,10 +418,11 @@ function ToolPreviewCard({ tool }: { tool: MockTool }) {
 export default function ToolsPreviewPage() {
   return (
     <div className="min-h-screen bg-bg p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-sm font-medium mb-1">Tool Renderers Preview</h1>
-        <p className="text-xs text-text-muted mb-6">
-          Preview all tool-specific renderers with sample data. Click tabs to see different states.
+      <div className="mx-auto max-w-4xl">
+        <h1 className="mb-1 font-medium text-sm">Tool Renderers Preview</h1>
+        <p className="mb-6 text-text-muted text-xs">
+          Preview all tool-specific renderers with sample data. Click tabs to
+          see different states.
         </p>
         <div className="flex flex-col gap-4">
           {mockTools.map((tool) => (

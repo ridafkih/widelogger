@@ -1,33 +1,46 @@
-import { useEffect, useCallback, useContext, useMemo, useRef } from "react";
-import { useAtom, useAtomValue } from "jotai";
 import type {
   ChannelConfig,
+  ChannelName,
+  ClientMessageOf,
+  EventOf,
+  HasParams,
+  PathOf,
   Schema,
   SnapshotOf,
-  ChannelName,
-  PathOf,
-  HasParams,
-  EventOf,
-  ClientMessageOf,
 } from "@lab/multiplayer-sdk";
-import { resolvePath, hasParams } from "@lab/multiplayer-sdk";
+import { hasParams, resolvePath } from "@lab/multiplayer-sdk";
+import { useAtom, useAtomValue } from "jotai";
+import { useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import {
+  type ChannelState,
+  channelStateFamily,
+  connectionStateAtom,
+} from "./atoms";
 import type { ConnectionManager } from "./connection";
-import { connectionStateAtom, channelStateFamily, type ChannelState } from "./atoms";
 import { MultiplayerContext } from "./provider";
 
-function parseSnapshot<C extends ChannelConfig>(channel: C, data: unknown): SnapshotOf<C> {
+function parseSnapshot<C extends ChannelConfig>(
+  channel: C,
+  data: unknown
+): SnapshotOf<C> {
   return channel.snapshot.parse(data);
 }
 
-function parseEvent<C extends ChannelConfig>(channel: C, data: unknown): EventOf<C> {
+function parseEvent<C extends ChannelConfig>(
+  channel: C,
+  data: unknown
+): EventOf<C> {
   if (!channel.event) {
     throw new Error("Channel does not have events");
   }
   return channel.event.parse(data);
 }
 
-type ChannelParams<S extends Schema, K extends ChannelName<S>> =
-  HasParams<PathOf<S["channels"][K]>> extends true ? { uuid: string } : undefined;
+type ChannelParams<S extends Schema, K extends ChannelName<S>> = HasParams<
+  PathOf<S["channels"][K]>
+> extends true
+  ? { uuid: string }
+  : undefined;
 
 interface ChannelOptions {
   enabled?: boolean;
@@ -59,9 +72,9 @@ export function createHooks<S extends Schema>(schema: S) {
 
     const send = useCallback(
       (sessionId: string, message: ClientMessage) => {
-        connection.sendMessage(Object.assign({ sessionId }, message));
+        connection.sendMessage({ sessionId, ...message });
       },
-      [connection],
+      [connection]
     );
 
     const connectionState = useAtomValue(connectionStateAtom);
@@ -69,10 +82,12 @@ export function createHooks<S extends Schema>(schema: S) {
     function useChannel<K extends ChannelName<S>>(
       channelName: K,
       params?: ChannelParams<S, K>,
-      options?: ChannelOptions,
+      options?: ChannelOptions
     ): SnapshotOf<S["channels"][K]> {
       const channel = schema.channels[channelName];
-      if (!channel) throw new Error(`Unknown channel: ${channelName}`);
+      if (!channel) {
+        throw new Error(`Unknown channel: ${channelName}`);
+      }
 
       const resolvedParams = (params ?? {}) as Record<string, unknown>;
       const resolvedOptions = options ?? {};
@@ -88,21 +103,26 @@ export function createHooks<S extends Schema>(schema: S) {
           hasParams(channel.path)
             ? resolvePath(channel.path, toStringRecord(resolvedParams))
             : channel.path,
-        [channel.path, resolvedParams],
+        [channel.path, resolvedParams]
       );
 
-      const stateAtom = useMemo(() => channelStateFamily(resolvedPath), [resolvedPath]);
+      const stateAtom = useMemo(
+        () => channelStateFamily(resolvedPath),
+        [resolvedPath]
+      );
       const [state, setState] = useAtom(stateAtom);
 
       useEffect(() => {
-        if (shouldSkip) return;
+        if (shouldSkip) {
+          return;
+        }
 
         const alreadySubscribed = connection.isSubscribed(resolvedPath);
         if (!alreadySubscribed) {
           setState((prev: ChannelState<unknown>) =>
             prev.status === "connected" || prev.status === "reconnecting"
               ? { status: "reconnecting", data: prev.data }
-              : { status: "connecting" },
+              : { status: "connecting" }
           );
         }
 
@@ -114,8 +134,11 @@ export function createHooks<S extends Schema>(schema: S) {
             case "delta":
               setState((prev: ChannelState<unknown>) =>
                 prev.status === "connected" || prev.status === "reconnecting"
-                  ? { status: "connected", data: applyDelta(prev.data, message.data, channel) }
-                  : prev,
+                  ? {
+                      status: "connected",
+                      data: applyDelta(prev.data, message.data, channel),
+                    }
+                  : prev
               );
               break;
             case "error":
@@ -125,11 +148,17 @@ export function createHooks<S extends Schema>(schema: S) {
         });
 
         return unsubscribe;
-      }, [channel, connection, resolvedPath, setState, shouldSkip]);
+      }, [channel, resolvedPath, setState, shouldSkip]);
 
-      if (shouldSkip || state.status === "connecting") return channel.default;
-      if (state.status === "reconnecting") return parseSnapshot(channel, state.data);
-      if (state.status !== "connected") return channel.default;
+      if (shouldSkip || state.status === "connecting") {
+        return channel.default;
+      }
+      if (state.status === "reconnecting") {
+        return parseSnapshot(channel, state.data);
+      }
+      if (state.status !== "connected") {
+        return channel.default;
+      }
       return parseSnapshot(channel, state.data);
     }
 
@@ -164,7 +193,9 @@ export function createHooks<S extends Schema>(schema: S) {
       const enabled = options.enabled !== false;
 
       useEffect(() => {
-        if (!enabled) return;
+        if (!enabled) {
+          return;
+        }
 
         const unsubscribe = connection.subscribe(resolvedPath, (message) => {
           if (message.type === "event") {
@@ -174,7 +205,7 @@ export function createHooks<S extends Schema>(schema: S) {
         });
 
         return unsubscribe;
-      }, [resolvedPath, enabled]);
+      }, [resolvedPath, enabled, channel]);
     }
 
     return {
@@ -191,7 +222,10 @@ export function createHooks<S extends Schema>(schema: S) {
 }
 
 type DeltaType = "add" | "update" | "remove" | "append";
-type IdentifiableItem = Record<string, unknown> & { id?: unknown; path?: unknown };
+type IdentifiableItem = Record<string, unknown> & {
+  id?: unknown;
+  path?: unknown;
+};
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -205,13 +239,20 @@ function getKey(item: IdentifiableItem): unknown {
   return item.id ?? item.path;
 }
 
-function extractItem(delta: Record<string, unknown>): IdentifiableItem | undefined {
+function extractItem(
+  delta: Record<string, unknown>
+): IdentifiableItem | undefined {
   for (const [key, value] of Object.entries(delta)) {
-    if (key !== "type" && isIdentifiable(value)) return value;
+    if (key !== "type" && isIdentifiable(value)) {
+      return value;
+    }
   }
 }
 
-function applyArrayDelta(array: unknown[], delta: Record<string, unknown>): unknown[] {
+function applyArrayDelta(
+  array: unknown[],
+  delta: Record<string, unknown>
+): unknown[] {
   const type = delta.type as DeltaType;
   const item = extractItem(delta);
 
@@ -220,23 +261,35 @@ function applyArrayDelta(array: unknown[], delta: Record<string, unknown>): unkn
       return "message" in delta ? [...array, delta.message] : array;
 
     case "add": {
-      if (!item) return array;
+      if (!item) {
+        return array;
+      }
       const key = getKey(item);
-      const exists = array.some((element) => isIdentifiable(element) && getKey(element) === key);
+      const exists = array.some(
+        (element) => isIdentifiable(element) && getKey(element) === key
+      );
       return exists ? array : [...array, item];
     }
 
     case "remove": {
-      if (!item) return array;
+      if (!item) {
+        return array;
+      }
       const key = getKey(item);
-      return array.filter((element) => !isIdentifiable(element) || getKey(element) !== key);
+      return array.filter(
+        (element) => !isIdentifiable(element) || getKey(element) !== key
+      );
     }
 
     case "update": {
-      if (!item) return array;
+      if (!item) {
+        return array;
+      }
       const key = getKey(item);
       return array.map((element) =>
-        isIdentifiable(element) && getKey(element) === key ? { ...element, ...item } : element,
+        isIdentifiable(element) && getKey(element) === key
+          ? { ...element, ...item }
+          : element
       );
     }
 
@@ -245,8 +298,14 @@ function applyArrayDelta(array: unknown[], delta: Record<string, unknown>): unkn
   }
 }
 
-function applyDelta(current: unknown, delta: unknown, channel: ChannelConfig): unknown {
-  if (!channel.delta || !isObject(delta)) return current;
+function applyDelta(
+  current: unknown,
+  delta: unknown,
+  channel: ChannelConfig
+): unknown {
+  if (!(channel.delta && isObject(delta))) {
+    return current;
+  }
 
   if (Array.isArray(current)) {
     return applyArrayDelta(current, delta);

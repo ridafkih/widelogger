@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type CurrentState, type DesiredState } from "../types/session";
+import type { CurrentState, DesiredState } from "../types/session";
 
 export const Action = z.enum([
   "StartDaemon",
@@ -19,13 +19,21 @@ const VALID_TRANSITIONS: Record<CurrentState, CurrentState[]> = {
   error: ["starting", "stopped"],
 };
 
-export const isValidTransition = (from: CurrentState, to: CurrentState): boolean => {
-  if (from === to) return true;
+export const isValidTransition = (
+  from: CurrentState,
+  to: CurrentState
+): boolean => {
+  if (from === to) {
+    return true;
+  }
   const validTargets = VALID_TRANSITIONS[from];
   return validTargets.includes(to);
 };
 
-export const computeRequiredAction = (desired: DesiredState, actual: CurrentState): Action => {
+export const computeRequiredAction = (
+  desired: DesiredState,
+  actual: CurrentState
+): Action => {
   if (desired === "running") {
     switch (actual) {
       case "pending":
@@ -59,16 +67,25 @@ export const computeRequiredAction = (desired: DesiredState, actual: CurrentStat
   }
 };
 
-export const computeNextState = (current: CurrentState, action: Action): CurrentState | null => {
+export const computeNextState = (
+  current: CurrentState,
+  action: Action
+): CurrentState | null => {
   switch (action) {
     case "StartDaemon":
-      if (current === "stopped" || current === "error") return "starting";
+      if (current === "stopped" || current === "error") {
+        return "starting";
+      }
       return null;
     case "StopDaemon":
-      if (current === "running" || current === "starting") return "stopping";
+      if (current === "running" || current === "starting") {
+        return "stopping";
+      }
       return null;
     case "ResetToStopped":
-      if (current === "error" || current === "pending") return "stopped";
+      if (current === "error" || current === "pending") {
+        return "stopped";
+      }
       return null;
     case "WaitForReady":
     case "NoOp":

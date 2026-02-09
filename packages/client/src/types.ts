@@ -74,7 +74,12 @@ export interface SessionContainer {
   urls: string[];
 }
 
-export type SessionStatus = "creating" | "loading" | "running" | "idle" | "complete";
+export type SessionStatus =
+  | "creating"
+  | "loading"
+  | "running"
+  | "idle"
+  | "complete";
 
 export interface Session {
   id: string;

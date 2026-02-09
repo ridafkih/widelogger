@@ -7,15 +7,15 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => {
     return (
       <textarea
-        ref={ref}
         className={cn(
-          "w-full bg-muted border border-border px-2 py-1.5 text-sm resize-none placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-offset-px focus-visible:outline-ring",
-          className,
+          "w-full resize-none border border-border bg-muted px-2 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-ring focus-visible:outline-offset-px",
+          className
         )}
+        ref={ref}
         {...props}
       />
     );
-  },
+  }
 );
 
 Textarea.displayName = "Textarea";

@@ -1,11 +1,14 @@
-import { z } from "zod";
-import { tool } from "ai";
-import type { LanguageModel } from "ai";
 import type { DaemonController } from "@lab/browser-protocol";
-import { executeBrowserTask, type BrowserAgentContext } from "@lab/subagents/browser";
-import { ImageStore } from "@lab/context";
-import { getErrorMessage } from "../../shared/errors";
+import type { ImageStore } from "@lab/context";
+import {
+  type BrowserAgentContext,
+  executeBrowserTask,
+} from "@lab/subagents/browser";
+import type { LanguageModel } from "ai";
+import { tool } from "ai";
+import { z } from "zod";
 import { widelog } from "../../logging";
+import { getErrorMessage } from "../../shared/errors";
 
 interface RunBrowserTaskToolContext {
   daemonController: DaemonController;
@@ -17,16 +20,20 @@ const inputSchema = z.object({
   objective: z
     .string()
     .describe(
-      "What to accomplish with the browser (e.g., 'go to example.com and take a screenshot of the pricing page')",
+      "What to accomplish with the browser (e.g., 'go to example.com and take a screenshot of the pricing page')"
     ),
   startUrl: z
     .string()
     .url()
     .optional()
-    .describe("Optional starting URL to navigate to before executing the objective"),
+    .describe(
+      "Optional starting URL to navigate to before executing the objective"
+    ),
 });
 
-export function createRunBrowserTaskTool(toolContext: RunBrowserTaskToolContext) {
+export function createRunBrowserTaskTool(
+  toolContext: RunBrowserTaskToolContext
+) {
   const browserContext: BrowserAgentContext = {
     daemonController: toolContext.daemonController,
     createModel: toolContext.createModel,
@@ -48,9 +55,12 @@ export function createRunBrowserTaskTool(toolContext: RunBrowserTaskToolContext)
 
         if (result.screenshot && toolContext.imageStore) {
           try {
-            const storeResult = await toolContext.imageStore.storeBase64(result.screenshot.data, {
-              prefix: "browser-tasks/",
-            });
+            const storeResult = await toolContext.imageStore.storeBase64(
+              result.screenshot.data,
+              {
+                prefix: "browser-tasks/",
+              }
+            );
 
             return {
               success: result.success,
@@ -65,9 +75,13 @@ export function createRunBrowserTaskTool(toolContext: RunBrowserTaskToolContext)
               trace: result.trace,
             };
           } catch (uploadError) {
-            widelog.set("orchestration.tool.run_browser_task.screenshot_upload_failed", true);
+            widelog.set(
+              "orchestration.tool.run_browser_task.screenshot_upload_failed",
+              true
+            );
             widelog.errorFields(uploadError, {
-              prefix: "orchestration.tool.run_browser_task.screenshot_upload_error",
+              prefix:
+                "orchestration.tool.run_browser_task.screenshot_upload_error",
               includeStack: false,
             });
             // Fall back to base64
@@ -87,7 +101,9 @@ export function createRunBrowserTaskTool(toolContext: RunBrowserTaskToolContext)
           trace: result.trace,
         };
       } catch (error) {
-        widelog.errorFields(error, { prefix: "orchestration.tool.run_browser_task.error" });
+        widelog.errorFields(error, {
+          prefix: "orchestration.tool.run_browser_task.error",
+        });
         return {
           success: false,
           error: `Browser task failed: ${getErrorMessage(error)}`,

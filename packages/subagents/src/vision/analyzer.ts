@@ -1,11 +1,11 @@
-import { generateText, type LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
+import { generateText, type LanguageModel } from "ai";
 import type {
-  ImageAnalyzerConfig,
-  ImageAnalyzerContext,
   AnalyzeImageInput,
   AnalyzeImageResult,
+  ImageAnalyzerConfig,
+  ImageAnalyzerContext,
 } from "./types";
 
 /**
@@ -35,7 +35,10 @@ export function createVisionModel(config: ImageAnalyzerConfig): LanguageModel {
  */
 export function createVisionContextFromEnv(): ImageAnalyzerContext | undefined {
   // Check for explicit config first
-  const provider = process.env.IMAGE_ANALYZER_PROVIDER as "anthropic" | "openai" | undefined;
+  const provider = process.env.IMAGE_ANALYZER_PROVIDER as
+    | "anthropic"
+    | "openai"
+    | undefined;
   const model = process.env.IMAGE_ANALYZER_MODEL;
   const apiKey = process.env.IMAGE_ANALYZER_API_KEY;
 
@@ -75,7 +78,7 @@ export function createVisionContextFromEnv(): ImageAnalyzerContext | undefined {
  */
 export async function analyzeImage(
   input: AnalyzeImageInput,
-  context: ImageAnalyzerContext,
+  context: ImageAnalyzerContext
 ): Promise<AnalyzeImageResult> {
   try {
     // Fetch the image

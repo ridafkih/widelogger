@@ -1,7 +1,7 @@
 export { ContentCode } from "./content-code";
-export { ContentText } from "./content-text";
 export { ContentDiff } from "./content-diff";
 export { ContentError } from "./content-error";
-export { ResultsToggle } from "./results-toggle";
+export { ContentText } from "./content-text";
+export { getArray, getString } from "./get-input";
 export { parseFileOutput } from "./parse-file-output";
-export { getString, getArray } from "./get-input";
+export { ResultsToggle } from "./results-toggle";

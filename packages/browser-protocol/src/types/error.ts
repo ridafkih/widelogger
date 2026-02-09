@@ -17,7 +17,7 @@ export class BrowserError extends Error {
   constructor(
     public readonly kind: BrowserErrorKind,
     message: string,
-    public readonly sessionId?: string,
+    public readonly sessionId?: string
   ) {
     super(message);
     this.name = "BrowserError";
@@ -27,7 +27,7 @@ export class BrowserError extends Error {
     return new BrowserError(
       "DaemonNotFound",
       `Daemon not found for session ${sessionId}`,
-      sessionId,
+      sessionId
     );
   }
 
@@ -47,7 +47,7 @@ export class BrowserError extends Error {
     return new BrowserError(
       "NavigationFailed",
       `Failed to navigate to ${url}: ${reason}`,
-      sessionId,
+      sessionId
     );
   }
 
@@ -55,12 +55,16 @@ export class BrowserError extends Error {
     return new BrowserError(
       "StateTransitionInvalid",
       `Invalid transition from ${from} to ${to}`,
-      sessionId,
+      sessionId
     );
   }
 
   static sessionNotFound(sessionId: string) {
-    return new BrowserError("SessionNotFound", `Session ${sessionId} not found`, sessionId);
+    return new BrowserError(
+      "SessionNotFound",
+      `Session ${sessionId} not found`,
+      sessionId
+    );
   }
 
   static validationFailed(message: string, sessionId?: string) {

@@ -1,4 +1,4 @@
-import { useState, type ImgHTMLAttributes } from "react";
+import { type ImgHTMLAttributes, useState } from "react";
 import { cn } from "../utils/cn";
 
 type AvatarSize = "xxs" | "xs" | "sm" | "md" | "lg";
@@ -56,23 +56,33 @@ export function Avatar({
   const showFallback = !src || error;
 
   return (
-    <span className={cn("relative inline-block", sizeStyles[size], rounded && "rounded-full")}>
+    <span
+      className={cn(
+        "relative inline-block",
+        sizeStyles[size],
+        rounded && "rounded-full"
+      )}
+    >
       {showFallback ? (
         <span
           className={cn(
-            "flex h-full w-full items-center justify-center bg-muted text-muted-foreground font-medium",
+            "flex h-full w-full items-center justify-center bg-muted font-medium text-muted-foreground",
             rounded && "rounded-full",
-            className,
+            className
           )}
         >
           {fallback ? getInitials(fallback) : "?"}
         </span>
       ) : (
         <img
-          src={src}
           alt={alt}
-          className={cn("h-full w-full object-cover", rounded && "rounded-full", className)}
+          className={cn(
+            "h-full w-full object-cover",
+            rounded && "rounded-full",
+            className
+          )}
           onError={() => setError(true)}
+          src={src}
           {...props}
         />
       )}
@@ -81,7 +91,7 @@ export function Avatar({
           className={cn(
             "absolute block rounded-full ring-2 ring-background",
             presenceStyles[presence],
-            presenceSizeStyles[size],
+            presenceSizeStyles[size]
           )}
         />
       )}
@@ -89,14 +99,19 @@ export function Avatar({
   );
 }
 
-export type AvatarGroupProps = {
+export interface AvatarGroupProps {
   children: React.ReactNode;
   max?: number;
   size?: AvatarSize;
   className?: string;
-};
+}
 
-export function AvatarGroup({ children, max = 4, size = "md", className }: AvatarGroupProps) {
+export function AvatarGroup({
+  children,
+  max = 4,
+  size = "md",
+  className,
+}: AvatarGroupProps) {
   const avatars = Array.isArray(children) ? children : [children];
   const visible = avatars.slice(0, max);
   const remaining = avatars.length - max;
@@ -104,15 +119,15 @@ export function AvatarGroup({ children, max = 4, size = "md", className }: Avata
   return (
     <div className={cn("flex -space-x-2", className)}>
       {visible.map((avatar, i) => (
-        <span key={i} className="ring-2 ring-background inline-block">
+        <span className="inline-block ring-2 ring-background" key={i}>
           {avatar}
         </span>
       ))}
       {remaining > 0 && (
         <span
           className={cn(
-            "flex items-center justify-center bg-muted text-muted-foreground font-medium ring-2 ring-background",
-            sizeStyles[size],
+            "flex items-center justify-center bg-muted font-medium text-muted-foreground ring-2 ring-background",
+            sizeStyles[size]
           )}
         >
           +{remaining}

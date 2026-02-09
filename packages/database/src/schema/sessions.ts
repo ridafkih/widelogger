@@ -10,8 +10,12 @@ export const sessions = pgTable("sessions", {
   opencodeSessionId: text("opencode_session_id"),
   workspaceDirectory: text("workspace_directory"),
   status: text("status").notNull().default("running"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type Session = typeof sessions.$inferSelect;

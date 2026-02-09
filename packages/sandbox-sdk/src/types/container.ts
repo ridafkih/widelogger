@@ -1,4 +1,8 @@
-export type RestartPolicyName = "no" | "always" | "on-failure" | "unless-stopped";
+export type RestartPolicyName =
+  | "no"
+  | "always"
+  | "on-failure"
+  | "unless-stopped";
 
 export interface RestartPolicy {
   name: RestartPolicyName;

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { useSWRConfig } from "swr";
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { type ReactNode, useState } from "react";
+import { useSWRConfig } from "swr";
 import { tv } from "tailwind-variants";
 import { Button } from "@/components/button";
 import { FormInput } from "@/components/form-input";
-import { ContainerEditor, type ContainerDraft } from "@/components/settings/container-editor";
+import {
+  type ContainerDraft,
+  ContainerEditor,
+} from "@/components/settings/container-editor";
 import { api } from "@/lib/api";
 
 const styles = {
@@ -15,8 +18,8 @@ const styles = {
     slots: {
       root: "flex flex-col gap-2",
       header: "flex items-center justify-between",
-      label: "text-xs text-text-secondary",
-      empty: "text-xs text-text-muted",
+      label: "text-text-secondary text-xs",
+      empty: "text-text-muted text-xs",
       content: "flex flex-col gap-2",
     },
   }),
@@ -30,24 +33,32 @@ const parsePorts = (portsString: string): number[] => {
     .split(",")
     .map((segment) => segment.trim())
     .filter((segment) => segment.length > 0)
-    .map((segment) => parseInt(segment, 10))
-    .filter((port) => !isNaN(port) && port > 0 && port <= 65535);
+    .map((segment) => Number.parseInt(segment, 10))
+    .filter((port) => !Number.isNaN(port) && port > 0 && port <= 65_535);
 };
 
-function sortContainersByDependencies(containers: ContainerDraft[]): ContainerDraft[] {
+function sortContainersByDependencies(
+  containers: ContainerDraft[]
+): ContainerDraft[] {
   const sorted: ContainerDraft[] = [];
   const remaining = new Set(containers.map((container) => container.id));
-  const containerMap = new Map(containers.map((container) => [container.id, container]));
+  const containerMap = new Map(
+    containers.map((container) => [container.id, container])
+  );
 
   while (remaining.size > 0) {
     let addedAny = false;
 
     for (const id of remaining) {
       const container = containerMap.get(id);
-      if (!container) continue;
+      if (!container) {
+        continue;
+      }
 
       const unresolvedDeps = container.dependencies.filter(
-        (dependency) => dependency.dependsOnDraftId && remaining.has(dependency.dependsOnDraftId),
+        (dependency) =>
+          dependency.dependsOnDraftId &&
+          remaining.has(dependency.dependsOnDraftId)
       );
 
       if (unresolvedDeps.length === 0) {
@@ -60,7 +71,9 @@ function sortContainersByDependencies(containers: ContainerDraft[]): ContainerDr
     if (!addedAny && remaining.size > 0) {
       for (const id of remaining) {
         const container = containerMap.get(id);
-        if (container) sorted.push(container);
+        if (container) {
+          sorted.push(container);
+        }
       }
       break;
     }
@@ -90,7 +103,7 @@ function ContainersSection({
     <div className={sectionStyles.root()}>
       <div className={sectionStyles.header()}>
         <span className={sectionStyles.label()}>Containers</span>
-        <Button variant="ghost" onClick={onAdd}>
+        <Button onClick={onAdd} variant="ghost">
           <Plus size={12} />
           Add Container
         </Button>
@@ -101,10 +114,10 @@ function ContainersSection({
         <div className={sectionStyles.content()}>
           {containers.map((container, index) => (
             <ContainerEditor.Provider
-              key={container.id}
+              allContainers={containers}
               container={container}
               containerIndex={index}
-              allContainers={containers}
+              key={container.id}
               onChange={(updated) => onChange(container.id, updated)}
               onRemove={() => onRemove(container.id)}
             >
@@ -148,7 +161,9 @@ export function ProjectCreate() {
   };
 
   const handleContainerChange = (id: string, updated: ContainerDraft) => {
-    setContainers(containers.map((container) => (container.id === id ? updated : container)));
+    setContainers(
+      containers.map((container) => (container.id === id ? updated : container))
+    );
   };
 
   const handleContainerRemove = (id: string) => {
@@ -156,11 +171,15 @@ export function ProjectCreate() {
   };
 
   const isNameValid = name.trim().length > 0;
-  const areContainersValid = containers.every((container) => container.image.trim().length > 0);
+  const areContainersValid = containers.every(
+    (container) => container.image.trim().length > 0
+  );
   const canSubmit = isNameValid && areContainersValid && !isCreating;
 
   const handleCreate = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -180,24 +199,33 @@ export function ProjectCreate() {
           .filter((dependency) => dependency.dependsOnDraftId)
           .map((dependency) => {
             const realId = draftIdToRealId.get(dependency.dependsOnDraftId);
-            if (!realId) return null;
+            if (!realId) {
+              return null;
+            }
             return { containerId: realId, condition: dependency.condition };
           })
           .filter(
-            (dependency): dependency is { containerId: string; condition: string } =>
-              dependency !== null,
+            (
+              dependency
+            ): dependency is { containerId: string; condition: string } =>
+              dependency !== null
           );
 
         const createdContainer = await api.containers.create(project.id, {
           image: containerDraft.image.trim(),
           ports: parsePorts(containerDraft.ports),
-          dependsOn: validDependencies.length > 0 ? validDependencies : undefined,
+          dependsOn:
+            validDependencies.length > 0 ? validDependencies : undefined,
         });
 
         draftIdToRealId.set(containerDraft.id, createdContainer.id);
 
         if (containerDraft.isWorkspace) {
-          await api.containers.setWorkspace(project.id, createdContainer.id, true);
+          await api.containers.setWorkspace(
+            project.id,
+            createdContainer.id,
+            true
+          );
         }
       }, Promise.resolve());
 
@@ -210,39 +238,45 @@ export function ProjectCreate() {
 
   return (
     <div className="flex-1 overflow-y-auto p-3">
-      <div className="flex flex-col gap-2 max-w-sm">
+      <div className="flex max-w-sm flex-col gap-2">
         <FormField>
           <FormInput.Label required>Project Name</FormInput.Label>
           <FormInput.Text
-            value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="my-project"
+            value={name}
           />
         </FormField>
 
         <FormField>
           <FormInput.Label>Description</FormInput.Label>
           <FormInput.Text
-            value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="A brief description of this project"
+            value={description}
           />
-          <FormInput.Helper>Used for task routing in orchestration</FormInput.Helper>
+          <FormInput.Helper>
+            Used for task routing in orchestration
+          </FormInput.Helper>
         </FormField>
 
         {showSystemPrompt ? (
           <FormField>
             <FormInput.Label>System Prompt</FormInput.Label>
             <FormInput.Textarea
-              value={systemPrompt}
               onChange={(event) => setSystemPrompt(event.target.value)}
               placeholder="Context for the AI agent..."
               rows={4}
+              value={systemPrompt}
             />
             <FormInput.Helper>Context for the AI agent</FormInput.Helper>
           </FormField>
         ) : (
-          <Button variant="ghost" onClick={() => setShowSystemPrompt(true)} className="self-start">
+          <Button
+            className="self-start"
+            onClick={() => setShowSystemPrompt(true)}
+            variant="ghost"
+          >
             <Plus size={12} />
             Add system prompt
           </Button>
@@ -255,7 +289,11 @@ export function ProjectCreate() {
           onRemove={handleContainerRemove}
         />
 
-        <Button onClick={handleCreate} disabled={!canSubmit} className="self-start">
+        <Button
+          className="self-start"
+          disabled={!canSubmit}
+          onClick={handleCreate}
+        >
           {isCreating ? "Creating..." : "Create Project"}
         </Button>
       </div>

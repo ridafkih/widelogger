@@ -20,12 +20,22 @@ export const browserSessions = pgTable("browser_sessions", {
   lastHeartbeat: timestamp("last_heartbeat", { withTimezone: true }),
   errorMessage: text("error_message"),
   retryCount: integer("retry_count").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type BrowserSession = typeof browserSessions.$inferSelect;
 export type NewBrowserSession = typeof browserSessions.$inferInsert;
 
 export type DesiredState = "running" | "stopped";
-export type CurrentState = "pending" | "starting" | "running" | "stopping" | "stopped" | "error";
+export type CurrentState =
+  | "pending"
+  | "starting"
+  | "running"
+  | "stopping"
+  | "stopped"
+  | "error";

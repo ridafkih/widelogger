@@ -21,18 +21,26 @@ export class SandboxError extends Error {
   constructor(
     public readonly kind: SandboxErrorKind,
     message: string,
-    public readonly resourceId?: string,
+    public readonly resourceId?: string
   ) {
     super(message);
     this.name = "SandboxError";
   }
 
   static containerNotFound(id: string) {
-    return new SandboxError("ContainerNotFound", `Container ${id} not found`, id);
+    return new SandboxError(
+      "ContainerNotFound",
+      `Container ${id} not found`,
+      id
+    );
   }
 
   static containerNotRunning(id: string) {
-    return new SandboxError("ContainerNotRunning", `Container ${id} is not running`, id);
+    return new SandboxError(
+      "ContainerNotRunning",
+      `Container ${id} is not running`,
+      id
+    );
   }
 
   static imageNotFound(ref: string) {
@@ -40,7 +48,11 @@ export class SandboxError extends Error {
   }
 
   static imagePullFailed(ref: string, reason: string) {
-    return new SandboxError("ImagePullFailed", `Failed to pull ${ref}: ${reason}`, ref);
+    return new SandboxError(
+      "ImagePullFailed",
+      `Failed to pull ${ref}: ${reason}`,
+      ref
+    );
   }
 
   static volumeNotFound(name: string) {
@@ -51,12 +63,16 @@ export class SandboxError extends Error {
     return new SandboxError(
       "VolumeCloneFailed",
       `Failed to clone ${source} to ${target}: ${reason}`,
-      source,
+      source
     );
   }
 
   static networkNotFound(name: string) {
-    return new SandboxError("NetworkNotFound", `Network ${name} not found`, name);
+    return new SandboxError(
+      "NetworkNotFound",
+      `Network ${name} not found`,
+      name
+    );
   }
 
   static portAllocationFailed(reason: string) {
@@ -64,7 +80,10 @@ export class SandboxError extends Error {
   }
 
   static portRangeExhausted(min: number, max: number) {
-    return new SandboxError("PortRangeExhausted", `No available ports in range ${min}-${max}`);
+    return new SandboxError(
+      "PortRangeExhausted",
+      `No available ports in range ${min}-${max}`
+    );
   }
 
   static execFailed(containerId: string, reason: string) {

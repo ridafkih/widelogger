@@ -2,7 +2,7 @@ export class AppError extends Error {
   constructor(
     message: string,
     public readonly code: string,
-    public readonly statusCode: number = 500,
+    public readonly statusCode: number = 500
   ) {
     super(message);
     this.name = "AppError";
@@ -18,7 +18,11 @@ export class InternalError extends AppError {
 
 export class NotFoundError extends AppError {
   constructor(resource: string, id?: string) {
-    super(id ? `${resource} with id ${id} not found` : `${resource} not found`, "NOT_FOUND", 404);
+    super(
+      id ? `${resource} with id ${id} not found` : `${resource} not found`,
+      "NOT_FOUND",
+      404
+    );
     this.name = "NotFoundError";
   }
 }
@@ -31,7 +35,10 @@ export class ServiceUnavailableError extends AppError {
 }
 
 export class ExternalServiceError extends AppError {
-  constructor(message = "Upstream service request failed", code = "EXTERNAL_SERVICE_ERROR") {
+  constructor(
+    message = "Upstream service request failed",
+    code = "EXTERNAL_SERVICE_ERROR"
+  ) {
     super(message, code, 502);
     this.name = "ExternalServiceError";
   }
@@ -51,24 +58,36 @@ export class ConfigurationError extends AppError {
   }
 }
 
-export function orThrow<T>(value: T | null | undefined, resource: string, id?: string): T {
-  if (value == null) throw new NotFoundError(resource, id);
+export function orThrow<T>(
+  value: T | null | undefined,
+  resource: string,
+  id?: string
+): T {
+  if (value == null) {
+    throw new NotFoundError(resource, id);
+  }
   return value;
 }
 
 /**
  * Safely extracts error message from an unknown value.
  */
-export function getErrorMessage(error: unknown, fallback = "An error occurred"): string {
+export function getErrorMessage(
+  error: unknown,
+  fallback = "An error occurred"
+): string {
   return error instanceof Error ? error.message : fallback;
 }
 
 export function throwOnOpencodeError(
   response: { error?: unknown },
   message: string,
-  code: string,
+  code: string
 ): void {
   if (response.error) {
-    throw new ExternalServiceError(`${message}: ${JSON.stringify(response.error)}`, code);
+    throw new ExternalServiceError(
+      `${message}: ${JSON.stringify(response.error)}`,
+      code
+    );
   }
 }

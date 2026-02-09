@@ -1,10 +1,10 @@
 import {
   Children,
   cloneElement,
-  isValidElement,
-  type ReactNode,
   type HTMLAttributes,
+  isValidElement,
   type ReactElement,
+  type ReactNode,
 } from "react";
 
 type SlotProps = HTMLAttributes<HTMLElement> & {
@@ -19,7 +19,10 @@ function isFunction(value: unknown): value is (...args: unknown[]) => unknown {
   return typeof value === "function";
 }
 
-function mergeProps(slotProps: Record<string, unknown>, childProps: Record<string, unknown>) {
+function mergeProps(
+  slotProps: Record<string, unknown>,
+  childProps: Record<string, unknown>
+) {
   const merged: Record<string, unknown> = { ...slotProps };
 
   for (const key in childProps) {
@@ -32,7 +35,9 @@ function mergeProps(slotProps: Record<string, unknown>, childProps: Record<strin
       merged[key] = { ...slotValue, ...childValue };
     } else if (key.startsWith("on") && isFunction(slotValue)) {
       merged[key] = (...args: unknown[]) => {
-        if (isFunction(childValue)) childValue(...args);
+        if (isFunction(childValue)) {
+          childValue(...args);
+        }
         slotValue(...args);
       };
     } else {
@@ -43,7 +48,9 @@ function mergeProps(slotProps: Record<string, unknown>, childProps: Record<strin
   return merged;
 }
 
-function isReactElement(value: unknown): value is ReactElement<Record<string, unknown>> {
+function isReactElement(
+  value: unknown
+): value is ReactElement<Record<string, unknown>> {
   return isValidElement(value);
 }
 

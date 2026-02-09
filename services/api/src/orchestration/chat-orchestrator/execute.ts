@@ -1,18 +1,26 @@
-import { generateText, streamText, stepCountIs } from "ai";
+import { generateText, stepCountIs, streamText } from "ai";
+import { widelog } from "../../logging";
 import { breakDoubleNewlines } from "../../shared/streaming";
 import { extractSessionInfoFromSteps } from "../tool-result-handler";
-import { prepareOrchestration, buildOrchestratorResult } from "./pipeline";
-import type { ChatOrchestratorInput, ChatOrchestratorResult, ChatOrchestratorChunk } from "./types";
-import { widelog } from "../../logging";
+import { buildOrchestratorResult, prepareOrchestration } from "./pipeline";
+import type {
+  ChatOrchestratorChunk,
+  ChatOrchestratorInput,
+  ChatOrchestratorResult,
+} from "./types";
 
 export async function chatOrchestrate(
-  input: ChatOrchestratorInput,
+  input: ChatOrchestratorInput
 ): Promise<ChatOrchestratorResult> {
-  const { model, tools, systemPrompt, platformConfig } = await prepareOrchestration(input);
+  const { model, tools, systemPrompt, platformConfig } =
+    await prepareOrchestration(input);
   if (input.platformOrigin) {
     widelog.set("orchestration.platform_origin", input.platformOrigin);
   }
-  widelog.set("orchestration.break_double_newlines", platformConfig.breakDoubleNewlines);
+  widelog.set(
+    "orchestration.break_double_newlines",
+    platformConfig.breakDoubleNewlines
+  );
 
   let text: string;
   let messages: string[] | undefined;
@@ -63,7 +71,7 @@ export async function chatOrchestrate(
  * Used for real-time delivery to platforms like iMessage.
  */
 export async function* chatOrchestrateStream(
-  input: ChatOrchestratorInput,
+  input: ChatOrchestratorInput
 ): AsyncGenerator<ChatOrchestratorChunk, ChatOrchestratorResult, unknown> {
   const { model, tools, systemPrompt } = await prepareOrchestration(input);
   widelog.set("orchestration.stream_enabled", true);
@@ -91,7 +99,10 @@ export async function* chatOrchestrateStream(
       const textBeforeDelimiter = buffer.slice(0, delimiterIndex).trim();
       if (textBeforeDelimiter.length > 0) {
         widelog.count("orchestration.stream_chunk_count");
-        widelog.max("orchestration.stream_max_chunk_length", textBeforeDelimiter.length);
+        widelog.max(
+          "orchestration.stream_max_chunk_length",
+          textBeforeDelimiter.length
+        );
         collectedChunks.push(textBeforeDelimiter);
         yield { type: "chunk" as const, text: textBeforeDelimiter };
       }

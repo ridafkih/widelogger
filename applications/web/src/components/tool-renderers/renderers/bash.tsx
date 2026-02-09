@@ -9,19 +9,21 @@ function BashRenderer({ input, output, error, status }: ToolRendererProps) {
 
   return (
     <div className="flex flex-col">
-      {description && <div className="px-4 py-2 text-xs text-text-muted">{description}</div>}
+      {description && (
+        <div className="px-4 py-2 text-text-muted text-xs">{description}</div>
+      )}
       {command && (
-        <div className="bg-bg-muted w-0 min-w-full">
+        <div className="w-0 min-w-full bg-bg-muted">
           <ContentCode content={`$ ${command}`} language="bash" />
         </div>
       )}
       {output && status === "completed" && (
-        <div className="w-0 min-w-full max-h-60 overflow-y-auto">
+        <div className="max-h-60 w-0 min-w-full overflow-y-auto">
           <ContentCode content={output} language="bash" />
         </div>
       )}
       {error && (
-        <div className="px-4 py-2 bg-bg-muted w-0 min-w-full">
+        <div className="w-0 min-w-full bg-bg-muted px-4 py-2">
           <ContentError>{error}</ContentError>
         </div>
       )}

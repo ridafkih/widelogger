@@ -1,30 +1,30 @@
-import { formatUniqueHostname } from "../shared/naming";
+import { CircularDependencyError } from "@lab/sandbox-sdk";
+import type { BrowserService } from "../browser/browser-service";
+import { widelog } from "../logging";
 import { findContainersWithDependencies } from "../repositories/container-dependency.repository";
 import {
+  findSessionContainerByRuntimeId,
   updateSessionContainerRuntimeId,
   updateSessionContainerStatus,
   updateSessionContainersStatusBySessionId,
-  findSessionContainerByRuntimeId,
 } from "../repositories/container-session.repository";
-import { CircularDependencyError } from "@lab/sandbox-sdk";
 import { findSessionById } from "../repositories/session.repository";
-import { SESSION_STATUS } from "../types/session";
+import type { ProxyManager } from "../services/proxy.service";
+import type { SessionCleanupService } from "../services/session-cleanup.service";
+import { InternalError } from "../shared/errors";
+import { formatUniqueHostname } from "../shared/naming";
 import { CONTAINER_STATUS } from "../types/container";
-import type { BrowserService } from "../browser/browser-service";
-import { createSessionNetwork } from "./network";
-import { buildEnvironmentVariables } from "./environment-builder";
-import { buildNetworkAliasesAndPortMap } from "./port-mapper";
+import type { Publisher, Sandbox } from "../types/dependencies";
+import { SESSION_STATUS } from "../types/session";
 import {
   buildContainerNodes,
+  type PreparedContainer,
   prepareContainerData,
   resolveStartOrder,
-  type PreparedContainer,
 } from "./container-preparer";
-import type { SessionCleanupService } from "../services/session-cleanup.service";
-import type { Sandbox, Publisher } from "../types/dependencies";
-import type { ProxyManager } from "../services/proxy.service";
-import { InternalError } from "../shared/errors";
-import { widelog } from "../logging";
+import { buildEnvironmentVariables } from "./environment-builder";
+import { createSessionNetwork } from "./network";
+import { buildNetworkAliasesAndPortMap } from "./port-mapper";
 
 interface ClusterContainer {
   containerId: string;
@@ -44,17 +44,20 @@ async function createAndStartContainer(
   projectId: string,
   networkId: string,
   prepared: PreparedContainer,
-  deps: Pick<InitializeSessionContainersDeps, "sandbox" | "publisher">,
+  deps: Pick<InitializeSessionContainersDeps, "sandbox" | "publisher">
 ): Promise<{ runtimeId: string; clusterContainer: ClusterContainer | null }> {
   const { containerDefinition, ports, envVars, containerWorkspace } = prepared;
   const { sandbox, publisher } = deps;
 
   const env = buildEnvironmentVariables(sessionId, envVars);
-  const uniqueHostname = formatUniqueHostname(sessionId, containerDefinition.id);
+  const uniqueHostname = formatUniqueHostname(
+    sessionId,
+    containerDefinition.id
+  );
   const { portMap, networkAliases } = buildNetworkAliasesAndPortMap(
     sessionId,
     containerDefinition.id,
-    ports,
+    ports
   );
 
   const { runtimeId } = await sandbox.runtime.startContainer({
@@ -70,20 +73,37 @@ async function createAndStartContainer(
     aliases: networkAliases,
   });
 
-  await updateSessionContainerRuntimeId(sessionId, containerDefinition.id, runtimeId);
+  await updateSessionContainerRuntimeId(
+    sessionId,
+    containerDefinition.id,
+    runtimeId
+  );
   const sessionContainer = await findSessionContainerByRuntimeId(runtimeId);
   if (sessionContainer) {
-    await updateSessionContainerStatus(sessionContainer.id, CONTAINER_STATUS.RUNNING);
+    await updateSessionContainerStatus(
+      sessionContainer.id,
+      CONTAINER_STATUS.RUNNING
+    );
     publisher.publishDelta(
       "sessionContainers",
       { uuid: sessionId },
-      { type: "update", container: { id: sessionContainer.id, status: CONTAINER_STATUS.RUNNING } },
+      {
+        type: "update",
+        container: {
+          id: sessionContainer.id,
+          status: CONTAINER_STATUS.RUNNING,
+        },
+      }
     );
   }
 
   const clusterContainer =
     Object.keys(portMap).length > 0
-      ? { containerId: containerDefinition.id, hostname: uniqueHostname, ports: portMap }
+      ? {
+          containerId: containerDefinition.id,
+          hostname: uniqueHostname,
+          ports: portMap,
+        }
       : null;
 
   return { runtimeId, clusterContainer };
@@ -95,7 +115,7 @@ async function startContainersInLevel(
   networkId: string,
   containerIds: string[],
   preparedByContainerId: Map<string, PreparedContainer>,
-  deps: Pick<InitializeSessionContainersDeps, "sandbox" | "publisher">,
+  deps: Pick<InitializeSessionContainersDeps, "sandbox" | "publisher">
 ): Promise<{ runtimeIds: string[]; clusterContainers: ClusterContainer[] }> {
   const levelRuntimeIds: string[] = [];
   const levelClusterContainers: ClusterContainer[] = [];
@@ -106,11 +126,17 @@ async function startContainersInLevel(
       if (!prepared) {
         throw new InternalError(
           `Prepared container not found for ${containerId}`,
-          "PREPARED_CONTAINER_NOT_FOUND",
+          "PREPARED_CONTAINER_NOT_FOUND"
         );
       }
-      return createAndStartContainer(sessionId, projectId, networkId, prepared, deps);
-    }),
+      return createAndStartContainer(
+        sessionId,
+        projectId,
+        networkId,
+        prepared,
+        deps
+      );
+    })
   );
 
   for (const result of results) {
@@ -120,14 +146,17 @@ async function startContainersInLevel(
     }
   }
 
-  return { runtimeIds: levelRuntimeIds, clusterContainers: levelClusterContainers };
+  return {
+    runtimeIds: levelRuntimeIds,
+    clusterContainers: levelClusterContainers,
+  };
 }
 
 export async function initializeSessionContainers(
   sessionId: string,
   projectId: string,
   browserService: BrowserService,
-  deps: InitializeSessionContainersDeps,
+  deps: InitializeSessionContainersDeps
 ): Promise<void> {
   return widelog.context(async () => {
     widelog.set("event_name", "runtime.session_initialization.completed");
@@ -136,7 +165,8 @@ export async function initializeSessionContainers(
     widelog.time.start("duration_ms");
 
     const { sandbox, proxyManager, cleanupService } = deps;
-    const containerDefinitions = await findContainersWithDependencies(projectId);
+    const containerDefinitions =
+      await findContainersWithDependencies(projectId);
     const runtimeIds: string[] = [];
     const clusterContainers: ClusterContainer[] = [];
 
@@ -148,8 +178,8 @@ export async function initializeSessionContainers(
 
       const preparedContainers = await Promise.all(
         containerDefinitions.map((definition) =>
-          prepareContainerData(sessionId, definition, sandbox),
-        ),
+          prepareContainerData(sessionId, definition, sandbox)
+        )
       );
 
       const preparedByContainerId = new Map<string, PreparedContainer>();
@@ -164,7 +194,7 @@ export async function initializeSessionContainers(
           networkId,
           level.containerIds,
           preparedByContainerId,
-          deps,
+          deps
         );
         runtimeIds.push(...levelResult.runtimeIds);
         clusterContainers.push(...levelResult.clusterContainers);
@@ -177,7 +207,11 @@ export async function initializeSessionContainers(
       const session = await findSessionById(sessionId);
       if (!session || session.status === SESSION_STATUS.DELETING) {
         widelog.set("outcome", "deleted_during_setup");
-        await cleanupService.cleanupOrphanedResources(sessionId, runtimeIds, browserService);
+        await cleanupService.cleanupOrphanedResources(
+          sessionId,
+          runtimeIds,
+          browserService
+        );
         return;
       }
 
@@ -186,9 +220,18 @@ export async function initializeSessionContainers(
       widelog.set("outcome", "error");
       widelog.errorFields(error);
       if (error instanceof CircularDependencyError) {
-        widelog.set("circular_dependency", (error as CircularDependencyError).cycle.join(" -> "));
+        widelog.set(
+          "circular_dependency",
+          (error as CircularDependencyError).cycle.join(" -> ")
+        );
       }
-      await handleInitializationError(sessionId, projectId, runtimeIds, browserService, deps);
+      await handleInitializationError(
+        sessionId,
+        projectId,
+        runtimeIds,
+        browserService,
+        deps
+      );
     } finally {
       widelog.set("containers_created", runtimeIds.length);
       widelog.time.stop("duration_ms");
@@ -202,20 +245,28 @@ async function handleInitializationError(
   projectId: string,
   runtimeIds: string[],
   browserService: BrowserService,
-  deps: Pick<InitializeSessionContainersDeps, "publisher" | "cleanupService">,
+  deps: Pick<InitializeSessionContainersDeps, "publisher" | "cleanupService">
 ): Promise<void> {
   const errorContainers = await updateSessionContainersStatusBySessionId(
     sessionId,
-    CONTAINER_STATUS.ERROR,
+    CONTAINER_STATUS.ERROR
   );
 
   for (const container of errorContainers) {
     deps.publisher.publishDelta(
       "sessionContainers",
       { uuid: sessionId },
-      { type: "update", container: { id: container.id, status: CONTAINER_STATUS.ERROR } },
+      {
+        type: "update",
+        container: { id: container.id, status: CONTAINER_STATUS.ERROR },
+      }
     );
   }
 
-  await deps.cleanupService.cleanupOnError(sessionId, projectId, runtimeIds, browserService);
+  await deps.cleanupService.cleanupOnError(
+    sessionId,
+    projectId,
+    runtimeIds,
+    browserService
+  );
 }

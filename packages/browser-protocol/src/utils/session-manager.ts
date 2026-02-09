@@ -14,7 +14,9 @@ export const createSessionManager = (): SessionManager => {
 
   const getOrCreate = (sessionId: string): LocalSessionState => {
     const existing = sessions.get(sessionId);
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
 
     const state: LocalSessionState = {
       subscriberCount: 0,
@@ -27,7 +29,8 @@ export const createSessionManager = (): SessionManager => {
   };
 
   return {
-    getSubscriberCount: (sessionId) => sessions.get(sessionId)?.subscriberCount ?? 0,
+    getSubscriberCount: (sessionId) =>
+      sessions.get(sessionId)?.subscriberCount ?? 0,
 
     incrementSubscribers: (sessionId) => {
       const state = getOrCreate(sessionId);
@@ -43,7 +46,9 @@ export const createSessionManager = (): SessionManager => {
 
     setCleanupTimer: (sessionId, callback, delayMs) => {
       const state = getOrCreate(sessionId);
-      if (state.cleanupTimer) clearTimeout(state.cleanupTimer);
+      if (state.cleanupTimer) {
+        clearTimeout(state.cleanupTimer);
+      }
       state.cleanupTimer = setTimeout(callback, delayMs);
     },
 
@@ -66,7 +71,9 @@ export const createSessionManager = (): SessionManager => {
 
     delete: (sessionId) => {
       const state = sessions.get(sessionId);
-      if (state?.cleanupTimer) clearTimeout(state.cleanupTimer);
+      if (state?.cleanupTimer) {
+        clearTimeout(state.cleanupTimer);
+      }
       sessions.delete(sessionId);
     },
 

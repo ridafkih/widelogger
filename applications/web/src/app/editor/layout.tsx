@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, type ReactNode } from "react";
 import { useParams } from "next/navigation";
+import { type ReactNode, Suspense } from "react";
 import { Nav } from "@/components/nav";
 import { ProjectNavigatorView } from "@/components/project-navigator-view";
 import { ProjectsLoadingFallback } from "@/components/suspense-fallbacks";
-import { OpenCodeSessionProvider } from "@/lib/opencode-session";
 import { defaultSettingsTab } from "@/config/settings";
+import { OpenCodeSessionProvider } from "@/lib/opencode-session";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -16,7 +16,7 @@ const navItems = [
 
 function Sidebar({ selectedSessionId }: { selectedSessionId: string | null }) {
   return (
-    <aside className="relative flex grow flex-col min-w-0 w-full border-r border-border bg-bg">
+    <aside className="relative flex w-full min-w-0 grow flex-col border-border border-r bg-bg">
       <Suspense fallback={<ProjectsLoadingFallback />}>
         <ProjectNavigatorView selectedSessionId={selectedSessionId} />
       </Suspense>
@@ -26,15 +26,16 @@ function Sidebar({ selectedSessionId }: { selectedSessionId: string | null }) {
 
 export default function EditorLayout({ children }: { children: ReactNode }) {
   const params = useParams();
-  const sessionId = typeof params.sessionId === "string" ? params.sessionId : null;
+  const sessionId =
+    typeof params.sessionId === "string" ? params.sessionId : null;
 
   return (
     <OpenCodeSessionProvider sessionId={sessionId}>
-      <div className="flex flex-col h-screen max-w-full">
+      <div className="flex h-screen max-w-full flex-col">
         <Nav items={navItems} />
-        <div className="grid grid-cols-[2fr_5fr] h-full min-h-0 max-w-full">
+        <div className="grid h-full min-h-0 max-w-full grid-cols-[2fr_5fr]">
           <Sidebar selectedSessionId={sessionId} />
-          <main className="flex-1 bg-bg overflow-x-hidden">{children}</main>
+          <main className="flex-1 overflow-x-hidden bg-bg">{children}</main>
         </div>
       </div>
     </OpenCodeSessionProvider>

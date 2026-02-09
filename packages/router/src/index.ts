@@ -11,7 +11,15 @@ export class RouteValidationError extends Error {
 /**
  * All valid HTTP methods.
  */
-export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
+export const HTTP_METHODS = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+] as const;
 
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
@@ -36,12 +44,16 @@ export type RouteHandler<TContext = unknown> = (args: {
 /**
  * A route module is a partial record of HTTP methods to handlers.
  */
-export type RouteModule<TContext = unknown> = Partial<Record<HttpMethod, RouteHandler<TContext>>>;
+export type RouteModule<TContext = unknown> = Partial<
+  Record<HttpMethod, RouteHandler<TContext>>
+>;
 
 /**
  * Type guard to check if a module is a valid route module.
  */
-export function isRouteModule<TContext>(module: unknown): module is RouteModule<TContext> {
+export function isRouteModule<TContext>(
+  module: unknown
+): module is RouteModule<TContext> {
   if (typeof module !== "object" || module === null) {
     return false;
   }
@@ -49,7 +61,9 @@ export function isRouteModule<TContext>(module: unknown): module is RouteModule<
   const record = module as Record<string, unknown>;
 
   for (const key of Object.keys(record)) {
-    if (!isHttpMethod(key)) continue;
+    if (!isHttpMethod(key)) {
+      continue;
+    }
     if (typeof record[key] !== "function") {
       return false;
     }
@@ -63,7 +77,7 @@ export function isRouteModule<TContext>(module: unknown): module is RouteModule<
  */
 export function getHandler<TContext>(
   module: RouteModule<TContext>,
-  method: string,
+  method: string
 ): RouteHandler<TContext> | undefined {
   if (!isHttpMethod(method)) {
     return undefined;
@@ -77,7 +91,7 @@ export function getHandler<TContext>(
  */
 export function extractRouteParam(
   params: Record<string, string | string[] | undefined>,
-  key: string,
+  key: string
 ): string | null {
   const value = params[key];
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
@@ -89,10 +103,12 @@ export function extractRouteParam(
  */
 export function requireRouteParam(
   params: Record<string, string | string[] | undefined>,
-  key: string,
+  key: string
 ): string | Response {
   const value = extractRouteParam(params, key);
-  if (!value) return badRequestResponse(`Missing ${key}`);
+  if (!value) {
+    return badRequestResponse(`Missing ${key}`);
+  }
   return value;
 }
 
@@ -109,10 +125,12 @@ export function isErrorResponse(value: string | Response): value is Response {
  */
 export function assertRouteParam(
   params: Record<string, string | string[] | undefined> | undefined,
-  key: string,
+  key: string
 ): string {
   const value = params?.[key];
   const resolved = Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
-  if (!resolved) throw new RouteValidationError(`Missing required parameter: ${key}`);
+  if (!resolved) {
+    throw new RouteValidationError(`Missing required parameter: ${key}`);
+  }
   return resolved;
 }

@@ -1,11 +1,14 @@
-import { createServer } from "net";
-import type { PortAllocator as IPortAllocator, PortAllocatorOptions } from "@lab/sandbox-sdk";
-import { SandboxError, DEFAULT_PORT_RANGE } from "@lab/sandbox-sdk";
+import { createServer } from "node:net";
+import type {
+  PortAllocator as IPortAllocator,
+  PortAllocatorOptions,
+} from "@lab/sandbox-sdk";
+import { DEFAULT_PORT_RANGE, SandboxError } from "@lab/sandbox-sdk";
 
 export class PortAllocator implements IPortAllocator {
-  private minPort: number;
-  private maxPort: number;
-  private allocated = new Set<number>();
+  private readonly minPort: number;
+  private readonly maxPort: number;
+  private readonly allocated = new Set<number>();
 
   constructor(options: PortAllocatorOptions = {}) {
     this.minPort = options.minPort ?? DEFAULT_PORT_RANGE.min;
@@ -40,10 +43,14 @@ export class PortAllocator implements IPortAllocator {
 
   private async findAvailablePort(): Promise<number> {
     for (let port = this.minPort; port <= this.maxPort; port++) {
-      if (this.allocated.has(port)) continue;
+      if (this.allocated.has(port)) {
+        continue;
+      }
 
       const available = await this.isPortAvailable(port);
-      if (available) return port;
+      if (available) {
+        return port;
+      }
     }
 
     throw SandboxError.portRangeExhausted(this.minPort, this.maxPort);

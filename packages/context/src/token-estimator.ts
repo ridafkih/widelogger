@@ -80,17 +80,23 @@ export function calculateBudget(input: TokenBudgetInput): TokenBudget {
     imageCount = 0,
     imageDimensions,
     toolOverhead = 500,
-    maxTokens = 200000,
+    maxTokens = 200_000,
   } = input;
 
   const system = estimateTextTokens(systemPrompt);
-  const messagesTokens = messages.reduce((sum, m) => sum + estimateTextTokens(m), 0);
+  const messagesTokens = messages.reduce(
+    (sum, m) => sum + estimateTextTokens(m),
+    0
+  );
   const tools = toolOverhead;
 
   let images: number;
   if (imageDimensions && imageDimensions.length > 0) {
     // Use actual dimensions if provided
-    images = imageDimensions.reduce((sum, [w, h]) => sum + estimateImageTokens(w, h), 0);
+    images = imageDimensions.reduce(
+      (sum, [w, h]) => sum + estimateImageTokens(w, h),
+      0
+    );
   } else {
     // Assume worst case: 1568×1568 = ~3,280 tokens per image
     images = imageCount * estimateMaxResizedImageTokens();
@@ -119,7 +125,7 @@ export function calculateBudget(input: TokenBudgetInput): TokenBudget {
 export function canAddImages(
   currentBudget: TokenBudget,
   additionalImages: number,
-  safetyMargin = 10000,
+  safetyMargin = 10_000
 ): boolean {
   const additionalTokens = additionalImages * estimateMaxResizedImageTokens();
   return currentBudget.remaining - additionalTokens >= safetyMargin;

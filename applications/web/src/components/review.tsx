@@ -1,22 +1,31 @@
 "use client";
 
+import type { FileContents, SelectedLineRange } from "@pierre/diffs";
+import { File as FileViewer, MultiFileDiff } from "@pierre/diffs/react";
 import {
+  Check,
+  ChevronRight,
+  File,
+  FilePlus,
+  FileX,
+  Folder,
+  Loader2,
+  X,
+} from "lucide-react";
+import {
+  type CSSProperties,
   createContext,
-  use,
-  useState,
-  useRef,
-  useEffect,
   type ReactNode,
   type RefObject,
-  type CSSProperties,
+  use,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { tv } from "tailwind-variants";
-import { MultiFileDiff, File as FileViewer } from "@pierre/diffs/react";
-import type { FileContents, SelectedLineRange } from "@pierre/diffs";
-import { File, FilePlus, FileX, Folder, X, Check, ChevronRight, Loader2 } from "lucide-react";
 import { Button, button } from "@/components/button";
-import { TextAreaGroup } from "./textarea-group";
 import { cn } from "@/lib/cn";
+import { TextAreaGroup } from "./textarea-group";
 
 interface DiffStyleProps extends CSSProperties {
   "--diffs-font-size"?: string;
@@ -26,41 +35,41 @@ type FileChangeType = "modified" | "created" | "deleted";
 type ReviewStatus = "pending" | "dismissed";
 type FileStatus = "added" | "modified" | "deleted";
 
-type ReviewableFile = {
+interface ReviewableFile {
   path: string;
   originalContent: string;
   currentContent: string;
   status: ReviewStatus;
   changeType: FileChangeType;
-};
+}
 
-type LineSelection = {
+interface LineSelection {
   filePath: string;
   range: SelectedLineRange;
-};
+}
 
-type FileNode = {
+interface FileNode {
   name: string;
   path: string;
   type: "file" | "directory";
   ignored?: boolean;
-};
+}
 
-type PatchHunk = {
+interface PatchHunk {
   oldStart: number;
   oldLines: number;
   newStart: number;
   newLines: number;
   lines: string[];
-};
+}
 
-type Patch = {
+interface Patch {
   oldFileName: string;
   newFileName: string;
   hunks: PatchHunk[];
-};
+}
 
-type BrowserState = {
+interface BrowserState {
   rootNodes: FileNode[];
   expandedPaths: Set<string>;
   loadedContents: Map<string, FileNode[]>;
@@ -72,41 +81,41 @@ type BrowserState = {
   previewLoading: boolean;
   fileStatuses: Map<string, FileStatus>;
   directoriesWithChanges: Set<string>;
-};
+}
 
-type BrowserActions = {
+interface BrowserActions {
   toggleDirectory: (path: string) => void;
   selectFile: (path: string) => void;
   clearFileSelection: () => void;
   expandToFile: (path: string) => Promise<void>;
-};
+}
 
-type ReviewState = {
+interface ReviewState {
   files: ReviewableFile[];
   pendingFiles: ReviewableFile[];
   selection: LineSelection | null;
   view: "diff" | "preview";
   browser: BrowserState;
-};
+}
 
-type ReviewActions = {
+interface ReviewActions {
   dismissFile: (path: string) => void;
   selectLines: (filePath: string, range: SelectedLineRange | null) => void;
   clearSelection: () => void;
   submitFeedback: (feedback: string) => void;
   browser: BrowserActions;
-};
+}
 
-type ReviewMeta = {
+interface ReviewMeta {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   prevSelectionRef: RefObject<LineSelection | null>;
-};
+}
 
-type ReviewContextValue = {
+interface ReviewContextValue {
   state: ReviewState;
   actions: ReviewActions;
   meta: ReviewMeta;
-};
+}
 
 const ReviewContext = createContext<ReviewContextValue | null>(null);
 
@@ -118,7 +127,7 @@ function useReview() {
   return context;
 }
 
-type ProviderProps = {
+interface ProviderProps {
   children: ReactNode;
   files: ReviewableFile[];
   onDismiss: (path: string) => void;
@@ -127,9 +136,15 @@ type ProviderProps = {
     state: BrowserState;
     actions: BrowserActions;
   };
-};
+}
 
-function ReviewProvider({ children, files, onDismiss, onSubmitFeedback, browser }: ProviderProps) {
+function ReviewProvider({
+  children,
+  files,
+  onDismiss,
+  onSubmitFeedback,
+  browser,
+}: ProviderProps) {
   const [selection, setSelection] = useState<LineSelection | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const prevSelectionRef = useRef<LineSelection | null>(null);
@@ -210,7 +225,7 @@ function ReviewProvider({ children, files, onDismiss, onSubmitFeedback, browser 
 
 function ReviewFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[1fr_auto] grid-rows-[auto_1fr_auto] flex-1 min-h-0 min-w-0">
+    <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[1fr_auto] grid-rows-[auto_1fr_auto]">
       {children}
     </div>
   );
@@ -232,14 +247,18 @@ function ReviewSidePanel({ children }: { children: ReactNode }) {
 }
 
 const emptyState = tv({
-  base: "col-start-1 row-start-1 row-span-2 flex flex-col items-center justify-center gap-2 text-center",
+  base: "col-start-1 row-span-2 row-start-1 flex flex-col items-center justify-center gap-2 text-center",
 });
 
 function ReviewEmpty() {
   const { state } = useReview();
 
-  if (state.view === "preview") return null;
-  if (state.selection) return null;
+  if (state.view === "preview") {
+    return null;
+  }
+  if (state.selection) {
+    return null;
+  }
 
   if (state.files.length === 0) {
     return (
@@ -263,16 +282,28 @@ function ReviewEmpty() {
 
 function ReviewDiffView({ children }: { children: ReactNode }) {
   const { state } = useReview();
-  if (state.view !== "diff") return null;
-  if (state.pendingFiles.length === 0 && !state.selection) return null;
+  if (state.view !== "diff") {
+    return null;
+  }
+  if (state.pendingFiles.length === 0 && !state.selection) {
+    return null;
+  }
   return <div className="contents">{children}</div>;
 }
 
 function ReviewDiffHeader({ children }: { children?: ReactNode }) {
   return (
-    <div className="col-start-1 row-start-1 flex items-center gap-1.5 px-2 py-1.5 border-b border-border">
-      <span className="flex-1 text-xs text-text-muted">{children ?? "Changes"}</span>
-      <span className={button({ variant: "ghost", size: "sm", className: "invisible" })}>
+    <div className="col-start-1 row-start-1 flex items-center gap-1.5 border-border border-b px-2 py-1.5">
+      <span className="flex-1 text-text-muted text-xs">
+        {children ?? "Changes"}
+      </span>
+      <span
+        className={button({
+          variant: "ghost",
+          size: "sm",
+          className: "invisible",
+        })}
+      >
         Close
       </span>
     </div>
@@ -280,16 +311,16 @@ function ReviewDiffHeader({ children }: { children?: ReactNode }) {
 }
 
 const diffList = tv({
-  base: "col-start-1 row-start-2 overflow-auto min-w-0 min-h-0",
+  base: "col-start-1 row-start-2 min-h-0 min-w-0 overflow-auto",
 });
 
 function ReviewDiffList({ children }: { children: ReactNode }) {
   return <div className={diffList()}>{children}</div>;
 }
 
-type DiffItemContextValue = {
+interface DiffItemContextValue {
   file: ReviewableFile;
-};
+}
 
 const DiffItemContext = createContext<DiffItemContextValue | null>(null);
 
@@ -301,10 +332,16 @@ function useDiffItem() {
   return context;
 }
 
-function ReviewDiffItem({ file, children }: { file: ReviewableFile; children: ReactNode }) {
+function ReviewDiffItem({
+  file,
+  children,
+}: {
+  file: ReviewableFile;
+  children: ReactNode;
+}) {
   return (
     <DiffItemContext value={{ file }}>
-      <div className="border-b border-border min-w-0">{children}</div>
+      <div className="min-w-0 border-border border-b">{children}</div>
     </DiffItemContext>
   );
 }
@@ -343,13 +380,15 @@ function ReviewDiff() {
     meta.prevSelectionRef.current?.filePath === file.path &&
     state.selection?.filePath !== file.path;
 
-  const diffStyle: DiffStyleProps = { "--diffs-font-size": "12px", minWidth: 0 };
+  const diffStyle: DiffStyleProps = {
+    "--diffs-font-size": "12px",
+    minWidth: 0,
+  };
 
   return (
     <MultiFileDiff
-      oldFile={oldFile}
       newFile={newFile}
-      selectedLines={shouldClearSelection ? null : undefined}
+      oldFile={oldFile}
       options={{
         theme: pierreThemes,
         themeType: "system",
@@ -362,28 +401,31 @@ function ReviewDiff() {
         onLineSelected: (range) => actions.selectLines(file.path, range),
         unsafeCSS: DIFF_CSS,
       }}
+      selectedLines={shouldClearSelection ? null : undefined}
       style={diffStyle}
     />
   );
 }
 
-type FileHeaderContextValue = {
+interface FileHeaderContextValue {
   path: string;
   changeType: FileChangeType;
-};
+}
 
 const FileHeaderContext = createContext<FileHeaderContextValue | null>(null);
 
 function useFileHeader() {
   const context = use(FileHeaderContext);
   if (!context) {
-    throw new Error("FileHeader components must be used within Review.FileHeader");
+    throw new Error(
+      "FileHeader components must be used within Review.FileHeader"
+    );
   }
   return context;
 }
 
 const fileHeader = tv({
-  base: "flex items-center gap-1.5 px-2 py-1.5 border-b border-border sticky top-0 bg-bg z-10",
+  base: "sticky top-0 z-10 flex items-center gap-1.5 border-border border-b bg-bg px-2 py-1.5",
 });
 
 function ReviewFileHeader({ children }: { children: ReactNode }) {
@@ -416,7 +458,9 @@ function ReviewFileHeaderIcon() {
 
 function ReviewFileHeaderLabel() {
   const { path } = useFileHeader();
-  return <span className="flex-1 truncate text-xs text-text-muted ">{path}</span>;
+  return (
+    <span className="flex-1 truncate text-text-muted text-xs">{path}</span>
+  );
 }
 
 function ReviewFileHeaderDismiss() {
@@ -424,14 +468,14 @@ function ReviewFileHeaderDismiss() {
   const { path } = useFileHeader();
 
   return (
-    <Button variant="ghost" size="sm" onClick={() => actions.dismissFile(path)}>
+    <Button onClick={() => actions.dismissFile(path)} size="sm" variant="ghost">
       Dismiss
     </Button>
   );
 }
 
 const feedback = tv({
-  base: "col-start-1 row-start-3 border-t border-border",
+  base: "col-start-1 row-start-3 border-border border-t",
 });
 
 function ReviewFeedback({ children }: { children: ReactNode }) {
@@ -443,7 +487,9 @@ function ReviewFeedback({ children }: { children: ReactNode }) {
     }
   }, [state.selection, meta.textareaRef]);
 
-  if (!state.selection) return null;
+  if (!state.selection) {
+    return null;
+  }
 
   const handleSubmit = () => {
     const feedback = meta.textareaRef.current?.value ?? "";
@@ -452,9 +498,9 @@ function ReviewFeedback({ children }: { children: ReactNode }) {
 
   return (
     <TextAreaGroup.Provider
-      state={{}}
       actions={{ onSubmit: handleSubmit }}
       meta={{ textareaRef: meta.textareaRef }}
+      state={{}}
     >
       <div className={feedback()}>{children}</div>
     </TextAreaGroup.Provider>
@@ -462,7 +508,7 @@ function ReviewFeedback({ children }: { children: ReactNode }) {
 }
 
 const feedbackHeader = tv({
-  base: "flex items-center gap-1.5 px-2 py-1 border-b border-border bg-bg-muted",
+  base: "flex items-center gap-1.5 border-border border-b bg-bg-muted px-2 py-1",
 });
 
 function ReviewFeedbackHeader({ children }: { children?: ReactNode }) {
@@ -472,7 +518,11 @@ function ReviewFeedbackHeader({ children }: { children?: ReactNode }) {
     <div className={feedbackHeader()}>
       {children}
       <span className="flex-1" />
-      <button type="button" onClick={actions.clearSelection} className="p-0.5 hover:bg-bg">
+      <button
+        className="p-0.5 hover:bg-bg"
+        onClick={actions.clearSelection}
+        type="button"
+      >
         <X className="size-3 text-text-muted" />
       </button>
     </div>
@@ -481,13 +531,18 @@ function ReviewFeedbackHeader({ children }: { children?: ReactNode }) {
 
 function ReviewFeedbackLocation() {
   const { state } = useReview();
-  if (!state.selection) return null;
+  if (!state.selection) {
+    return null;
+  }
 
   const { filePath, range } = state.selection;
-  const lineText = range.end !== range.start ? `L${range.start}-${range.end}` : `L${range.start}`;
+  const lineText =
+    range.end !== range.start
+      ? `L${range.start}-${range.end}`
+      : `L${range.start}`;
 
   return (
-    <span className="text-xs  text-text-muted">
+    <span className="text-text-muted text-xs">
       {filePath} {lineText}
     </span>
   );
@@ -495,7 +550,9 @@ function ReviewFeedbackLocation() {
 
 function ReviewPreviewView({ children }: { children?: ReactNode }) {
   const { state } = useReview();
-  if (state.view !== "preview") return null;
+  if (state.view !== "preview") {
+    return null;
+  }
 
   if (state.browser.previewLoading) {
     return (
@@ -507,7 +564,7 @@ function ReviewPreviewView({ children }: { children?: ReactNode }) {
 
   if (!state.browser.previewContent) {
     return (
-      <div className="col-start-1 row-span-2 flex items-center justify-center text-text-muted text-sm">
+      <div className="col-start-1 row-span-2 flex items-center justify-center text-sm text-text-muted">
         Unable to load file
       </div>
     );
@@ -525,11 +582,15 @@ function ReviewPreviewHeader({ children }: { children?: ReactNode }) {
       className={fileHeader({ className: "col-start-1 row-start-1" })}
       style={{ visibility: isVisible ? "visible" : "hidden" }}
     >
-      <span className="flex-1 truncate text-xs text-text-muted ">
+      <span className="flex-1 truncate text-text-muted text-xs">
         {state.browser.selectedPath ?? "\u00A0"}
       </span>
       {children}
-      <Button variant="ghost" size="sm" onClick={actions.browser.clearFileSelection}>
+      <Button
+        onClick={actions.browser.clearFileSelection}
+        size="sm"
+        variant="ghost"
+      >
         Close
       </Button>
     </div>
@@ -575,17 +636,22 @@ function reconstructOldContent(newContent: string, patch: Patch): string {
 function ReviewPreviewContent() {
   const { state, actions, meta } = useReview();
 
-  if (!state.browser.selectedPath || !state.browser.previewContent) return null;
+  if (!(state.browser.selectedPath && state.browser.previewContent)) {
+    return null;
+  }
 
   const shouldClearSelection =
     meta.prevSelectionRef.current?.filePath === state.browser.selectedPath &&
     state.selection?.filePath !== state.browser.selectedPath;
 
   const patch = state.browser.previewPatch;
-  const hasChanges = patch && patch.hunks && patch.hunks.length > 0;
+  const hasChanges = patch?.hunks && patch.hunks.length > 0;
 
   if (hasChanges) {
-    const oldContent = reconstructOldContent(state.browser.previewContent, patch);
+    const oldContent = reconstructOldContent(
+      state.browser.previewContent,
+      patch
+    );
 
     const oldFile: FileContents = {
       name: state.browser.selectedPath,
@@ -597,14 +663,16 @@ function ReviewPreviewContent() {
       contents: state.browser.previewContent,
     };
 
-    const diffStyle: DiffStyleProps = { "--diffs-font-size": "12px", minWidth: 0 };
+    const diffStyle: DiffStyleProps = {
+      "--diffs-font-size": "12px",
+      minWidth: 0,
+    };
 
     return (
-      <div className="col-start-1 row-start-2 overflow-auto min-w-0 min-h-0">
+      <div className="col-start-1 row-start-2 min-h-0 min-w-0 overflow-auto">
         <MultiFileDiff
-          oldFile={oldFile}
           newFile={newFile}
-          selectedLines={shouldClearSelection ? null : undefined}
+          oldFile={oldFile}
           options={{
             theme: pierreThemes,
             themeType: "system",
@@ -614,9 +682,11 @@ function ReviewPreviewContent() {
             overflow: "scroll",
             disableFileHeader: true,
             enableLineSelection: true,
-            onLineSelected: (range) => actions.selectLines(state.browser.selectedPath!, range),
+            onLineSelected: (range) =>
+              actions.selectLines(state.browser.selectedPath!, range),
             unsafeCSS: DIFF_CSS,
           }}
+          selectedLines={shouldClearSelection ? null : undefined}
           style={diffStyle}
         />
       </div>
@@ -628,39 +698,45 @@ function ReviewPreviewContent() {
     contents: state.browser.previewContent,
   };
 
-  const fileStyle: DiffStyleProps = { "--diffs-font-size": "12px", minWidth: 0 };
+  const fileStyle: DiffStyleProps = {
+    "--diffs-font-size": "12px",
+    minWidth: 0,
+  };
 
   return (
-    <div className="col-start-1 row-start-2 overflow-auto min-w-0 min-h-0">
+    <div className="col-start-1 row-start-2 min-h-0 min-w-0 overflow-auto">
       <FileViewer
         file={previewFile}
-        selectedLines={shouldClearSelection ? null : undefined}
         options={{
           theme: pierreThemes,
           themeType: "system",
           overflow: "scroll",
           disableFileHeader: true,
           enableLineSelection: true,
-          onLineSelected: (range) => actions.selectLines(state.browser.selectedPath!, range),
+          onLineSelected: (range) =>
+            actions.selectLines(state.browser.selectedPath!, range),
           unsafeCSS: DIFF_CSS,
         }}
+        selectedLines={shouldClearSelection ? null : undefined}
         style={fileStyle}
       />
     </div>
   );
 }
 
-type SidePanelContextValue = {
+interface SidePanelContextValue {
   collapsed: boolean;
   toggle: () => void;
-};
+}
 
 const SidePanelContext = createContext<SidePanelContextValue | null>(null);
 
 function useSidePanel() {
   const context = use(SidePanelContext);
   if (!context) {
-    throw new Error("SidePanel components must be used within Review.SidePanel");
+    throw new Error(
+      "SidePanel components must be used within Review.SidePanel"
+    );
   }
   return context;
 }
@@ -672,14 +748,14 @@ function ReviewBrowser({ children }: { children: ReactNode }) {
     return (
       <>
         <button
-          type="button"
-          onClick={toggle}
-          className="col-start-2 row-start-1 flex items-center justify-center w-8 px-2 py-1.5 border-l border-b border-border hover:bg-bg-muted"
           aria-label="Expand files panel"
+          className="col-start-2 row-start-1 flex w-8 items-center justify-center border-border border-b border-l px-2 py-1.5 hover:bg-bg-muted"
+          onClick={toggle}
+          type="button"
         >
-          <ChevronRight className="size-3 text-text-muted rotate-180" />
+          <ChevronRight className="size-3 rotate-180 text-text-muted" />
         </button>
-        <div className="col-start-2 row-start-2 w-8 border-l border-border" />
+        <div className="col-start-2 row-start-2 w-8 border-border border-l" />
       </>
     );
   }
@@ -692,12 +768,12 @@ function ReviewBrowserHeader({ children }: { children?: ReactNode }) {
 
   return (
     <button
-      type="button"
+      className="col-start-2 row-start-1 flex min-w-56 items-center gap-1 border-border border-b border-l px-2 py-1.5 text-left hover:bg-bg-muted"
       onClick={toggle}
-      className="col-start-2 row-start-1 flex items-center gap-1 min-w-56 px-2 py-1.5 border-l border-b border-border text-left hover:bg-bg-muted"
+      type="button"
     >
       <ChevronRight className="size-3 text-text-muted" />
-      <span className="text-xs text-text-muted">{children ?? "Files"}</span>
+      <span className="text-text-muted text-xs">{children ?? "Files"}</span>
     </button>
   );
 }
@@ -707,7 +783,7 @@ function ReviewBrowserTree() {
 
   if (state.browser.rootLoading) {
     return (
-      <div className="col-start-2 row-start-2 flex items-center justify-center p-4 min-w-56 border-l border-border">
+      <div className="col-start-2 row-start-2 flex min-w-56 items-center justify-center border-border border-l p-4">
         <Loader2 className="size-4 animate-spin text-text-muted" />
       </div>
     );
@@ -715,15 +791,15 @@ function ReviewBrowserTree() {
 
   if (state.browser.rootNodes.length === 0) {
     return (
-      <div className="col-start-2 row-start-2 flex items-center justify-center p-4 min-w-56 border-l border-border text-text-muted text-xs">
+      <div className="col-start-2 row-start-2 flex min-w-56 items-center justify-center border-border border-l p-4 text-text-muted text-xs">
         No files found
       </div>
     );
   }
 
   return (
-    <div className="col-start-2 row-start-2 row-span-2 min-w-56 border-l border-border overflow-auto">
-      <TreeNodes nodes={state.browser.rootNodes} depth={0} />
+    <div className="col-start-2 row-span-2 row-start-2 min-w-56 overflow-auto border-border border-l">
+      <TreeNodes depth={0} nodes={state.browser.rootNodes} />
     </div>
   );
 }
@@ -747,7 +823,8 @@ function TreeNodes({ nodes, depth }: { nodes: FileNode[]; depth: number }) {
         const isDirectory = node.type === "directory";
         const fileStatus = state.browser.fileStatuses.get(node.path);
         const isIgnored = node.ignored === true;
-        const hasChanges = isDirectory && state.browser.directoriesWithChanges.has(node.path);
+        const hasChanges =
+          isDirectory && state.browser.directoriesWithChanges.has(node.path);
 
         const handleClick = () => {
           if (isDirectory) {
@@ -759,45 +836,65 @@ function TreeNodes({ nodes, depth }: { nodes: FileNode[]; depth: number }) {
         };
 
         const FileIcon =
-          fileStatus === "added" ? FilePlus : fileStatus === "deleted" ? FileX : File;
+          fileStatus === "added"
+            ? FilePlus
+            : fileStatus === "deleted"
+              ? FileX
+              : File;
 
         const getFileIconColor = () => {
-          if (isIgnored) return "text-text-muted/80";
-          if (fileStatus) return fileStatusColors[fileStatus];
+          if (isIgnored) {
+            return "text-text-muted/80";
+          }
+          if (fileStatus) {
+            return fileStatusColors[fileStatus];
+          }
           return "text-text-muted";
         };
 
         const getFolderColor = () => {
-          if (isIgnored) return "text-text-muted/80";
-          if (hasChanges) return fileStatusColors.modified;
+          if (isIgnored) {
+            return "text-text-muted/80";
+          }
+          if (hasChanges) {
+            return fileStatusColors.modified;
+          }
           return "text-text-muted";
         };
 
         const getTextColor = () => {
-          if (isIgnored) return "text-text-muted/80";
-          if (fileStatus) return fileStatusColors[fileStatus];
-          if (hasChanges) return fileStatusColors.modified;
+          if (isIgnored) {
+            return "text-text-muted/80";
+          }
+          if (fileStatus) {
+            return fileStatusColors[fileStatus];
+          }
+          if (hasChanges) {
+            return fileStatusColors.modified;
+          }
           return undefined;
         };
 
         return (
           <div key={node.path}>
             <button
-              type="button"
-              onClick={handleClick}
               className={cn(
-                "flex items-center gap-1 w-full px-2 py-0.5 text-left text-text-muted hover:bg-bg-muted",
+                "flex w-full items-center gap-1 px-2 py-0.5 text-left text-text-muted hover:bg-bg-muted",
                 isSelected && "bg-bg-muted",
-                isIgnored && "opacity-80",
+                isIgnored && "opacity-80"
               )}
+              onClick={handleClick}
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
+              type="button"
             >
               {isDirectory && (
                 <span className="grid size-3 place-items-center">
                   {isLoading ? (
                     <Loader2 className="size-3 animate-spin" />
                   ) : (
-                    <ChevronRight className={cn("size-3", isExpanded && "rotate-90")} />
+                    <ChevronRight
+                      className={cn("size-3", isExpanded && "rotate-90")}
+                    />
                   )}
                 </span>
               )}
@@ -807,10 +904,12 @@ function TreeNodes({ nodes, depth }: { nodes: FileNode[]; depth: number }) {
               ) : (
                 <FileIcon className={cn("size-3", getFileIconColor())} />
               )}
-              <span className={cn("flex-1 truncate text-xs", getTextColor())}>{node.name}</span>
+              <span className={cn("flex-1 truncate text-xs", getTextColor())}>
+                {node.name}
+              </span>
             </button>
             {isDirectory && isExpanded && children.length > 0 && (
-              <TreeNodes nodes={children} depth={depth + 1} />
+              <TreeNodes depth={depth + 1} nodes={children} />
             )}
           </div>
         );
@@ -845,4 +944,10 @@ const Review = {
   BrowserTree: ReviewBrowserTree,
 };
 
-export { Review, type FileStatus, type FileNode, type BrowserState, type BrowserActions };
+export {
+  Review,
+  type FileStatus,
+  type FileNode,
+  type BrowserState,
+  type BrowserActions,
+};

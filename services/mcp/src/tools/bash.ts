@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod/v4";
 import { parse } from "shell-quote";
+import { z } from "zod/v4";
 import type { ToolContext } from "../types/tool";
 
 interface WorkspaceContainerResponse {
@@ -10,10 +10,14 @@ interface WorkspaceContainerResponse {
 
 async function getWorkspaceContainer(
   apiBaseUrl: string,
-  sessionId: string,
+  sessionId: string
 ): Promise<WorkspaceContainerResponse | null> {
-  const response = await fetch(`${apiBaseUrl}/internal/sessions/${sessionId}/workspace-container`);
-  if (!response.ok) return null;
+  const response = await fetch(
+    `${apiBaseUrl}/internal/sessions/${sessionId}/workspace-container`
+  );
+  if (!response.ok) {
+    return null;
+  }
   return response.json();
 }
 
@@ -35,27 +39,40 @@ function getCommandSegments(command: string): string[][] {
   return parse(command)
     .reduce<string[][]>(
       (segments, token) => {
-        if (isOperator(token)) return [...segments, []];
-        if (typeof token !== "string") return segments;
+        if (isOperator(token)) {
+          return [...segments, []];
+        }
+        if (typeof token !== "string") {
+          return segments;
+        }
 
         const rest = segments.slice(0, -1);
         const current = segments.at(-1) ?? [];
         return [...rest, [...current, token]];
       },
-      [[]],
+      [[]]
     )
     .filter((segment) => segment.length > 0);
 }
 
-function matchesBlocked([name, subcommand]: string[], blocked: BlockedCommand): boolean {
-  if (name !== blocked.name) return false;
+function matchesBlocked(
+  [name, subcommand]: string[],
+  blocked: BlockedCommand
+): boolean {
+  if (name !== blocked.name) {
+    return false;
+  }
   return blocked.subcommand === undefined || subcommand === blocked.subcommand;
 }
 
 function findBlockedCommand(command: string): BlockedCommand | null {
   for (const segment of getCommandSegments(command)) {
-    const match = BLOCKED_COMMANDS.find((blocked) => matchesBlocked(segment, blocked));
-    if (match) return match;
+    const match = BLOCKED_COMMANDS.find((blocked) =>
+      matchesBlocked(segment, blocked)
+    );
+    if (match) {
+      return match;
+    }
   }
   return null;
 }
@@ -67,12 +84,16 @@ export function bash(server: McpServer, { docker, config }: ToolContext) {
       description:
         "Execute a bash command in the session's workspace container. Use this tool to run shell commands, install packages, build projects, or interact with the filesystem. Note: For GitHub operations, use the github_* tools (e.g., github_create_pull_request).",
       inputSchema: {
-        sessionId: z.string().describe("The Lab session ID (provided in the system prompt)"),
+        sessionId: z
+          .string()
+          .describe("The Lab session ID (provided in the system prompt)"),
         command: z.string().describe("The bash command to execute"),
         workdir: z
           .string()
           .optional()
-          .describe("Working directory for the command (defaults to workspace root)"),
+          .describe(
+            "Working directory for the command (defaults to workspace root)"
+          ),
         timeout: z.number().optional().describe("Timeout in milliseconds"),
       },
     },
@@ -85,7 +106,10 @@ export function bash(server: McpServer, { docker, config }: ToolContext) {
         };
       }
 
-      const workspace = await getWorkspaceContainer(config.API_BASE_URL, args.sessionId);
+      const workspace = await getWorkspaceContainer(
+        config.API_BASE_URL,
+        args.sessionId
+      );
       if (!workspace) {
         return {
           isError: true,
@@ -131,6 +155,6 @@ export function bash(server: McpServer, { docker, config }: ToolContext) {
       return {
         content: [{ type: "text", text: result.stdout }],
       };
-    },
+    }
   );
 }

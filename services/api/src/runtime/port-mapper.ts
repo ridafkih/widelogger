@@ -1,4 +1,4 @@
-import { formatUniqueHostname, formatNetworkAlias } from "../shared/naming";
+import { formatNetworkAlias, formatUniqueHostname } from "../shared/naming";
 
 interface PortMappingResult {
   portMap: Record<number, number>;
@@ -8,7 +8,7 @@ interface PortMappingResult {
 export function buildNetworkAliasesAndPortMap(
   sessionId: string,
   containerId: string,
-  ports: { port: number }[],
+  ports: { port: number }[]
 ): PortMappingResult {
   const portMap: Record<number, number> = {};
   const networkAliases: string[] = [];

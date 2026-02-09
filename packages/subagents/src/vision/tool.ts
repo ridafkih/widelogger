@@ -7,7 +7,9 @@ const analyzeImageSchema = z.object({
   url: z.string().url().describe("The URL of the image to analyze"),
   query: z
     .string()
-    .describe("What you want to know about the image (be specific for better results)"),
+    .describe(
+      "What you want to know about the image (be specific for better results)"
+    ),
 });
 
 /**

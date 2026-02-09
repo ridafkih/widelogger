@@ -1,19 +1,25 @@
 "use client";
 
 import {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
   createContext,
-  use,
   type ReactNode,
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
-import { useMultiplayer } from "@/lib/multiplayer";
 import { useMultiplayerEnabled } from "@/app/providers";
 import { cn } from "@/lib/cn";
+import { useMultiplayer } from "@/lib/multiplayer";
 
-type BrowserCurrentState = "pending" | "stopped" | "starting" | "running" | "stopping" | "error";
+type BrowserCurrentState =
+  | "pending"
+  | "stopped"
+  | "starting"
+  | "running"
+  | "stopping"
+  | "error";
 
 interface BrowserStreamState {
   currentState: BrowserCurrentState;
@@ -50,18 +56,18 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
   const browserState = useChannel(
     "sessionBrowserState",
     { uuid: sessionId },
-    { enabled: isActive },
+    { enabled: isActive }
   );
   const frameSnapshot = useChannel(
     "sessionBrowserFrames",
     { uuid: sessionId },
-    { enabled: isActive },
+    { enabled: isActive }
   );
 
   useEffect(() => {
     bitmapRef.current?.close();
     bitmapRef.current = null;
-  }, [sessionId]);
+  }, []);
 
   const processFrame = async (base64: string) => {
     try {
@@ -86,12 +92,21 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
   };
 
   useEffect(() => {
-    if (isEnabled && isActive && frameSnapshot.lastFrame && !bitmapRef.current) {
+    if (
+      isEnabled &&
+      isActive &&
+      frameSnapshot.lastFrame &&
+      !bitmapRef.current
+    ) {
       processFrame(frameSnapshot.lastFrame);
     }
-  }, [isEnabled, isActive, frameSnapshot.lastFrame]);
+  }, [isEnabled, isActive, frameSnapshot.lastFrame, processFrame]);
 
-  const handleFrameEvent = (event: { type: "frame"; data: string; timestamp: number }) => {
+  const handleFrameEvent = (event: {
+    type: "frame";
+    data: string;
+    timestamp: number;
+  }) => {
     processFrame(event.data);
   };
 
@@ -99,7 +114,7 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
     "sessionBrowserFrames",
     handleFrameEvent,
     { uuid: sessionId },
-    { enabled: isActive },
+    { enabled: isActive }
   );
 
   useEffect(() => {
@@ -113,16 +128,19 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
     return () => setSubscriberCount((count) => count - 1);
   }, []);
 
-  const subscribeToFrames = useCallback((callback: (bitmap: ImageBitmap) => void) => {
-    frameListenersRef.current.add(callback);
-    // Send current frame immediately if available
-    if (bitmapRef.current) {
-      callback(bitmapRef.current);
-    }
-    return () => {
-      frameListenersRef.current.delete(callback);
-    };
-  }, []);
+  const subscribeToFrames = useCallback(
+    (callback: (bitmap: ImageBitmap) => void) => {
+      frameListenersRef.current.add(callback);
+      // Send current frame immediately if available
+      if (bitmapRef.current) {
+        callback(bitmapRef.current);
+      }
+      return () => {
+        frameListenersRef.current.delete(callback);
+      };
+    },
+    []
+  );
 
   const getBitmap = useCallback(() => bitmapRef.current, []);
 
@@ -153,7 +171,9 @@ function BrowserCanvasPlaceholder({ children }: { children?: ReactNode }) {
   }, [subscribe]);
 
   useEffect(() => {
-    if (hasFrameRef.current) return;
+    if (hasFrameRef.current) {
+      return;
+    }
 
     const onFrame = () => {
       if (!hasFrameRef.current) {
@@ -166,19 +186,23 @@ function BrowserCanvasPlaceholder({ children }: { children?: ReactNode }) {
     return unsubscribe;
   }, [subscribeToFrames]);
 
-  if (hasFrame) return null;
+  if (hasFrame) {
+    return null;
+  }
 
-  if (children) return children;
+  if (children) {
+    return children;
+  }
 
   return (
     <div
-      className="aspect-video flex items-center justify-center"
+      className="flex aspect-video items-center justify-center"
       style={{
         background:
           "repeating-linear-gradient(-45deg, var(--color-bg-muted), var(--color-bg-muted) 4px, var(--color-bg) 4px, var(--color-bg) 8px)",
       }}
     >
-      <div className="size-4 border-2 border-text-muted border-t-transparent rounded-full animate-spin" />
+      <div className="size-4 animate-spin rounded-full border-2 border-text-muted border-t-transparent" />
     </div>
   );
 }
@@ -197,10 +221,14 @@ function BrowserCanvasView({ className }: { className?: string }) {
   useEffect(() => {
     const drawFrame = (bitmap: ImageBitmap) => {
       const canvas = canvasRef.current;
-      if (!canvas) return;
+      if (!canvas) {
+        return;
+      }
 
       const context = canvas.getContext("2d");
-      if (!context) return;
+      if (!context) {
+        return;
+      }
 
       if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
         canvas.width = bitmap.width;
@@ -221,10 +249,16 @@ function BrowserCanvasView({ className }: { className?: string }) {
 
   return (
     <div
-      className={cn("relative overflow-hidden", className ?? "aspect-video bg-black")}
+      className={cn(
+        "relative overflow-hidden",
+        className ?? "aspect-video bg-black"
+      )}
       style={{ display: hasFrame ? undefined : "none" }}
     >
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-contain" />
+      <canvas
+        className="absolute inset-0 h-full w-full object-contain"
+        ref={canvasRef}
+      />
     </div>
   );
 }

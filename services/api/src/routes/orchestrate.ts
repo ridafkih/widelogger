@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { Handler, RouteContextFor } from "../types/route";
+import { widelog } from "../logging";
 import { orchestrate } from "../orchestration";
 import { parseRequestBody } from "../shared/validation";
-import { widelog } from "../logging";
+import type { Handler, RouteContextFor } from "../types/route";
 
 const orchestrationRequestSchema = z.object({
   content: z.string().min(1),
@@ -18,8 +18,12 @@ type OrchestrationContext = RouteContextFor<"browser" | "session" | "infra">;
 const POST: Handler<OrchestrationContext> = async ({ request, context }) => {
   const body = await parseRequestBody(request, orchestrationRequestSchema);
 
-  if (body.platformOrigin) widelog.set("orchestration.platform_origin", body.platformOrigin);
-  if (body.messagingMode) widelog.set("orchestration.messaging_mode", body.messagingMode);
+  if (body.platformOrigin) {
+    widelog.set("orchestration.platform_origin", body.platformOrigin);
+  }
+  if (body.messagingMode) {
+    widelog.set("orchestration.messaging_mode", body.messagingMode);
+  }
   widelog.set("orchestration.has_model_id", !!body.modelId);
 
   const result = await orchestrate({

@@ -1,19 +1,22 @@
-import { widelog } from "../../logging";
-import { IMessageSDK, type Message } from "@photon-ai/imessage-kit";
-import { writeFile, unlink, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import type { PlatformAdapter, MessageHandler } from "../types";
-import type { OutgoingPlatformMessage, MessageAttachment } from "../../types/messages";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { IMessageSDK, type Message } from "@photon-ai/imessage-kit";
 import { config } from "../../config/environment";
+import { widelog } from "../../logging";
+import type {
+  MessageAttachment,
+  OutgoingPlatformMessage,
+} from "../../types/messages";
+import type { MessageHandler, PlatformAdapter } from "../types";
 
 class IMessageAdapter implements PlatformAdapter {
   readonly platform = "imessage" as const;
   readonly messagingMode = "passive" as const;
   private sdk: IMessageSDK | null = null;
   private handler: MessageHandler | null = null;
-  private watchedContacts: Set<string>;
+  private readonly watchedContacts: Set<string>;
 
   constructor() {
     this.watchedContacts = new Set(config.imessageWatchedContacts);
@@ -86,7 +89,9 @@ class IMessageAdapter implements PlatformAdapter {
               }
 
               try {
-                const history = await this.getConversationHistory(message.chatId);
+                const history = await this.getConversationHistory(
+                  message.chatId
+                );
 
                 await this.handler({
                   platform: "imessage",
@@ -141,7 +146,9 @@ class IMessageAdapter implements PlatformAdapter {
               }
 
               try {
-                const history = await this.getConversationHistory(message.chatId);
+                const history = await this.getConversationHistory(
+                  message.chatId
+                );
 
                 await this.handler({
                   platform: "imessage",
@@ -221,12 +228,12 @@ class IMessageAdapter implements PlatformAdapter {
         }
 
         if (attachmentPaths.length > 0) {
-          await this.sdk!.send(message.chatId, {
+          await this.sdk?.send(message.chatId, {
             text: message.content || undefined,
             images: attachmentPaths,
           });
         } else {
-          await this.sdk!.send(message.chatId, message.content);
+          await this.sdk?.send(message.chatId, message.content);
         }
 
         widelog.set("outcome", "success");
@@ -248,7 +255,9 @@ class IMessageAdapter implements PlatformAdapter {
     });
   }
 
-  private async writeAttachmentToTempFile(attachment: MessageAttachment): Promise<string> {
+  private async writeAttachmentToTempFile(
+    attachment: MessageAttachment
+  ): Promise<string> {
     const tempDir = join(tmpdir(), "lab-imessage-attachments");
     await mkdir(tempDir, { recursive: true });
 
@@ -268,7 +277,10 @@ class IMessageAdapter implements PlatformAdapter {
       const contentType = response.headers.get("content-type");
       if (contentType?.includes("png")) {
         extension = "png";
-      } else if (contentType?.includes("jpeg") || contentType?.includes("jpg")) {
+      } else if (
+        contentType?.includes("jpeg") ||
+        contentType?.includes("jpg")
+      ) {
         extension = "jpg";
       } else if (contentType?.includes("webp")) {
         extension = "webp";
@@ -291,19 +303,25 @@ class IMessageAdapter implements PlatformAdapter {
   }
 
   shouldMonitor(chatId: string): boolean {
-    if (this.watchedContacts.size === 0) return true;
+    if (this.watchedContacts.size === 0) {
+      return true;
+    }
     return this.watchedContacts.has(chatId);
   }
 
   private async getConversationHistory(chatId: string): Promise<string[]> {
-    if (!this.sdk) return [];
+    if (!this.sdk) {
+      return [];
+    }
 
     const result = await this.sdk.getMessages({
       chatId,
       limit: config.imessageContextMessages,
     });
 
-    return result.messages.map((msg) => `${msg.isFromMe ? "Me" : msg.sender}: ${msg.text}`);
+    return result.messages.map(
+      (msg) => `${msg.isFromMe ? "Me" : msg.sender}: ${msg.text}`
+    );
   }
 }
 

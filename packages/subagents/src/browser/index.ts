@@ -1,2 +1,2 @@
-export { executeBrowserTask, type ExecuteBrowserTaskParams } from "./executor";
+export { type ExecuteBrowserTaskParams, executeBrowserTask } from "./executor";
 export type { BrowserAgentContext, BrowserTaskResult } from "./types";

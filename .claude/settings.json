@@ -13,6 +13,15 @@
             "command": "bun format"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun x ultracite fix"
+          }
+        ]
       }
     ]
   }

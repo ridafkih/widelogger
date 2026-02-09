@@ -1,11 +1,11 @@
 import { runMigrations } from "@lab/database/migrate";
-import type { setup } from "./setup";
 import type { env } from "./env";
+import type { setup } from "./setup";
 
-type MainOptions = {
+interface MainOptions {
   env: typeof env.inferOut;
   extras: ReturnType<typeof setup>;
-};
+}
 
 type MainFunction = (options: MainOptions) => unknown;
 

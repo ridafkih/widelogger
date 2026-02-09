@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useState } from "react";
 import { tv } from "tailwind-variants";
 import { cn } from "@/lib/cn";
 
@@ -20,7 +20,12 @@ function useTabs() {
 }
 
 type TabsRootProps =
-  | { children: ReactNode; defaultTab: string; active?: never; onActiveChange?: never }
+  | {
+      children: ReactNode;
+      defaultTab: string;
+      active?: never;
+      onActiveChange?: never;
+    }
   | {
       children: ReactNode;
       active: string;
@@ -33,7 +38,7 @@ function TabsRoot(props: TabsRootProps) {
   const isControlled = "active" in props && props.active !== undefined;
 
   const [internalActive, setInternalActive] = useState(
-    isControlled ? props.active : props.defaultTab,
+    isControlled ? props.active : props.defaultTab
   );
 
   const active = isControlled ? props.active : internalActive;
@@ -51,18 +56,23 @@ function TabsRoot(props: TabsRootProps) {
 
 function TabsList({ children, grow }: { children: ReactNode; grow?: boolean }) {
   return (
-    <div className={cn("flex items-center gap-px px-0 border-b border-border", grow && "*:flex-1")}>
+    <div
+      className={cn(
+        "flex items-center gap-px border-border border-b px-0",
+        grow && "*:flex-1"
+      )}
+    >
       {children}
     </div>
   );
 }
 
 const tab = tv({
-  base: "px-2 py-1 text-xs cursor-pointer border-b max-w-full",
+  base: "max-w-full cursor-pointer border-b px-2 py-1 text-xs",
   variants: {
     active: {
-      true: "text-text border-text",
-      false: "text-text-muted border-transparent hover:text-text-secondary",
+      true: "border-text text-text",
+      false: "border-transparent text-text-muted hover:text-text-secondary",
     },
   },
 });
@@ -72,17 +82,29 @@ function TabsTab({ value, children }: { value: string; children: ReactNode }) {
   const isActive = active === value;
 
   return (
-    <div className="px-1 min-w-0">
-      <button type="button" onClick={() => setActive(value)} className={tab({ active: isActive })}>
+    <div className="min-w-0 px-1">
+      <button
+        className={tab({ active: isActive })}
+        onClick={() => setActive(value)}
+        type="button"
+      >
         {children}
       </button>
     </div>
   );
 }
 
-function TabsContent({ value, children }: { value: string; children: ReactNode }) {
+function TabsContent({
+  value,
+  children,
+}: {
+  value: string;
+  children: ReactNode;
+}) {
   const { active } = useTabs();
-  if (active !== value) return null;
+  if (active !== value) {
+    return null;
+  }
   return <>{children}</>;
 }
 

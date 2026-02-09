@@ -1,6 +1,9 @@
-import { widelog } from "../logging";
-import type { WireClientMessage, WireServerMessage } from "@lab/multiplayer-sdk";
+import type {
+  WireClientMessage,
+  WireServerMessage,
+} from "@lab/multiplayer-sdk";
 import { config } from "../config/environment";
+import { widelog } from "../logging";
 import type { SessionMessage } from "../types/messages";
 
 type MessageListener = (message: SessionMessage) => void;
@@ -13,19 +16,40 @@ interface SessionCompleteEvent {
 type SessionCompleteListener = (event: SessionCompleteEvent) => void;
 
 function isSessionCompleteEvent(value: unknown): value is SessionCompleteEvent {
-  if (typeof value !== "object" || value === null) return false;
-  if (!("sessionId" in value) || typeof value.sessionId !== "string") return false;
-  if (!("completedAt" in value) || typeof value.completedAt !== "number") return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("sessionId" in value) || typeof value.sessionId !== "string") {
+    return false;
+  }
+  if (!("completedAt" in value) || typeof value.completedAt !== "number") {
+    return false;
+  }
   return true;
 }
 
 function isSessionMessage(value: unknown): value is SessionMessage {
-  if (typeof value !== "object" || value === null) return false;
-  if (!("id" in value) || typeof value.id !== "string") return false;
-  if (!("role" in value) || (value.role !== "user" && value.role !== "assistant")) return false;
-  if (!("content" in value) || typeof value.content !== "string") return false;
-  if (!("timestamp" in value) || typeof value.timestamp !== "number") return false;
-  if (!("senderId" in value) || typeof value.senderId !== "string") return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("id" in value) || typeof value.id !== "string") {
+    return false;
+  }
+  if (
+    !("role" in value) ||
+    (value.role !== "user" && value.role !== "assistant")
+  ) {
+    return false;
+  }
+  if (!("content" in value) || typeof value.content !== "string") {
+    return false;
+  }
+  if (!("timestamp" in value) || typeof value.timestamp !== "number") {
+    return false;
+  }
+  if (!("senderId" in value) || typeof value.senderId !== "string") {
+    return false;
+  }
   return true;
 }
 
@@ -34,14 +58,24 @@ function isSessionCompleteChannel(channel: string): boolean {
 }
 
 function isServerMessage(value: unknown): value is WireServerMessage {
-  if (typeof value !== "object" || value === null) return false;
-  if (!("type" in value)) return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("type" in value)) {
+    return false;
+  }
 
   const { type } = value as { type: unknown };
 
-  if (type === "pong") return true;
-  if (!("channel" in value)) return false;
-  if (typeof (value as { channel: unknown }).channel !== "string") return false;
+  if (type === "pong") {
+    return true;
+  }
+  if (!("channel" in value)) {
+    return false;
+  }
+  if (typeof (value as { channel: unknown }).channel !== "string") {
+    return false;
+  }
 
   switch (type) {
     case "snapshot":
@@ -49,7 +83,10 @@ function isServerMessage(value: unknown): value is WireServerMessage {
     case "event":
       return true;
     case "error":
-      return "error" in value && typeof (value as { error: unknown }).error === "string";
+      return (
+        "error" in value &&
+        typeof (value as { error: unknown }).error === "string"
+      );
     default:
       return false;
   }
@@ -57,12 +94,15 @@ function isServerMessage(value: unknown): value is WireServerMessage {
 
 class MultiplayerClient {
   private ws: WebSocket | null = null;
-  private url: string;
-  private subscriptions = new Map<string, Set<MessageListener>>();
-  private sessionCompleteSubscriptions = new Map<string, Set<SessionCompleteListener>>();
+  private readonly url: string;
+  private readonly subscriptions = new Map<string, Set<MessageListener>>();
+  private readonly sessionCompleteSubscriptions = new Map<
+    string,
+    Set<SessionCompleteListener>
+  >();
   private messageQueue: WireClientMessage[] = [];
   private reconnectAttempt = 0;
-  private maxReconnectAttempts = 10;
+  private readonly maxReconnectAttempts = 10;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private isConnecting = false;
@@ -72,7 +112,9 @@ class MultiplayerClient {
   }
 
   connect(): void {
-    if (this.ws?.readyState === WebSocket.OPEN || this.isConnecting) return;
+    if (this.ws?.readyState === WebSocket.OPEN || this.isConnecting) {
+      return;
+    }
 
     this.isConnecting = true;
 
@@ -90,7 +132,10 @@ class MultiplayerClient {
         widelog.set("outcome", "success");
       } catch (error) {
         widelog.set("outcome", "error");
-        widelog.set("error_message", error instanceof Error ? error.message : String(error));
+        widelog.set(
+          "error_message",
+          error instanceof Error ? error.message : String(error)
+        );
         this.isConnecting = false;
         this.scheduleReconnect();
       }
@@ -116,7 +161,7 @@ class MultiplayerClient {
       this.send({ type: "subscribe", channel });
     }
 
-    this.subscriptions.get(channel)!.add(listener);
+    this.subscriptions.get(channel)?.add(listener);
 
     return () => {
       const listeners = this.subscriptions.get(channel);
@@ -130,7 +175,10 @@ class MultiplayerClient {
     };
   }
 
-  subscribeToSessionComplete(sessionId: string, listener: SessionCompleteListener): () => void {
+  subscribeToSessionComplete(
+    sessionId: string,
+    listener: SessionCompleteListener
+  ): () => void {
     const channel = `session/${sessionId}/complete`;
 
     if (!this.sessionCompleteSubscriptions.has(channel)) {
@@ -138,7 +186,7 @@ class MultiplayerClient {
       this.send({ type: "subscribe", channel });
     }
 
-    this.sessionCompleteSubscriptions.get(channel)!.add(listener);
+    this.sessionCompleteSubscriptions.get(channel)?.add(listener);
 
     return () => {
       const listeners = this.sessionCompleteSubscriptions.get(channel);
@@ -204,11 +252,21 @@ class MultiplayerClient {
       try {
         const parsed: unknown = JSON.parse(event.data);
 
-        if (!isServerMessage(parsed)) return;
-        if (parsed.type === "pong") return;
-        if (parsed.type !== "event") return;
-        if (!("channel" in parsed) || typeof parsed.channel !== "string") return;
-        if (!("data" in parsed)) return;
+        if (!isServerMessage(parsed)) {
+          return;
+        }
+        if (parsed.type === "pong") {
+          return;
+        }
+        if (parsed.type !== "event") {
+          return;
+        }
+        if (!("channel" in parsed) || typeof parsed.channel !== "string") {
+          return;
+        }
+        if (!("data" in parsed)) {
+          return;
+        }
 
         const { channel, data } = parsed;
 
@@ -231,7 +289,10 @@ class MultiplayerClient {
       } catch (error) {
         widelog.set("event_name", "multiplayer.malformed_message");
         widelog.set("outcome", "error");
-        widelog.set("error_message", error instanceof Error ? error.message : String(error));
+        widelog.set(
+          "error_message",
+          error instanceof Error ? error.message : String(error)
+        );
         widelog.flush();
       }
     });
@@ -267,7 +328,7 @@ class MultiplayerClient {
       }
 
       this.reconnectAttempt++;
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempt - 1), 30000);
+      const delay = Math.min(1000 * 2 ** (this.reconnectAttempt - 1), 30_000);
       widelog.set("delay_ms", delay);
       widelog.set("attempt", this.reconnectAttempt);
 
@@ -281,7 +342,7 @@ class MultiplayerClient {
     this.clearHeartbeat();
     this.heartbeatInterval = setInterval(() => {
       this.send({ type: "ping" });
-    }, 30000);
+    }, 30_000);
   }
 
   private clearHeartbeat(): void {

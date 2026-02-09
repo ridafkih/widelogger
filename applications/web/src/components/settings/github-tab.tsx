@@ -1,22 +1,22 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, use, useState } from "react";
 import useSWR from "swr";
 import { FormInput } from "@/components/form-input";
 import {
-  getGitHubSettings,
-  saveGitHubSettings,
   disconnectGitHub,
   getGitHubAuthUrl,
+  getGitHubSettings,
+  saveGitHubSettings,
 } from "@/lib/api";
 
-type Edits = {
+interface Edits {
   pat?: string;
   username?: string;
   authorName?: string;
   authorEmail?: string;
   attributeAgent?: boolean;
-};
+}
 
 interface GitHubSettingsState {
   pat: string;
@@ -45,17 +45,25 @@ interface GitHubSettingsContextValue {
   actions: GitHubSettingsActions;
 }
 
-const GitHubSettingsContext = createContext<GitHubSettingsContextValue | null>(null);
+const GitHubSettingsContext = createContext<GitHubSettingsContextValue | null>(
+  null
+);
 
 function useGitHubSettingsContext() {
   const context = use(GitHubSettingsContext);
-  if (!context)
-    throw new Error("GitHubSettings components must be used within GitHubSettings.Provider");
+  if (!context) {
+    throw new Error(
+      "GitHubSettings components must be used within GitHubSettings.Provider"
+    );
+  }
   return context;
 }
 
 function GitHubSettingsProvider({ children }: { children: ReactNode }) {
-  const { data: settings, mutate } = useSWR("github-settings", getGitHubSettings);
+  const { data: settings, mutate } = useSWR(
+    "github-settings",
+    getGitHubSettings
+  );
 
   const [edits, setEdits] = useState<Edits>({});
   const [saving, setSaving] = useState(false);
@@ -100,7 +108,9 @@ function GitHubSettingsProvider({ children }: { children: ReactNode }) {
         setSuccess(true);
         setTimeout(() => setSuccess(false), 3000);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save settings");
+        setError(
+          err instanceof Error ? err.message : "Failed to save settings"
+        );
       } finally {
         setSaving(false);
       }
@@ -123,13 +133,17 @@ function GitHubSettingsProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <GitHubSettingsContext value={{ state, actions }}>{children}</GitHubSettingsContext>;
+  return (
+    <GitHubSettingsContext value={{ state, actions }}>
+      {children}
+    </GitHubSettingsContext>
+  );
 }
 
 function GitHubSettingsPanel({ children }: { children: ReactNode }) {
   return (
     <div className="flex-1 overflow-y-auto p-3">
-      <div className="flex flex-col gap-1 max-w-sm">{children}</div>
+      <div className="flex max-w-sm flex-col gap-1">{children}</div>
     </div>
   );
 }
@@ -146,14 +160,17 @@ function GitHubOAuthConnect() {
       <GitHubSettingsField>
         <FormInput.Label>GitHub Account</FormInput.Label>
         <div className="flex items-center justify-between gap-2 py-1">
-          <span className="text-xs text-text-secondary">
-            Connected as <span className="font-medium text-text-primary">{state.username}</span>
+          <span className="text-text-secondary text-xs">
+            Connected as{" "}
+            <span className="font-medium text-text-primary">
+              {state.username}
+            </span>
           </span>
           <button
-            type="button"
-            onClick={actions.disconnect}
+            className="text-text-muted text-xs transition-colors hover:text-text-primary disabled:opacity-50"
             disabled={state.disconnecting}
-            className="text-xs text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
+            onClick={actions.disconnect}
+            type="button"
           >
             {state.disconnecting ? "Disconnecting..." : "Disconnect"}
           </button>
@@ -166,9 +183,9 @@ function GitHubOAuthConnect() {
     <GitHubSettingsField>
       <FormInput.Label>GitHub Account</FormInput.Label>
       <button
-        type="button"
+        className="border border-border px-2 py-1 text-text text-xs hover:bg-bg-muted"
         onClick={actions.connectWithGitHub}
-        className="px-2 py-1 text-xs border border-border text-text hover:bg-bg-muted"
+        type="button"
       >
         Connect with GitHub
       </button>
@@ -185,9 +202,11 @@ function GitHubSettingsDivider() {
 
   return (
     <div className="flex items-center gap-2 py-1">
-      <div className="flex-1 h-px bg-border-subtle" />
-      <span className="text-xs text-text-muted">or use a Personal Access Token</span>
-      <div className="flex-1 h-px bg-border-subtle" />
+      <div className="h-px flex-1 bg-border-subtle" />
+      <span className="text-text-muted text-xs">
+        or use a Personal Access Token
+      </span>
+      <div className="h-px flex-1 bg-border-subtle" />
     </div>
   );
 }
@@ -203,11 +222,13 @@ function GitHubSettingsPat() {
     <GitHubSettingsField>
       <FormInput.Label>Personal Access Token</FormInput.Label>
       <FormInput.Password
-        value={state.pat}
         onChange={(event) => actions.updateField("pat")(event.target.value)}
         placeholder={
-          state.hasPatConfigured ? "Token configured (enter new to replace)" : "ghp_xxxxxxxxxxxx"
+          state.hasPatConfigured
+            ? "Token configured (enter new to replace)"
+            : "ghp_xxxxxxxxxxxx"
         }
+        value={state.pat}
       />
     </GitHubSettingsField>
   );
@@ -224,9 +245,11 @@ function GitHubSettingsUsername() {
     <GitHubSettingsField>
       <FormInput.Label>Username</FormInput.Label>
       <FormInput.Text
-        value={state.username}
-        onChange={(event) => actions.updateField("username")(event.target.value)}
+        onChange={(event) =>
+          actions.updateField("username")(event.target.value)
+        }
         placeholder="your-github-username"
+        value={state.username}
       />
     </GitHubSettingsField>
   );
@@ -238,9 +261,11 @@ function GitHubSettingsAuthorName() {
     <GitHubSettingsField>
       <FormInput.Label>Commit Author Name</FormInput.Label>
       <FormInput.Text
-        value={state.authorName}
-        onChange={(event) => actions.updateField("authorName")(event.target.value)}
+        onChange={(event) =>
+          actions.updateField("authorName")(event.target.value)
+        }
         placeholder="Your Name"
+        value={state.authorName}
       />
     </GitHubSettingsField>
   );
@@ -252,10 +277,12 @@ function GitHubSettingsAuthorEmail() {
     <GitHubSettingsField>
       <FormInput.Label>Commit Author Email</FormInput.Label>
       <FormInput.Text
+        onChange={(event) =>
+          actions.updateField("authorEmail")(event.target.value)
+        }
+        placeholder="my-agent@example.com"
         type="email"
         value={state.authorEmail}
-        onChange={(event) => actions.updateField("authorEmail")(event.target.value)}
-        placeholder="my-agent@example.com"
       />
     </GitHubSettingsField>
   );
@@ -266,8 +293,8 @@ function GitHubSettingsAttributeAgent() {
   return (
     <FormInput.Checkbox
       checked={state.attributeAgent}
-      onChange={actions.updateField("attributeAgent")}
       label="Attribute agent to commits"
+      onChange={actions.updateField("attributeAgent")}
     />
   );
 }
@@ -290,7 +317,11 @@ function GitHubSettingsSaveButton() {
   }
 
   return (
-    <FormInput.Submit onClick={actions.save} loading={state.saving} loadingText="Saving...">
+    <FormInput.Submit
+      loading={state.saving}
+      loadingText="Saving..."
+      onClick={actions.save}
+    >
       Save
     </FormInput.Submit>
   );
@@ -317,7 +348,7 @@ export function GitHubTab() {
   if (isLoading) {
     return (
       <GitHubSettings.Panel>
-        <span className="text-xs text-text-muted">Loading...</span>
+        <span className="text-text-muted text-xs">Loading...</span>
       </GitHubSettings.Panel>
     );
   }

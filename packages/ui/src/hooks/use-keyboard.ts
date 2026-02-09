@@ -1,9 +1,9 @@
-import { useEffect, useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 type KeyHandler = (event: KeyboardEvent) => void;
 type KeyMap = Record<string, KeyHandler>;
 
-export function useKeyboard(keyMap: KeyMap, enabled: boolean = true) {
+export function useKeyboard(keyMap: KeyMap, enabled = true) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       const key = event.key;
@@ -13,17 +13,19 @@ export function useKeyboard(keyMap: KeyMap, enabled: boolean = true) {
         handler(event);
       }
     },
-    [keyMap],
+    [keyMap]
   );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [enabled, handleKeyDown]);
 }
 
-export function useEscapeKey(handler: () => void, enabled: boolean = true) {
+export function useEscapeKey(handler: () => void, enabled = true) {
   useKeyboard({ Escape: handler }, enabled);
 }

@@ -2,53 +2,53 @@
 
 import {
   createContext,
-  use,
-  useState,
-  useRef,
-  useEffect,
   type ReactNode,
   type RefObject,
+  use,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { tv } from "tailwind-variants";
-import { TextAreaGroup } from "./textarea-group";
+import { type Attachment, useAttachments } from "@/lib/use-attachments";
+import { Header, PageFrame } from "./layout-primitives";
 import { Tabs } from "./tabs";
-import { PageFrame, Header } from "./layout-primitives";
-import { useAttachments, type Attachment } from "@/lib/use-attachments";
+import { TextAreaGroup } from "./textarea-group";
 
 type ChatRole = "user" | "assistant";
 
-type SubmitOptions = {
+interface SubmitOptions {
   content: string;
   modelId?: string;
   attachments?: Attachment[];
-};
+}
 
-type ChatInputState = {
+interface ChatInputState {
   attachments: Attachment[];
-};
+}
 
-type ChatInputActions = {
+interface ChatInputActions {
   addFiles: (files: FileList | File[]) => void;
   removeAttachment: (id: string) => void;
   onSubmit: () => void;
   onAbort: () => void;
-};
+}
 
-type ChatInputContextValue = {
+interface ChatInputContextValue {
   state: ChatInputState;
   actions: ChatInputActions;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   isDragging: boolean;
   dragHandlers: ReturnType<typeof useAttachments>["dragHandlers"];
-};
+}
 
-type ChatContextValue = {
+interface ChatContextValue {
   getScrollRef: () => RefObject<HTMLDivElement | null>;
   getIsNearBottomRef: () => RefObject<boolean>;
   scrollToBottom: (force?: boolean) => void;
   getModelId: () => string | null;
   setModelId: (value: string) => void;
-};
+}
 
 const ChatInputContext = createContext<ChatInputContextValue | null>(null);
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -71,21 +71,32 @@ function useChat() {
 
 const SCROLL_THRESHOLD = 100;
 
-type ChatProviderProps = {
+interface ChatProviderProps {
   children: ReactNode;
   defaultModelId?: string;
   onSubmit?: (options: SubmitOptions) => void;
   onAbort?: () => void;
-};
+}
 
-function ChatProvider({ children, defaultModelId, onSubmit, onAbort }: ChatProviderProps) {
+function ChatProvider({
+  children,
+  defaultModelId,
+  onSubmit,
+  onAbort,
+}: ChatProviderProps) {
   const [modelId, setModelId] = useState(defaultModelId ?? null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const isNearBottomRef = useRef(true);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const { attachments, addFiles, removeAttachment, clearAttachments, isDragging, dragHandlers } =
-    useAttachments();
+  const {
+    attachments,
+    addFiles,
+    removeAttachment,
+    clearAttachments,
+    isDragging,
+    dragHandlers,
+  } = useAttachments();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -105,10 +116,12 @@ function ChatProvider({ children, defaultModelId, onSubmit, onAbort }: ChatProvi
     const hasContent = currentInput.trim().length > 0;
     const hasAttachments = currentAttachments.length > 0;
     const readyAttachments = currentAttachments.filter(
-      (attachment) => attachment.status === "ready",
+      (attachment) => attachment.status === "ready"
     );
 
-    if (!hasContent && !hasAttachments) return;
+    if (!(hasContent || hasAttachments)) {
+      return;
+    }
 
     onSubmit?.({
       content: currentInput,
@@ -116,7 +129,9 @@ function ChatProvider({ children, defaultModelId, onSubmit, onAbort }: ChatProvi
       attachments: readyAttachments.length > 0 ? readyAttachments : undefined,
     });
 
-    if (inputRef.current) inputRef.current.value = "";
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
     clearAttachments();
     isNearBottomRef.current = true;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -132,7 +147,9 @@ function ChatProvider({ children, defaultModelId, onSubmit, onAbort }: ChatProvi
       getScrollRef: () => scrollRef,
       getIsNearBottomRef: () => isNearBottomRef,
       scrollToBottom: (force = false) => {
-        if (!force && !isNearBottomRef.current) return;
+        if (!(force || isNearBottomRef.current)) {
+          return;
+        }
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
       },
       getModelId: () => modelIdRef.current,
@@ -144,7 +161,12 @@ function ChatProvider({ children, defaultModelId, onSubmit, onAbort }: ChatProvi
   if (!chatInputContextValue.current) {
     chatInputContextValue.current = {
       state: { attachments: [] },
-      actions: { addFiles, removeAttachment, onSubmit: handleSubmit, onAbort: handleAbort },
+      actions: {
+        addFiles,
+        removeAttachment,
+        onSubmit: handleSubmit,
+        onAbort: handleAbort,
+      },
       inputRef,
       isDragging: false,
       dragHandlers,
@@ -157,7 +179,9 @@ function ChatProvider({ children, defaultModelId, onSubmit, onAbort }: ChatProvi
 
   return (
     <ChatContext value={chatContextValue.current}>
-      <ChatInputContext value={chatInputContextValue.current}>{children}</ChatInputContext>
+      <ChatInputContext value={chatInputContextValue.current}>
+        {children}
+      </ChatInputContext>
     </ChatContext>
   );
 }
@@ -171,7 +195,9 @@ function ChatHeader({ children }: { children: ReactNode }) {
 }
 
 function ChatHeaderBreadcrumb({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-1 overflow-x-hidden">{children}</div>;
+  return (
+    <div className="flex items-center gap-1 overflow-x-hidden">{children}</div>
+  );
 }
 
 function ChatHeaderDivider() {
@@ -180,13 +206,15 @@ function ChatHeaderDivider() {
 
 function ChatHeaderTitle({ children }: { children: ReactNode }) {
   return (
-    <span className="text-text font-medium text-nowrap overflow-x-hidden truncate">{children}</span>
+    <span className="overflow-x-hidden truncate text-nowrap font-medium text-text">
+      {children}
+    </span>
   );
 }
 
 function ChatHeaderEmptyTitle({ children }: { children: ReactNode }) {
   return (
-    <span className="text-text-muted italic text-nowrap overflow-x-hidden truncate">
+    <span className="overflow-x-hidden truncate text-nowrap text-text-muted italic">
       {children}
     </span>
   );
@@ -204,16 +232,28 @@ function ChatTabs({
   return <Tabs.Root defaultTab={defaultTab}>{children}</Tabs.Root>;
 }
 
-function ChatTabItem({ value, children }: { value: ChatTab; children: ReactNode }) {
+function ChatTabItem({
+  value,
+  children,
+}: {
+  value: ChatTab;
+  children: ReactNode;
+}) {
   return <Tabs.Tab value={value}>{children}</Tabs.Tab>;
 }
 
-function ChatTabContent({ value, children }: { value: ChatTab; children: ReactNode }) {
+function ChatTabContent({
+  value,
+  children,
+}: {
+  value: ChatTab;
+  children: ReactNode;
+}) {
   return <Tabs.Content value={value}>{children}</Tabs.Content>;
 }
 
 const messageList = tv({
-  base: "overflow-y-auto flex flex-col",
+  base: "flex flex-col overflow-y-auto",
   variants: {
     compact: {
       false: "flex-1 justify-between",
@@ -224,14 +264,22 @@ const messageList = tv({
   },
 });
 
-function ChatMessageList({ children, compact }: { children: ReactNode; compact?: boolean }) {
+function ChatMessageList({
+  children,
+  compact,
+}: {
+  children: ReactNode;
+  compact?: boolean;
+}) {
   const { getScrollRef, getIsNearBottomRef } = useChat();
   const scrollRef = getScrollRef();
   const isNearBottomRef = getIsNearBottomRef();
 
   const handleScroll = () => {
     const { current: element } = scrollRef;
-    if (!element) return;
+    if (!element) {
+      return;
+    }
     const { scrollHeight, scrollTop, clientHeight } = element;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
@@ -239,14 +287,22 @@ function ChatMessageList({ children, compact }: { children: ReactNode; compact?:
   };
 
   return (
-    <div ref={scrollRef} onScroll={handleScroll} className={messageList({ compact })}>
+    <div
+      className={messageList({ compact })}
+      onScroll={handleScroll}
+      ref={scrollRef}
+    >
       {children}
     </div>
   );
 }
 
 function ChatMessages({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-px bg-border not-empty:pb-px">{children}</div>;
+  return (
+    <div className="flex flex-col gap-px bg-border not-empty:pb-px">
+      {children}
+    </div>
+  );
 }
 
 const block = tv({
@@ -259,7 +315,13 @@ const block = tv({
   },
 });
 
-function ChatBlock({ role, children }: { role: ChatRole; children: ReactNode }) {
+function ChatBlock({
+  role,
+  children,
+}: {
+  role: ChatRole;
+  children: ReactNode;
+}) {
   return <div className={block({ role })}>{children}</div>;
 }
 
@@ -275,14 +337,13 @@ function ChatInput({
   const { state, actions, inputRef, isDragging, dragHandlers } = useChatInput();
 
   return (
-    <div className="sticky bottom-0 p-4 bg-linear-to-t from-bg to-transparent pointer-events-none z-10">
+    <div className="pointer-events-none sticky bottom-0 z-10 bg-linear-to-t from-bg to-transparent p-4">
       {statusMessage && (
-        <div className="mb-2 px-3 py-1.5 bg-amber-950 text-amber-500 border border-amber-900 text-xs pointer-events-auto">
+        <div className="pointer-events-auto mb-2 border border-amber-900 bg-amber-950 px-3 py-1.5 text-amber-500 text-xs">
           {statusMessage}
         </div>
       )}
       <TextAreaGroup.Provider
-        state={{ attachments: state.attachments }}
         actions={{
           onSubmit: actions.onSubmit,
           onAbort: actions.onAbort,
@@ -290,6 +351,7 @@ function ChatInput({
           onRemoveAttachment: actions.removeAttachment,
         }}
         meta={{ textareaRef: inputRef, isSending, isDragging, dragHandlers }}
+        state={{ attachments: state.attachments }}
       >
         <TextAreaGroup.Frame>
           <TextAreaGroup.Attachments />

@@ -11,7 +11,7 @@ const CommandResultSchema = z.object({
 export async function executeCommand<T = unknown>(
   baseUrl: string,
   sessionId: string,
-  command: BrowserCommand,
+  command: BrowserCommand
 ): Promise<CommandResult<T>> {
   let response: Response;
   try {
@@ -22,20 +22,33 @@ export async function executeCommand<T = unknown>(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return { id: command.id, success: false, error: `Connection failed: ${message}` };
+    return {
+      id: command.id,
+      success: false,
+      error: `Connection failed: ${message}`,
+    };
   }
 
   if (!response.ok) {
     const text = await response.text();
-    return { id: command.id, success: false, error: `HTTP ${response.status}: ${text}` };
+    return {
+      id: command.id,
+      success: false,
+      error: `HTTP ${response.status}: ${text}`,
+    };
   }
 
   let rawData: unknown;
   try {
     rawData = await response.json();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown parse error";
-    return { id: command.id, success: false, error: `Invalid JSON response: ${message}` };
+    const message =
+      error instanceof Error ? error.message : "Unknown parse error";
+    return {
+      id: command.id,
+      success: false,
+      error: `Invalid JSON response: ${message}`,
+    };
   }
 
   const parsed = CommandResultSchema.safeParse(rawData);

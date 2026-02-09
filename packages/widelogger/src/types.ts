@@ -1,7 +1,9 @@
 export type FieldValue = string | number | boolean;
 
 declare const KeyError: unique symbol;
-type KeyErrorBrand = { [KeyError]: true };
+interface KeyErrorBrand {
+  [KeyError]: true;
+}
 
 type ValidateKey<T extends string> = T extends ""
   ? "widelog keys cannot be empty" & KeyErrorBrand

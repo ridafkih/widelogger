@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { sessions } from "./sessions";
 import { containers } from "./containers";
+import { sessions } from "./sessions";
 
 export const sessionContainers = pgTable("session_containers", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -12,7 +12,9 @@ export const sessionContainers = pgTable("session_containers", {
     .references(() => containers.id, { onDelete: "cascade" }),
   runtimeId: text("runtime_id").notNull(),
   status: text("status").notNull().default("starting"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type SessionContainer = typeof sessionContainers.$inferSelect;

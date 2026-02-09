@@ -1,11 +1,14 @@
+import type { Session } from "@lab/client";
+import { useAtom } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import { useEffect } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import { atomWithStorage } from "jotai/utils";
-import { useAtom } from "jotai";
 import { api } from "./api";
-import type { Session } from "@lab/client";
 
-const preferredModelAtom = atomWithStorage<string | null>("preferred-model", null);
+const preferredModelAtom = atomWithStorage<string | null>(
+  "preferred-model",
+  null
+);
 
 function usePreferredModel() {
   return useAtom(preferredModelAtom);
@@ -21,7 +24,9 @@ export function useModelSelection(options?: UseModelSelectionOptions) {
   const [preferredModel, setPreferredModel] = usePreferredModel();
 
   const modelId = (() => {
-    if (!modelGroups) return null;
+    if (!modelGroups) {
+      return null;
+    }
 
     const allModels = modelGroups.flatMap(({ models }) => models);
     const validModel = allModels.find(({ value }) => value === preferredModel);
@@ -60,7 +65,10 @@ function useModels() {
     const groupMap = new Map<string, ModelGroup>();
     for (const model of response.models) {
       const existing = groupMap.get(model.providerId);
-      const entry = { label: model.name, value: `${model.providerId}/${model.modelId}` };
+      const entry = {
+        label: model.name,
+        value: `${model.providerId}/${model.modelId}`,
+      };
 
       if (existing) {
         existing.models.push(entry);
@@ -80,16 +88,20 @@ export function useSessions(projectId: string | null) {
   return useSWR(
     projectId ? `sessions-${projectId}` : null,
     () => {
-      if (!projectId) return [];
+      if (!projectId) {
+        return [];
+      }
       return api.sessions.list(projectId);
     },
-    { keepPreviousData: true },
+    { keepPreviousData: true }
   );
 }
 
 export function useSession(sessionId: string | null) {
   return useSWR(sessionId ? `session-${sessionId}` : null, () => {
-    if (!sessionId) return null;
+    if (!sessionId) {
+      return null;
+    }
     return api.sessions.get(sessionId);
   });
 }
@@ -102,7 +114,10 @@ interface CreateSessionOptions {
 export function useCreateSession() {
   const { mutate } = useSWRConfig();
 
-  return async (projectId: string, options: CreateSessionOptions = {}): Promise<Session | null> => {
+  return async (
+    projectId: string,
+    options: CreateSessionOptions = {}
+  ): Promise<Session | null> => {
     const { title, initialMessage } = options;
     const optimisticId = `optimistic-${Date.now()}`;
     const now = new Date().toISOString();
@@ -119,20 +134,33 @@ export function useCreateSession() {
 
     const sessionsKey = `sessions-${projectId}`;
 
-    mutate(sessionsKey, (current: Session[] = []) => [...current, optimisticSession], false);
+    mutate(
+      sessionsKey,
+      (current: Session[] = []) => [...current, optimisticSession],
+      false
+    );
 
     try {
-      const session = await api.sessions.create(projectId, { title, initialMessage });
+      const session = await api.sessions.create(projectId, {
+        title,
+        initialMessage,
+      });
 
       mutate(
         sessionsKey,
         (current: Session[] = []) => {
-          const withoutOptimistic = current.filter((existing) => existing.id !== optimisticId);
-          const alreadyExists = withoutOptimistic.some((existing) => existing.id === session.id);
-          if (alreadyExists) return withoutOptimistic;
+          const withoutOptimistic = current.filter(
+            (existing) => existing.id !== optimisticId
+          );
+          const alreadyExists = withoutOptimistic.some(
+            (existing) => existing.id === session.id
+          );
+          if (alreadyExists) {
+            return withoutOptimistic;
+          }
           return [...withoutOptimistic, session];
         },
-        false,
+        false
       );
 
       mutate(`session-${session.id}`, session, false);
@@ -141,8 +169,9 @@ export function useCreateSession() {
     } catch {
       mutate(
         sessionsKey,
-        (current: Session[] = []) => current.filter((existing) => existing.id !== optimisticId),
-        false,
+        (current: Session[] = []) =>
+          current.filter((existing) => existing.id !== optimisticId),
+        false
       );
       return null;
     }
@@ -157,8 +186,9 @@ export function useDeleteSession() {
 
     mutate(
       cacheKey,
-      (current: Session[] = []) => current.filter((existing) => existing.id !== session.id),
-      false,
+      (current: Session[] = []) =>
+        current.filter((existing) => existing.id !== session.id),
+      false
     );
     onDeleted();
 

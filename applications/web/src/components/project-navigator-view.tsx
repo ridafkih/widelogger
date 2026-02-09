@@ -1,24 +1,24 @@
 "use client";
 
+import type { Project } from "@lab/client";
 import { useRouter } from "next/navigation";
 import { ProjectNavigator } from "@/components/project-navigator-list";
 import { SessionItem } from "@/components/session-item";
-import { useProjects, useSessions, useCreateSession } from "@/lib/hooks";
+import { useCreateSession, useProjects, useSessions } from "@/lib/hooks";
 import { useSessionsSync } from "@/lib/use-sessions-sync";
-import type { Project } from "@lab/client";
 
 function SidebarSessionItem({ isSelected }: { isSelected: boolean }) {
   const { prefetch } = SessionItem.useContext();
 
   return (
     <SessionItem.Link className="contents">
-      <ProjectNavigator.Item selected={isSelected} onMouseDown={prefetch}>
-        <div className="max-w-1/2 flex items-center gap-2">
+      <ProjectNavigator.Item onMouseDown={prefetch} selected={isSelected}>
+        <div className="flex max-w-1/2 items-center gap-2">
           <SessionItem.Status />
           <SessionItem.Hash />
           <SessionItem.Title />
         </div>
-        <div className="flex grow overflow-hidden justify-end">
+        <div className="flex grow justify-end overflow-hidden">
           <SessionItem.LastMessage />
         </div>
       </ProjectNavigator.Item>
@@ -26,12 +26,15 @@ function SidebarSessionItem({ isSelected }: { isSelected: boolean }) {
   );
 }
 
-type ProjectSessionsListProps = {
+interface ProjectSessionsListProps {
   project: Project;
   selectedSessionId: string | null;
-};
+}
 
-function ProjectSessionsList({ project, selectedSessionId }: ProjectSessionsListProps) {
+function ProjectSessionsList({
+  project,
+  selectedSessionId,
+}: ProjectSessionsListProps) {
   const router = useRouter();
   const { data: sessions } = useSessions(project.id);
   const createSession = useCreateSession();
@@ -40,14 +43,20 @@ function ProjectSessionsList({ project, selectedSessionId }: ProjectSessionsList
 
   const handleAddSession = async () => {
     const session = await createSession(project.id);
-    if (session) router.push(`/editor/${session.id}/chat`);
+    if (session) {
+      router.push(`/editor/${session.id}/chat`);
+    }
   };
 
   return (
     <ProjectNavigator.List>
       <ProjectNavigator.Header onAdd={handleAddSession}>
-        <ProjectNavigator.HeaderName>{project.name}</ProjectNavigator.HeaderName>
-        <ProjectNavigator.HeaderCount>{sessionCount}</ProjectNavigator.HeaderCount>
+        <ProjectNavigator.HeaderName>
+          {project.name}
+        </ProjectNavigator.HeaderName>
+        <ProjectNavigator.HeaderCount>
+          {sessionCount}
+        </ProjectNavigator.HeaderCount>
       </ProjectNavigator.Header>
       {sessions?.map((session) => (
         <SessionItem.Provider key={session.id} session={session}>
@@ -58,11 +67,13 @@ function ProjectSessionsList({ project, selectedSessionId }: ProjectSessionsList
   );
 }
 
-type ProjectNavigatorViewProps = {
+interface ProjectNavigatorViewProps {
   selectedSessionId?: string | null;
-};
+}
 
-export function ProjectNavigatorView({ selectedSessionId = null }: ProjectNavigatorViewProps) {
+export function ProjectNavigatorView({
+  selectedSessionId = null,
+}: ProjectNavigatorViewProps) {
   const { data: projects, isLoading, error } = useProjects();
 
   useSessionsSync();
@@ -72,10 +83,14 @@ export function ProjectNavigatorView({ selectedSessionId = null }: ProjectNaviga
       <div className="flex flex-col gap-px bg-border pb-px">
         {!projects && isLoading && <ProjectNavigator.HeaderSkeleton />}
         {error && (
-          <div className="px-3 py-2 bg-bg text-xs text-red-500">Failed to load projects</div>
+          <div className="bg-bg px-3 py-2 text-red-500 text-xs">
+            Failed to load projects
+          </div>
         )}
         {projects && projects.length === 0 && (
-          <div className="px-3 py-2 bg-bg text-xs text-text-muted">No projects yet</div>
+          <div className="bg-bg px-3 py-2 text-text-muted text-xs">
+            No projects yet
+          </div>
         )}
         {projects?.map((project) => (
           <ProjectSessionsList

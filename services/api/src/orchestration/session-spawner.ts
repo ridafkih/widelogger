@@ -1,20 +1,24 @@
 import type { Session } from "@lab/database/schema/sessions";
-import { createSession } from "../repositories/session.repository";
+import { generateSessionTitle } from "../generators/title.generator";
+import { widelog } from "../logging";
+import type { BrowserServiceManager } from "../managers/browser-service.manager";
+import type { PoolManager } from "../managers/pool.manager";
+import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
 import { findContainersByProjectId } from "../repositories/container-definition.repository";
+import { findPortsByContainerId } from "../repositories/container-port.repository";
 import {
   createSessionContainer,
   getSessionContainersWithDetails,
 } from "../repositories/container-session.repository";
-import { findPortsByContainerId } from "../repositories/container-port.repository";
-import { formatProxyUrl } from "../shared/naming";
-import type { BrowserServiceManager } from "../managers/browser-service.manager";
-import type { SessionLifecycleManager } from "../managers/session-lifecycle.manager";
-import type { PoolManager } from "../managers/pool.manager";
-import { generateSessionTitle } from "../generators/title.generator";
-import type { Publisher } from "../types/dependencies";
-import { CONTAINER_STATUS, isContainerStatus, type ContainerStatus } from "../types/container";
+import { createSession } from "../repositories/session.repository";
 import { InternalError, ValidationError } from "../shared/errors";
-import { widelog } from "../logging";
+import { formatProxyUrl } from "../shared/naming";
+import {
+  CONTAINER_STATUS,
+  type ContainerStatus,
+  isContainerStatus,
+} from "../types/container";
+import type { Publisher } from "../types/dependencies";
 
 interface SpawnSessionOptions {
   projectId: string;
@@ -56,7 +60,7 @@ function extractContainerDisplayName(container: {
   if (!imageName) {
     throw new InternalError(
       `Unable to extract display name from container image: ${container.image}`,
-      "CONTAINER_NAME_EXTRACTION_FAILED",
+      "CONTAINER_NAME_EXTRACTION_FAILED"
     );
   }
   return imageName;
@@ -65,19 +69,27 @@ function extractContainerDisplayName(container: {
 function publishSessionCreated(
   session: Session,
   containers: ContainerRow[],
-  publisher: Publisher,
+  publisher: Publisher
 ): void {
   publisher.publishDelta("sessions", {
     type: "add",
-    session: { id: session.id, projectId: session.projectId, title: session.title },
+    session: {
+      id: session.id,
+      projectId: session.projectId,
+      title: session.title,
+    },
   });
-  publisher.publishSnapshot("sessionContainers", { uuid: session.id }, containers);
+  publisher.publishSnapshot(
+    "sessionContainers",
+    { uuid: session.id },
+    containers
+  );
 }
 
 async function buildContainerUrls(
   sessionId: string,
   containerId: string,
-  proxyBaseDomain?: string,
+  proxyBaseDomain?: string
 ): Promise<Array<{ port: number; url: string }>> {
   if (!proxyBaseDomain) {
     return [];
@@ -95,28 +107,35 @@ function scheduleBackgroundWork(
   projectId: string,
   sessionLifecycle: SessionLifecycleManager,
   poolManager: PoolManager,
-  publisher: Publisher,
+  publisher: Publisher
 ): void {
-  sessionLifecycle.scheduleInitializeSession(sessionId, projectId).catch((error) => {
-    widelog.context(() => {
-      widelog.set("event_name", "orchestration.session_spawner.background_initialization_failed");
-      widelog.set("session_id", sessionId);
-      widelog.set("project_id", projectId);
-      widelog.set("outcome", "error");
-      widelog.errorFields(error);
+  sessionLifecycle
+    .scheduleInitializeSession(sessionId, projectId)
+    .catch((error) => {
+      widelog.context(() => {
+        widelog.set(
+          "event_name",
+          "orchestration.session_spawner.background_initialization_failed"
+        );
+        widelog.set("session_id", sessionId);
+        widelog.set("project_id", projectId);
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
 
-      publisher.publishDelta(
-        "sessionMetadata",
-        { uuid: sessionId },
-        {
-          initializationError:
-            error instanceof Error ? `${error.name}: ${error.message}` : "Initialization failed",
-        },
-      );
+        publisher.publishDelta(
+          "sessionMetadata",
+          { uuid: sessionId },
+          {
+            initializationError:
+              error instanceof Error
+                ? `${error.name}: ${error.message}`
+                : "Initialization failed",
+          }
+        );
 
-      widelog.flush();
+        widelog.flush();
+      });
     });
-  });
   poolManager.triggerReconcileInBackground(projectId);
 }
 
@@ -124,20 +143,22 @@ async function claimAndPreparePooledSession(
   projectId: string,
   poolManager: PoolManager,
   publisher: Publisher,
-  proxyBaseDomain?: string,
+  proxyBaseDomain?: string
 ): Promise<SpawnSessionResult | null> {
   const pooledSession = await poolManager.claimPooledSession(projectId);
   if (!pooledSession) {
     return null;
   }
 
-  const existingContainers = await getSessionContainersWithDetails(pooledSession.id);
+  const existingContainers = await getSessionContainersWithDetails(
+    pooledSession.id
+  );
   const containers: ContainerRow[] = await Promise.all(
     existingContainers.map(async (container) => {
       const urls = await buildContainerUrls(
         pooledSession.id,
         container.containerId,
-        proxyBaseDomain,
+        proxyBaseDomain
       );
 
       return {
@@ -146,7 +167,7 @@ async function claimAndPreparePooledSession(
         status: validateContainerStatus(container.status),
         urls,
       };
-    }),
+    })
   );
 
   publishSessionCreated(pooledSession, containers, publisher);
@@ -156,7 +177,7 @@ async function claimAndPreparePooledSession(
 async function createSessionWithContainers(
   projectId: string,
   publisher: Publisher,
-  proxyBaseDomain?: string,
+  proxyBaseDomain?: string
 ): Promise<SpawnSessionResult> {
   const containerDefinitions = await findContainersByProjectId(projectId);
   if (containerDefinitions.length === 0) {
@@ -174,7 +195,11 @@ async function createSessionWithContainers(
       status: CONTAINER_STATUS.STARTING,
     });
 
-    const urls = await buildContainerUrls(session.id, definition.id, proxyBaseDomain);
+    const urls = await buildContainerUrls(
+      session.id,
+      definition.id,
+      proxyBaseDomain
+    );
 
     containers.push({
       id: sessionContainer.id,
@@ -188,23 +213,45 @@ async function createSessionWithContainers(
   return { session, containers };
 }
 
-export async function spawnSession(options: SpawnSessionOptions): Promise<SpawnSessionResult> {
-  const { projectId, taskSummary, sessionLifecycle, poolManager, publisher, proxyBaseDomain } =
-    options;
+export async function spawnSession(
+  options: SpawnSessionOptions
+): Promise<SpawnSessionResult> {
+  const {
+    projectId,
+    taskSummary,
+    sessionLifecycle,
+    poolManager,
+    publisher,
+    proxyBaseDomain,
+  } = options;
 
   const pooledResult = await claimAndPreparePooledSession(
     projectId,
     poolManager,
     publisher,
-    proxyBaseDomain,
+    proxyBaseDomain
   );
   if (pooledResult) {
-    scheduleBackgroundTitleGeneration(pooledResult.session.id, taskSummary, publisher);
+    scheduleBackgroundTitleGeneration(
+      pooledResult.session.id,
+      taskSummary,
+      publisher
+    );
     return pooledResult;
   }
 
-  const result = await createSessionWithContainers(projectId, publisher, proxyBaseDomain);
-  scheduleBackgroundWork(result.session.id, projectId, sessionLifecycle, poolManager, publisher);
+  const result = await createSessionWithContainers(
+    projectId,
+    publisher,
+    proxyBaseDomain
+  );
+  scheduleBackgroundWork(
+    result.session.id,
+    projectId,
+    sessionLifecycle,
+    poolManager,
+    publisher
+  );
   scheduleBackgroundTitleGeneration(result.session.id, taskSummary, publisher);
   return result;
 }
@@ -212,7 +259,7 @@ export async function spawnSession(options: SpawnSessionOptions): Promise<SpawnS
 function scheduleBackgroundTitleGeneration(
   sessionId: string,
   userMessage: string | undefined,
-  publisher: Publisher,
+  publisher: Publisher
 ): void {
   if (!userMessage?.trim()) {
     return;

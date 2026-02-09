@@ -1,12 +1,12 @@
-import {
-  setWorkspaceContainer,
-  clearWorkspaceContainer,
-} from "../../../../repositories/container-session.repository";
 import { noContentResponse } from "@lab/http-utilities";
+import { z } from "zod";
+import { widelog } from "../../../../logging";
+import {
+  clearWorkspaceContainer,
+  setWorkspaceContainer,
+} from "../../../../repositories/container-session.repository";
 import { withParams } from "../../../../shared/route-helpers";
 import { parseRequestBody } from "../../../../shared/validation";
-import { widelog } from "../../../../logging";
-import { z } from "zod";
 
 const setWorkspaceSchema = z.object({
   isWorkspace: z.boolean(),
@@ -27,7 +27,7 @@ const PATCH = withParams<{ projectId: string; containerId: string }>(
       await clearWorkspaceContainer(projectId);
     }
     return noContentResponse();
-  },
+  }
 );
 
 export { PATCH };

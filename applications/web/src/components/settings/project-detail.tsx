@@ -1,30 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 import { tv } from "tailwind-variants";
 import { Button } from "@/components/button";
 import { FormInput } from "@/components/form-input";
 import { ContainerCard } from "@/components/settings/container-card";
-import { useProjects } from "@/lib/hooks";
 import { api } from "@/lib/api";
+import { useProjects } from "@/lib/hooks";
 
 const containersSection = tv({
   base: "flex flex-col gap-2",
 });
 
 const listSectionEmpty = tv({
-  base: "text-xs text-text-muted",
+  base: "text-text-muted text-xs",
 });
 
 function SettingsFormField({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-1">{children}</div>;
 }
 
-type ProjectDetailProps = {
+interface ProjectDetailProps {
   projectId: string;
-};
+}
 
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const router = useRouter();
@@ -46,13 +46,14 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   const hasChanges =
     project &&
-    (description !== (project.description ?? "") || systemPrompt !== (project.systemPrompt ?? ""));
+    (description !== (project.description ?? "") ||
+      systemPrompt !== (project.systemPrompt ?? ""));
 
   if (!project) {
     return (
       <div className="flex-1 overflow-y-auto p-3">
-        <div className="flex flex-col gap-1 max-w-sm">
-          <span className="text-xs text-text-muted">Project not found</span>
+        <div className="flex max-w-sm flex-col gap-1">
+          <span className="text-text-muted text-xs">Project not found</span>
         </div>
       </div>
     );
@@ -88,33 +89,33 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   return (
     <div className="flex-1 overflow-y-auto p-3">
-      <div className="flex flex-col gap-2 max-w-sm">
+      <div className="flex max-w-sm flex-col gap-2">
         <SettingsFormField>
           <FormInput.Label>Project Name</FormInput.Label>
-          <FormInput.Text value={project.name} readOnly />
+          <FormInput.Text readOnly value={project.name} />
         </SettingsFormField>
 
         <SettingsFormField>
           <FormInput.Label>Description</FormInput.Label>
           <FormInput.Text
-            value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Project description"
+            value={description}
           />
         </SettingsFormField>
 
         <SettingsFormField>
           <FormInput.Label>System Prompt</FormInput.Label>
           <FormInput.Textarea
-            value={systemPrompt}
             onChange={(event) => setSystemPrompt(event.target.value)}
             placeholder="System prompt for orchestration"
             rows={3}
+            value={systemPrompt}
           />
         </SettingsFormField>
 
         <div className={containersSection()}>
-          <span className="text-xs text-text-secondary">Containers</span>
+          <span className="text-text-secondary text-xs">Containers</span>
           {containers.length === 0 && (
             <span className={listSectionEmpty()}>No containers configured</span>
           )}
@@ -122,11 +123,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <div className="flex flex-col gap-2">
               {containers.map((container) => (
                 <ContainerCard.Provider
-                  key={container.id}
-                  container={container}
-                  projectId={projectId}
                   allContainers={containers}
+                  container={container}
+                  key={container.id}
                   onWorkspaceChange={handleWorkspaceChange}
+                  projectId={projectId}
                 >
                   <ContainerCard.Frame>
                     <ContainerCard.Header>
@@ -146,10 +147,14 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
 
         <div className="flex items-center gap-1">
-          <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
+          <Button disabled={isSaving || !hasChanges} onClick={handleSave}>
             {isSaving ? "Saving..." : "Save"}
           </Button>
-          <Button variant="danger" onClick={handleArchive} disabled={isArchiving}>
+          <Button
+            disabled={isArchiving}
+            onClick={handleArchive}
+            variant="danger"
+          >
             {isArchiving ? "Archiving..." : "Archive"}
           </Button>
         </div>

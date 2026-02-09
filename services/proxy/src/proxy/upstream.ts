@@ -1,9 +1,9 @@
 import { db } from "@lab/database/client";
-import { sessions } from "@lab/database/schema/sessions";
-import { sessionContainers } from "@lab/database/schema/session-containers";
-import { containers } from "@lab/database/schema/containers";
 import { containerPorts } from "@lab/database/schema/container-ports";
-import { eq, and } from "drizzle-orm";
+import { containers } from "@lab/database/schema/containers";
+import { sessionContainers } from "@lab/database/schema/session-containers";
+import { sessions } from "@lab/database/schema/sessions";
+import { and, eq } from "drizzle-orm";
 import type { UpstreamInfo } from "../types/proxy";
 
 function formatUniqueHostname(sessionId: string, containerId: string): string {
@@ -12,7 +12,7 @@ function formatUniqueHostname(sessionId: string, containerId: string): string {
 
 export async function resolveUpstream(
   sessionId: string,
-  port: number,
+  port: number
 ): Promise<UpstreamInfo | null> {
   const result = await db
     .select({
@@ -25,13 +25,19 @@ export async function resolveUpstream(
     .innerJoin(containers, eq(containers.id, sessionContainers.containerId))
     .innerJoin(
       containerPorts,
-      and(eq(containerPorts.containerId, containers.id), eq(containerPorts.port, port)),
+      and(
+        eq(containerPorts.containerId, containers.id),
+        eq(containerPorts.port, port)
+      )
     )
     .where(eq(sessions.id, sessionId))
     .limit(1);
 
   const row = result[0];
-  if (!row || (row.sessionStatus !== "running" && row.sessionStatus !== "pooled")) {
+  if (
+    !row ||
+    (row.sessionStatus !== "running" && row.sessionStatus !== "pooled")
+  ) {
     return null;
   }
 
@@ -41,7 +47,9 @@ export async function resolveUpstream(
   };
 }
 
-export function parseSubdomain(host: string): { sessionId: string; port: number } | null {
+export function parseSubdomain(
+  host: string
+): { sessionId: string; port: number } | null {
   const match = host.match(/^([a-f0-9-]+)--(\d+)\./);
   if (!match) {
     return null;
@@ -50,12 +58,12 @@ export function parseSubdomain(host: string): { sessionId: string; port: number 
   const sessionId = match[1];
   const portStr = match[2];
 
-  if (!sessionId || !portStr) {
+  if (!(sessionId && portStr)) {
     return null;
   }
 
-  const port = parseInt(portStr, 10);
-  if (isNaN(port)) {
+  const port = Number.parseInt(portStr, 10);
+  if (Number.isNaN(port)) {
     return null;
   }
 

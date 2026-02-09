@@ -18,7 +18,8 @@ export const HTTP_STATUS = {
 export const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Lab-Session-Id",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Lab-Session-Id",
 } as const;
 
 /**
@@ -56,7 +57,9 @@ export function errorResponse(message = "Internal server error"): Response {
  * Creates a 405 Method Not Allowed response.
  */
 export function methodNotAllowedResponse(): Response {
-  return new Response("Method not allowed", { status: HTTP_STATUS.METHOD_NOT_ALLOWED });
+  return new Response("Method not allowed", {
+    status: HTTP_STATUS.METHOD_NOT_ALLOWED,
+  });
 }
 
 /**
@@ -69,7 +72,9 @@ export function noContentResponse(): Response {
 /**
  * Creates a 503 Service Unavailable response.
  */
-export function serviceUnavailableResponse(message = "Service unavailable"): Response {
+export function serviceUnavailableResponse(
+  message = "Service unavailable"
+): Response {
   return new Response(message, { status: HTTP_STATUS.SERVICE_UNAVAILABLE });
 }
 
@@ -77,7 +82,10 @@ export function serviceUnavailableResponse(message = "Service unavailable"): Res
  * Creates an OPTIONS response with CORS headers.
  */
 export function optionsResponse(): Response {
-  return new Response(null, { status: HTTP_STATUS.NO_CONTENT, headers: CORS_HEADERS });
+  return new Response(null, {
+    status: HTTP_STATUS.NO_CONTENT,
+    headers: CORS_HEADERS,
+  });
 }
 
 /**
@@ -95,7 +103,10 @@ export function buildSseHeaders(): Record<string, string> {
 /**
  * Creates a Server-Sent Events (SSE) Response.
  */
-export function buildSseResponse(body: ReadableStream<Uint8Array> | null, status = 200): Response {
+export function buildSseResponse(
+  body: ReadableStream<Uint8Array> | null,
+  status = 200
+): Response {
   return new Response(body, {
     status,
     headers: buildSseHeaders(),

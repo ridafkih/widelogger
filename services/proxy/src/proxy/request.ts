@@ -13,7 +13,7 @@ export function corsHeaders(): HeadersInit {
 export async function proxyRequest(
   request: Request,
   upstream: UpstreamInfo,
-  retries = 0,
+  retries = 0
 ): Promise<Response> {
   const url = new URL(request.url);
   const targetUrl = `http://${upstream.hostname}:${upstream.port}${url.pathname}${url.search}`;
@@ -40,7 +40,9 @@ export async function proxyRequest(
     });
   } catch {
     if (retries > 0) {
-      await new Promise((resolve) => setTimeout(resolve, TIMING.RETRY_DELAY_MS));
+      await new Promise((resolve) =>
+        setTimeout(resolve, TIMING.RETRY_DELAY_MS)
+      );
       return proxyRequest(request, upstream, retries - 1);
     }
     return new Response("Bad Gateway", { status: 502 });

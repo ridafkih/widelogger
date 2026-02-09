@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
 import { cn } from "../utils/cn";
 import { Slot } from "../utils/slot";
 import { Spinner } from "./spinner";
@@ -39,23 +39,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       ...props
     },
-    ref,
+    ref
   ) => {
     const Comp = asChild ? Slot : "button";
     const isDisabled = disabled || loading;
 
     return (
       <Comp
-        ref={ref}
         className={cn(
           "flex items-center justify-center",
           sizeStyles[size],
           variantStyles[variant],
-          "focus-visible:outline focus-visible:outline-offset-px focus-visible:outline-ring",
+          "focus-visible:outline focus-visible:outline-ring focus-visible:outline-offset-px",
           "disabled:pointer-events-none disabled:opacity-50",
-          className,
+          className
         )}
         disabled={isDisabled}
+        ref={ref}
         {...props}
       >
         {loading && <Spinner size="sm" />}
@@ -63,7 +63,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {children}
       </Comp>
     );
-  },
+  }
 );
 
 Button.displayName = "Button";

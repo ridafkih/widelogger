@@ -1,8 +1,8 @@
 import { generateText, stepCountIs } from "ai";
 import type { ExecutionStep } from "../types";
-import type { BrowserAgentContext } from "./types";
-import { createBrowserTools } from "./tools";
 import { buildBrowserAgentPrompt } from "./prompt";
+import { createBrowserTools } from "./tools";
+import type { BrowserAgentContext } from "./types";
 
 export interface AgentLoopParams {
   sessionId: string;
@@ -16,7 +16,9 @@ export interface AgentLoopResult {
   summary: string;
 }
 
-export async function runAgentLoop(params: AgentLoopParams): Promise<AgentLoopResult> {
+export async function runAgentLoop(
+  params: AgentLoopParams
+): Promise<AgentLoopResult> {
   const { sessionId, objective, context, trace, maxSteps } = params;
 
   const model = context.createModel();

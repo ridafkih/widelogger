@@ -1,16 +1,16 @@
 import type { ContainerEvent } from "@lab/sandbox-sdk";
 import { LABELS, TIMING } from "../config/constants";
-import { CONTAINER_STATUS, type ContainerStatus } from "../types/container";
+import { widelog } from "../logging";
 import {
+  findAllActiveSessionContainers,
   findSessionContainerByRuntimeId,
   findSessionContainerDetailsByRuntimeId,
-  findAllActiveSessionContainers,
   updateSessionContainerStatus,
 } from "../repositories/container-session.repository";
-import type { Sandbox } from "../types/dependencies";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
+import { CONTAINER_STATUS, type ContainerStatus } from "../types/container";
+import type { Sandbox } from "../types/dependencies";
 import type { LogMonitor } from "./log.monitor";
-import { widelog } from "../logging";
 
 function mapEventToStatus(event: ContainerEvent): ContainerStatus | null {
   switch (event.action) {
@@ -23,7 +23,7 @@ function mapEventToStatus(event: ContainerEvent): ContainerStatus | null {
     case "oom":
       return CONTAINER_STATUS.ERROR;
     case "health_status":
-      if (event.attributes["health_status"] === "unhealthy") {
+      if (event.attributes.health_status === "unhealthy") {
         return CONTAINER_STATUS.ERROR;
       }
       return null;
@@ -46,7 +46,7 @@ export class ContainerMonitor {
 
   constructor(
     private readonly sandbox: Sandbox,
-    private readonly deferredPublisher: DeferredPublisher,
+    private readonly deferredPublisher: DeferredPublisher
   ) {}
 
   async start(logMonitor: LogMonitor): Promise<void> {
@@ -73,20 +73,23 @@ export class ContainerMonitor {
     const activeContainers = await findAllActiveSessionContainers();
 
     for (const container of activeContainers) {
-      const isRunning = await this.sandbox.provider.containerExists(container.runtimeId);
+      const isRunning = await this.sandbox.provider.containerExists(
+        container.runtimeId
+      );
       const actualStatus: ContainerStatus = isRunning
         ? CONTAINER_STATUS.RUNNING
         : CONTAINER_STATUS.STOPPED;
 
       if (actualStatus !== container.status) {
         await updateSessionContainerStatus(container.id, actualStatus);
-        this.deferredPublisher
-          .get()
-          .publishDelta(
-            "sessionContainers",
-            { uuid: container.sessionId },
-            { type: "update", container: { id: container.id, status: actualStatus } },
-          );
+        this.deferredPublisher.get().publishDelta(
+          "sessionContainers",
+          { uuid: container.sessionId },
+          {
+            type: "update",
+            container: { id: container.id, status: actualStatus },
+          }
+        );
       }
     }
   }
@@ -103,13 +106,17 @@ export class ContainerMonitor {
         for await (const event of this.sandbox.provider.streamContainerEvents({
           filters: { label: [LABELS.SESSION] },
         })) {
-          if (this.abortController.signal.aborted) break;
+          if (this.abortController.signal.aborted) {
+            break;
+          }
 
           retryDelay = TIMING.CONTAINER_MONITOR_INITIAL_RETRY_MS;
           await this.processContainerEvent(event);
         }
       } catch (error) {
-        if (this.abortController.signal.aborted) return;
+        if (this.abortController.signal.aborted) {
+          return;
+        }
 
         widelog.context(() => {
           widelog.set("event_name", "container_monitor.event_stream_error");
@@ -127,13 +134,21 @@ export class ContainerMonitor {
 
   private async processContainerEvent(event: ContainerEvent): Promise<void> {
     const status = mapEventToStatus(event);
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const sessionId = event.attributes[LABELS.SESSION];
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
-    const sessionContainer = await findSessionContainerByRuntimeId(event.containerId);
-    if (!sessionContainer) return;
+    const sessionContainer = await findSessionContainerByRuntimeId(
+      event.containerId
+    );
+    if (!sessionContainer) {
+      return;
+    }
 
     await updateSessionContainerStatus(sessionContainer.id, status);
 
@@ -143,17 +158,24 @@ export class ContainerMonitor {
       {
         type: "update",
         container: { id: sessionContainer.id, status },
-      },
+      }
     );
 
     await this.notifyLogMonitor(event, status);
   }
 
-  private async notifyLogMonitor(event: ContainerEvent, status: ContainerStatus): Promise<void> {
-    if (!this.logMonitor) return;
+  private async notifyLogMonitor(
+    event: ContainerEvent,
+    status: ContainerStatus
+  ): Promise<void> {
+    if (!this.logMonitor) {
+      return;
+    }
 
     if (status === CONTAINER_STATUS.RUNNING) {
-      const details = await findSessionContainerDetailsByRuntimeId(event.containerId);
+      const details = await findSessionContainerDetailsByRuntimeId(
+        event.containerId
+      );
       if (details) {
         this.logMonitor.onContainerStarted({
           sessionId: details.sessionId,
@@ -162,8 +184,13 @@ export class ContainerMonitor {
           hostname: details.hostname,
         });
       }
-    } else if (status === CONTAINER_STATUS.STOPPED || status === CONTAINER_STATUS.ERROR) {
-      const details = await findSessionContainerDetailsByRuntimeId(event.containerId);
+    } else if (
+      status === CONTAINER_STATUS.STOPPED ||
+      status === CONTAINER_STATUS.ERROR
+    ) {
+      const details = await findSessionContainerDetailsByRuntimeId(
+        event.containerId
+      );
       if (details) {
         this.logMonitor.onContainerStopped({
           sessionId: details.sessionId,

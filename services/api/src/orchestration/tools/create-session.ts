@@ -1,13 +1,13 @@
-import { z } from "zod";
 import { tool } from "ai";
-import { findProjectById } from "../../repositories/project.repository";
-import { spawnSession } from "../session-spawner";
-import { initiateConversation } from "../conversation-initiator";
+import { z } from "zod";
 import type { BrowserServiceManager } from "../../managers/browser-service.manager";
-import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
 import type { PoolManager } from "../../managers/pool.manager";
-import type { OpencodeClient, Publisher } from "../../types/dependencies";
+import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
+import { findProjectById } from "../../repositories/project.repository";
 import type { SessionStateStore } from "../../state/session-state-store";
+import type { OpencodeClient, Publisher } from "../../types/dependencies";
+import { initiateConversation } from "../conversation-initiator";
+import { spawnSession } from "../session-spawner";
 
 interface CreateSessionToolContext {
   browserService: BrowserServiceManager;
@@ -33,7 +33,11 @@ export function createCreateSessionTool(context: CreateSessionToolContext) {
       const project = await findProjectById(projectId);
 
       if (!project) {
-        return { error: "Project not found", sessionId: null, projectName: null };
+        return {
+          error: "Project not found",
+          sessionId: null,
+          projectName: null,
+        };
       }
 
       try {
@@ -60,7 +64,8 @@ export function createCreateSessionTool(context: CreateSessionToolContext) {
           projectName: project.name,
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
         return {
           error: `Failed to create session: ${message}`,
           sessionId: null,

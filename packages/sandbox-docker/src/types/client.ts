@@ -22,7 +22,9 @@ export const DockerContainerEventActionSchema = z.enum([
   "health_status: unhealthy",
   "health_status: starting",
 ]);
-export type DockerContainerEventAction = z.infer<typeof DockerContainerEventActionSchema>;
+export type DockerContainerEventAction = z.infer<
+  typeof DockerContainerEventActionSchema
+>;
 
 export interface DockerContainerEvent {
   containerId: string;

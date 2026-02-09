@@ -1,17 +1,21 @@
 function required(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
   return value;
 }
 
 function optionalInt(name: string, defaultValue: number): number {
   const value = process.env[name];
-  return value ? parseInt(value, 10) : defaultValue;
+  return value ? Number.parseInt(value, 10) : defaultValue;
 }
 
 function optionalBool(name: string, defaultValue: boolean): boolean {
   const value = process.env[name];
-  if (!value) return defaultValue;
+  if (!value) {
+    return defaultValue;
+  }
   return value === "true" || value === "1";
 }
 
@@ -26,5 +30,8 @@ export const config = {
   imessageEnabled: optionalBool("IMESSAGE_ENABLED", true),
   imessageWatchedContacts: optionalList("IMESSAGE_WATCHED_CONTACTS"),
   imessageContextMessages: optionalInt("IMESSAGE_CONTEXT_MESSAGES", 20),
-  staleSessionThresholdMs: optionalInt("STALE_SESSION_THRESHOLD_MS", 86400000),
+  staleSessionThresholdMs: optionalInt(
+    "STALE_SESSION_THRESHOLD_MS",
+    86_400_000
+  ),
 };

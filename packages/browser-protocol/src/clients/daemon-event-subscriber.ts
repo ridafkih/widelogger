@@ -10,11 +10,21 @@ const validEventTypes: DaemonEventType[] = [
 ];
 
 function isDaemonEvent(value: unknown): value is DaemonEvent {
-  if (typeof value !== "object" || value === null) return false;
-  if (!("type" in value) || !("sessionId" in value) || !("timestamp" in value)) return false;
-  if (typeof value.sessionId !== "string") return false;
-  if (typeof value.timestamp !== "number") return false;
-  if (!validEventTypes.includes(value.type as DaemonEventType)) return false;
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("type" in value && "sessionId" in value && "timestamp" in value)) {
+    return false;
+  }
+  if (typeof value.sessionId !== "string") {
+    return false;
+  }
+  if (typeof value.timestamp !== "number") {
+    return false;
+  }
+  if (!validEventTypes.includes(value.type as DaemonEventType)) {
+    return false;
+  }
   return true;
 }
 
@@ -30,11 +40,14 @@ export interface DaemonEventSubscriberConfig {
 }
 
 export const createDaemonEventSubscriber = (
-  config: DaemonEventSubscriberConfig,
+  config: DaemonEventSubscriberConfig
 ): DaemonEventSubscriber => {
   const handlers = new Set<DaemonEventHandler>();
   const reconnectDelayMs = config.reconnectDelayMs ?? 1000;
-  const state = { abortController: null as AbortController | null, shouldReconnect: false };
+  const state = {
+    abortController: null as AbortController | null,
+    shouldReconnect: false,
+  };
 
   const emit = (event: DaemonEvent) => {
     for (const handler of handlers) {
@@ -47,15 +60,19 @@ export const createDaemonEventSubscriber = (
   };
 
   const connect = async () => {
-    if (state.abortController) return;
+    if (state.abortController) {
+      return;
+    }
 
     const url = `${config.browserDaemonUrl}/events`;
     state.abortController = new AbortController();
 
     try {
-      const response = await fetch(url, { signal: state.abortController.signal });
+      const response = await fetch(url, {
+        signal: state.abortController.signal,
+      });
 
-      if (!response.ok || !response.body) {
+      if (!(response.ok && response.body)) {
         throw new Error(`Failed to connect: ${response.status}`);
       }
 
@@ -67,14 +84,18 @@ export const createDaemonEventSubscriber = (
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
+          if (!line.startsWith("data: ")) {
+            continue;
+          }
           try {
             const parsed: unknown = JSON.parse(line.slice(6));
             if (isDaemonEvent(parsed)) {
@@ -86,7 +107,8 @@ export const createDaemonEventSubscriber = (
         }
       }
     } catch (error) {
-      const isAbortError = error instanceof Error && error.name === "AbortError";
+      const isAbortError =
+        error instanceof Error && error.name === "AbortError";
       if (!isAbortError) {
         console.warn("[DaemonEventSubscriber] Connection error:", error);
       }

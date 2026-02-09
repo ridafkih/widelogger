@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import useSWR, { useSWRConfig } from "swr";
 import { Check, ExternalLink } from "lucide-react";
-import { FormInput } from "@/components/form-input";
+import { useEffect, useRef, useState } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { Button } from "@/components/button";
+import { FormInput } from "@/components/form-input";
 import { createClient } from "@/lib/use-session-client";
 
-type AuthMethod = {
+interface AuthMethod {
   type: "oauth" | "api";
   label: string;
-};
+}
 
-type ProviderData = {
+interface ProviderData {
   id: string;
   name: string;
   env: string[];
   isConnected: boolean;
   authMethods: AuthMethod[];
-};
+}
 
 async function fetchProviderData(providerId: string): Promise<ProviderData> {
   const client = createClient();
@@ -30,7 +30,7 @@ async function fetchProviderData(providerId: string): Promise<ProviderData> {
   const providersData = providersResponse.data;
   const authMethodsData = authMethodsResponse.data;
 
-  if (!providersData || !authMethodsData) {
+  if (!(providersData && authMethodsData)) {
     throw new Error("Failed to fetch provider data");
   }
 
@@ -57,28 +57,31 @@ function hasApiKeyEnvVar(env: string[]): boolean {
       envVar.includes("SECRET") ||
       envVar.includes("ACCESS_KEY") ||
       envVar.includes("CREDENTIALS") ||
-      envVar.includes("SERVICE_KEY"),
+      envVar.includes("SERVICE_KEY")
   );
 }
 
 function hasEndpointEnvVar(env: string[]): boolean {
   return env.some(
-    (envVar) => envVar.includes("ENDPOINT") || envVar.includes("_URL") || envVar.includes("BASE"),
+    (envVar) =>
+      envVar.includes("ENDPOINT") ||
+      envVar.includes("_URL") ||
+      envVar.includes("BASE")
   );
 }
 
 function SettingsPanel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex-1 overflow-y-auto p-3">
-      <div className="flex flex-col gap-2 max-w-sm">{children}</div>
+      <div className="flex max-w-sm flex-col gap-2">{children}</div>
     </div>
   );
 }
 
-type ApiKeyFormProps = {
+interface ApiKeyFormProps {
   providerId: string;
   refetch: () => void;
-};
+}
 
 function ApiKeyForm({ providerId, refetch }: ApiKeyFormProps) {
   const { mutate } = useSWRConfig();
@@ -87,7 +90,9 @@ function ApiKeyForm({ providerId, refetch }: ApiKeyFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!apiKey.trim()) return;
+    if (!apiKey.trim()) {
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -118,16 +123,16 @@ function ApiKeyForm({ providerId, refetch }: ApiKeyFormProps) {
       <div className="flex gap-1">
         <div className="flex-1">
           <FormInput.Password
-            value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
             placeholder="Enter API key"
+            value={apiKey}
           />
         </div>
         <FormInput.Submit
-          onClick={handleSave}
           disabled={!apiKey.trim()}
           loading={saving}
           loadingText="Saving..."
+          onClick={handleSave}
         >
           Save
         </FormInput.Submit>
@@ -137,10 +142,10 @@ function ApiKeyForm({ providerId, refetch }: ApiKeyFormProps) {
   );
 }
 
-type EndpointFormProps = {
+interface EndpointFormProps {
   providerId: string;
   refetch: () => void;
-};
+}
 
 function EndpointForm({ providerId, refetch }: EndpointFormProps) {
   const [endpoint, setEndpoint] = useState("");
@@ -148,7 +153,9 @@ function EndpointForm({ providerId, refetch }: EndpointFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!endpoint.trim()) return;
+    if (!endpoint.trim()) {
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -181,16 +188,16 @@ function EndpointForm({ providerId, refetch }: EndpointFormProps) {
       <div className="flex gap-1">
         <div className="flex-1">
           <FormInput.Text
-            value={endpoint}
             onChange={(event) => setEndpoint(event.target.value)}
             placeholder="https://api.example.com"
+            value={endpoint}
           />
         </div>
         <FormInput.Submit
-          onClick={handleSave}
           disabled={!endpoint.trim()}
           loading={saving}
           loadingText="Saving..."
+          onClick={handleSave}
         >
           Save
         </FormInput.Submit>
@@ -200,11 +207,11 @@ function EndpointForm({ providerId, refetch }: EndpointFormProps) {
   );
 }
 
-type OAuthButtonProps = {
+interface OAuthButtonProps {
   providerId: string;
   authMethods: AuthMethod[];
   refetch: () => void;
-};
+}
 
 function OAuthButton({ providerId, authMethods, refetch }: OAuthButtonProps) {
   const { mutate } = useSWRConfig();
@@ -220,8 +227,11 @@ function OAuthButton({ providerId, authMethods, refetch }: OAuthButtonProps) {
     };
   }, []);
 
-  const oauthMethodIndex = authMethods.findIndex((method) => method.type === "oauth");
-  const oauthMethod = oauthMethodIndex !== -1 ? authMethods[oauthMethodIndex] : null;
+  const oauthMethodIndex = authMethods.findIndex(
+    (method) => method.type === "oauth"
+  );
+  const oauthMethod =
+    oauthMethodIndex !== -1 ? authMethods[oauthMethodIndex] : null;
 
   if (!oauthMethod) {
     return null;
@@ -290,7 +300,9 @@ function OAuthButton({ providerId, authMethods, refetch }: OAuthButtonProps) {
         startPolling();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start OAuth flow");
+      setError(
+        err instanceof Error ? err.message : "Failed to start OAuth flow"
+      );
     }
   };
 
@@ -311,19 +323,20 @@ function OAuthButton({ providerId, authMethods, refetch }: OAuthButtonProps) {
   );
 }
 
-type ProviderDetailProps = {
+interface ProviderDetailProps {
   providerId: string;
-};
+}
 
 export function ProviderDetail({ providerId }: ProviderDetailProps) {
-  const { data, error, isLoading, mutate } = useSWR(`provider-${providerId}`, () =>
-    fetchProviderData(providerId),
+  const { data, error, isLoading, mutate } = useSWR(
+    `provider-${providerId}`,
+    () => fetchProviderData(providerId)
   );
 
   if (isLoading) {
     return (
       <SettingsPanel>
-        <span className="text-xs text-text-muted">Loading...</span>
+        <span className="text-text-muted text-xs">Loading...</span>
       </SettingsPanel>
     );
   }
@@ -346,9 +359,9 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
   return (
     <SettingsPanel>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-text">{data.name}</span>
+        <span className="font-medium text-text text-xs">{data.name}</span>
         {data.isConnected && (
-          <span className="flex items-center gap-1 text-xs text-green-500">
+          <span className="flex items-center gap-1 text-green-500 text-xs">
             <Check size={12} />
             Connected
           </span>
@@ -357,13 +370,17 @@ export function ProviderDetail({ providerId }: ProviderDetailProps) {
 
       <div className="flex flex-col gap-2">
         {hasOAuth && (
-          <OAuthButton providerId={data.id} authMethods={data.authMethods} refetch={mutate} />
+          <OAuthButton
+            authMethods={data.authMethods}
+            providerId={data.id}
+            refetch={mutate}
+          />
         )}
         {hasMultipleMethods && (
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-text-muted">or</span>
-            <div className="flex-1 h-px bg-border" />
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-text-muted text-xs">or</span>
+            <div className="h-px flex-1 bg-border" />
           </div>
         )}
         {hasApiKey && <ApiKeyForm providerId={data.id} refetch={mutate} />}

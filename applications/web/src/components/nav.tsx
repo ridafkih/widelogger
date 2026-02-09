@@ -6,7 +6,7 @@ import { tv } from "tailwind-variants";
 import { Header } from "./layout-primitives";
 
 const link = tv({
-  base: "text-text-secondary hover:text-text cursor-pointer",
+  base: "cursor-pointer text-text-secondary hover:text-text",
   variants: {
     active: {
       true: "text-text",
@@ -14,15 +14,15 @@ const link = tv({
   },
 });
 
-type NavItem = {
+interface NavItem {
   label: string;
   href: string;
   match?: string; // Optional pattern to match against pathname (defaults to href)
-};
+}
 
-type NavProps = {
+interface NavProps {
   items: NavItem[];
-};
+}
 
 export function Nav({ items }: NavProps) {
   const pathname = usePathname();
@@ -36,13 +36,13 @@ export function Nav({ items }: NavProps) {
   };
 
   return (
-    <Header as="nav" spacing="wide" className="whitespace-nowrap font-medium">
+    <Header as="nav" className="whitespace-nowrap font-medium" spacing="wide">
       {items.map((item) => (
         <Link
-          draggable={false}
-          key={item.href}
-          href={item.href}
           className={link({ active: getIsActive(item) })}
+          draggable={false}
+          href={item.href}
+          key={item.href}
         >
           {item.label}
         </Link>

@@ -1,7 +1,10 @@
 import { NotFoundError, ValidationError } from "../../../shared/errors";
 import type { RouteHandler } from "../../../types/route";
 
-export const POST: RouteHandler = ({ params, context: { daemonManager, widelog } }) => {
+export const POST: RouteHandler = ({
+  params,
+  context: { daemonManager, widelog },
+}) => {
   const sessionId = params.sessionId;
   if (!sessionId) {
     throw new ValidationError("Session ID required");

@@ -1,15 +1,20 @@
 import type { RouteHandler } from "@lab/router";
 import type {
   BrowserContext,
-  SessionContext,
+  GithubContext,
   InfraContext,
   MonitorContext,
-  GithubContext,
-  ProxyContext,
   PromptContext,
+  ProxyContext,
+  SessionContext,
 } from "./contexts";
 
-export type { BrowserContext, InfraContext, GithubContext, ProxyContext } from "./contexts";
+export type {
+  BrowserContext,
+  GithubContext,
+  InfraContext,
+  ProxyContext,
+} from "./contexts";
 
 interface RouteContextMap {
   browser: BrowserContext;
@@ -21,15 +26,16 @@ interface RouteContextMap {
   prompt: PromptContext;
 }
 
-type UnionToIntersection<T> = (T extends unknown ? (value: T) => void : never) extends (
-  value: infer R,
-) => void
+type UnionToIntersection<T> = (
+  T extends unknown
+    ? (value: T) => void
+    : never
+) extends (value: infer R) => void
   ? R
   : never;
 
 export interface RouteContext
-  extends
-    BrowserContext,
+  extends BrowserContext,
     SessionContext,
     InfraContext,
     MonitorContext,
@@ -38,7 +44,9 @@ export interface RouteContext
     PromptContext {}
 
 export type ContextKey = keyof RouteContextMap;
-export type RouteContextFor<TKeys extends ContextKey> = UnionToIntersection<RouteContextMap[TKeys]>;
+export type RouteContextFor<TKeys extends ContextKey> = UnionToIntersection<
+  RouteContextMap[TKeys]
+>;
 export type NoRouteContext = Record<string, never>;
 
 export type Handler<TContext> = RouteHandler<TContext>;

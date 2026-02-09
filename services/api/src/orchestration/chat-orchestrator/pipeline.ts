@@ -1,15 +1,15 @@
 import type { LanguageModel } from "ai";
-import { readModelConfig, createLanguageModel } from "../../shared/llm-factory";
-import { buildChatOrchestratorPrompt } from "../system-prompts/chat-orchestrator";
 import { getPlatformConfig } from "../../config/platforms";
+import { createLanguageModel, readModelConfig } from "../../shared/llm-factory";
+import { buildChatOrchestratorPrompt } from "../system-prompts/chat-orchestrator";
+import type { SessionInfo } from "../tool-result-handler";
 import { buildOrchestratorTools } from "./tool-builder";
-import { getVisionContext } from "./vision-context";
 import {
   CHAT_ORCHESTRATOR_ACTION,
   type ChatOrchestratorInput,
   type ChatOrchestratorResult,
 } from "./types";
-import type { SessionInfo } from "../tool-result-handler";
+import { getVisionContext } from "./vision-context";
 
 interface PreparedOrchestration {
   model: LanguageModel;
@@ -20,7 +20,7 @@ interface PreparedOrchestration {
 }
 
 export async function prepareOrchestration(
-  input: ChatOrchestratorInput,
+  input: ChatOrchestratorInput
 ): Promise<PreparedOrchestration> {
   const modelConfig = readModelConfig("chatOrchestrator");
   const model = createLanguageModel(modelConfig);
@@ -59,7 +59,7 @@ export async function prepareOrchestration(
 export function buildOrchestratorResult(
   text: string,
   messages: string[] | undefined,
-  sessionInfo: SessionInfo,
+  sessionInfo: SessionInfo
 ): ChatOrchestratorResult {
   const { sessionId, projectName, wasForwarded, attachments } = sessionInfo;
 
@@ -76,7 +76,9 @@ export function buildOrchestratorResult(
   if (sessionId) {
     return {
       action: CHAT_ORCHESTRATOR_ACTION.CREATED_SESSION,
-      message: text || `Started working on your task in ${projectName ?? "the project"}.`,
+      message:
+        text ||
+        `Started working on your task in ${projectName ?? "the project"}.`,
       messages,
       sessionId,
       projectName,
