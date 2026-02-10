@@ -80,7 +80,7 @@ function ProjectNavigatorHeader({ children, onAdd }: HeaderProps) {
       <IconButton
         as="span"
         className="ml-auto"
-        onClick={(event) => {
+        onClick={(event: MouseEvent) => {
           event.stopPropagation();
           setExpanded(true);
           onAdd?.();

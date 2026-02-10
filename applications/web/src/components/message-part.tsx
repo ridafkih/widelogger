@@ -439,11 +439,11 @@ const metaRow = tv({
   base: "flex items-center gap-3 px-4 py-1.5 text-text-muted text-xs",
 });
 
-function MessagePartStepStart() {
+function MessagePartStepStart(_props: { part: Part }) {
   return null;
 }
 
-function MessagePartStepFinish() {
+function MessagePartStepFinish(_props: { part: Part }) {
   return null;
 }
 
@@ -460,7 +460,7 @@ const MessagePartSnapshot = memo(function MessagePartSnapshot({
   );
 });
 
-function MessagePartPatch() {
+function MessagePartPatch(_props: { part: Part }) {
   return (
     <div className={metaRow()} data-opencode-component="Patch">
       <span>Patch applied</span>
@@ -468,7 +468,7 @@ function MessagePartPatch() {
   );
 }
 
-function MessagePartAgent() {
+function MessagePartAgent(_props: { part: Part }) {
   return (
     <div className={actionRow()} data-opencode-component="Agent">
       <Loader2 className="animate-spin text-text-muted" size={14} />
@@ -488,7 +488,7 @@ function MessagePartSubtask({ part }: { part: SubtaskPart }) {
   );
 }
 
-function MessagePartRetry() {
+function MessagePartRetry(_props: { part: Part }) {
   return (
     <div
       className={cn(actionRow(), "text-yellow-500")}
@@ -500,7 +500,7 @@ function MessagePartRetry() {
   );
 }
 
-function MessagePartCompaction() {
+function MessagePartCompaction(_props: { part: Part }) {
   return (
     <div className={metaRow()} data-opencode-component="Compaction">
       <span>Context compacted</span>

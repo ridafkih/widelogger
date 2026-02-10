@@ -1,6 +1,10 @@
 "use client";
 
-import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
+import {
+  createOpencodeClient,
+  type Event as SdkEvent,
+} from "@opencode-ai/sdk/v2/client";
+
 import {
   createContext,
   type ReactNode,
@@ -9,7 +13,7 @@ import {
   useRef,
 } from "react";
 
-type EventListener = (event: Event) => void;
+type EventListener = (event: SdkEvent) => void;
 
 function getApiUrl(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -103,5 +107,3 @@ export function useOpenCodeSession() {
   }
   return context;
 }
-
-export type { Event } from "@opencode-ai/sdk/v2/client";

@@ -489,24 +489,37 @@ export function useAgent(labSessionId: string): UseAgentResult {
       setSessionStatus({ type: "error" });
     };
 
-    const eventHandlers: Record<string, (event: Event) => void> = {
-      "message.updated": (event) => handleMessageUpdated(event.properties.info),
-      "message.part.updated": (event) =>
-        handleMessagePartUpdated(event.properties.part),
-      "session.status": (event) =>
-        setSessionStatus(event.properties.status as SessionStatus),
-      "session.idle": handleSessionIdle,
-      "session.error": handleSessionError,
-      "question.asked": handleQuestionAsked,
-      "question.replied": handleQuestionResolved,
-      "question.rejected": handleQuestionResolved,
-    };
-
     const processEvent = (event: Event) => {
       if (!isForCurrentSession(event)) {
         return;
       }
-      eventHandlers[event.type]?.(event);
+
+      switch (event.type) {
+        case "message.updated":
+          handleMessageUpdated(event.properties.info);
+          break;
+        case "message.part.updated":
+          handleMessagePartUpdated(event.properties.part);
+          break;
+        case "session.status":
+          setSessionStatus(event.properties.status);
+          break;
+        case "session.idle":
+          handleSessionIdle();
+          break;
+        case "session.error":
+          handleSessionError();
+          break;
+        case "question.asked":
+          handleQuestionAsked(event);
+          break;
+        case "question.replied":
+        case "question.rejected":
+          handleQuestionResolved(event);
+          break;
+        default:
+          break;
+      }
     };
 
     return subscribe(processEvent);

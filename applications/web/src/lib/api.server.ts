@@ -2,17 +2,19 @@ import "server-only";
 import { createClient } from "@lab/client";
 import { cookies } from "next/headers";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-
-if (!API_BASE) {
-  throw new Error("Must set NEXT_PUBLIC_API_URL");
+function getApiBase(): string {
+  const value = process.env.NEXT_PUBLIC_API_URL;
+  if (!value) {
+    throw new Error("Must set NEXT_PUBLIC_API_URL");
+  }
+  return value;
 }
 
 async function createServerClient() {
   const cookieStore = await cookies();
   const cookie = cookieStore.toString();
   return createClient({
-    baseUrl: API_BASE,
+    baseUrl: getApiBase(),
     headers: cookie ? { Cookie: cookie } : undefined,
   });
 }
