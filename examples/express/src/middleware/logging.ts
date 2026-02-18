@@ -6,17 +6,21 @@ export const logging = (
   response: Response,
   next: NextFunction
 ) => {
-  widelog.context(() => {
-    widelog.set("method", request.method);
-    widelog.set("path", request.path);
-    widelog.time.start("duration_ms");
+  widelog.context(
+    () =>
+      new Promise<void>((resolve) => {
+        widelog.set("method", request.method);
+        widelog.set("path", request.path);
+        widelog.time.start("duration_ms");
 
-    response.on("finish", () => {
-      widelog.set("status_code", response.statusCode);
-      widelog.time.stop("duration_ms");
-      widelog.flush();
-    });
+        response.on("finish", () => {
+          widelog.set("status_code", response.statusCode);
+          widelog.time.stop("duration_ms");
+          widelog.flush();
+          resolve();
+        });
 
-    next();
-  });
+        next();
+      })
+  );
 };

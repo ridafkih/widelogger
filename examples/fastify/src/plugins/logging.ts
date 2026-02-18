@@ -1,20 +1,29 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginCallback } from "fastify";
+import fp from "fastify-plugin";
 import { widelog } from "../logger";
 
-export const logging = (app: FastifyInstance) => {
-  app.addHook("onRequest", (request, _reply, done) => {
-    widelog.context(() => {
-      widelog.set("method", request.method);
-      widelog.set("path", request.url);
-      widelog.time.start("duration_ms");
-      done();
-    });
+const loggingPlugin: FastifyPluginCallback = (app, _options, pluginDone) => {
+  app.addHook("onRequest", (request, reply, done) => {
+    widelog.context(
+      () =>
+        new Promise<void>((resolve) => {
+          widelog.set("method", request.method);
+          widelog.set("path", request.url);
+          widelog.time.start("duration_ms");
+
+          reply.raw.on("finish", () => {
+            widelog.set("status_code", reply.statusCode);
+            widelog.time.stop("duration_ms");
+            widelog.flush();
+            resolve();
+          });
+
+          done();
+        })
+    );
   });
 
-  app.addHook("onResponse", (_request, reply, done) => {
-    widelog.set("status_code", reply.statusCode);
-    widelog.time.stop("duration_ms");
-    widelog.flush();
-    done();
-  });
+  pluginDone();
 };
+
+export const logging = fp(loggingPlugin);

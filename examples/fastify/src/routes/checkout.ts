@@ -1,11 +1,11 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginCallback } from "fastify";
 import { widelog } from "../logger";
 
 interface CheckoutBody {
   userId: string;
 }
 
-export const checkoutRoutes = (app: FastifyInstance) => {
+export const checkoutRoutes: FastifyPluginCallback = (app, _options, done) => {
   app.post<{ Body: CheckoutBody }>("/checkout", (request) => {
     const { userId } = request.body;
 
@@ -23,4 +23,6 @@ export const checkoutRoutes = (app: FastifyInstance) => {
 
     return { orderId: order.id };
   });
+
+  done();
 };
