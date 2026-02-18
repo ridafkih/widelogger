@@ -1,23 +1,6 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": [
-    "ultracite/biome/core",
-    "ultracite/biome/react",
-    "ultracite/biome/next"
-  ],
-  "files": {
-    "includes": ["!!containers"]
-  },
-  "overrides": [
-    {
-      "includes": ["**/src/index.ts"],
-      "linter": {
-        "rules": {
-          "performance": {
-            "noBarrelFile": "off"
-          }
-        }
-      }
-    }
+    "ultracite/biome/core"
   ]
 }
