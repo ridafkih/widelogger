@@ -177,6 +177,8 @@ Bun.serve({
 
 Instead of scattered `console.log` calls, each request produces a single JSON log line containing service metadata, user info, order details, timing, and outcome.
 
+You can see full working examples in the [examples/](./examples) directory for [Bun](./examples/bun), [Express](./examples/express), [Hono](./examples/hono), and [Fastify](./examples/fastify).
+
 ### Dot Notation
 
 Keys use dot notation which expands to nested objects in the output. Keys are type-checked at compile time — empty strings, leading/trailing dots, and double dots are all rejected.
