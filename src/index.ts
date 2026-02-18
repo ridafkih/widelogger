@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import pino from "pino";
-import { flush as flushContext } from "./flush";
+import { flush } from "./flush";
 import type { Context, DottedKey, FieldValue } from "./types";
 
 export interface WideloggerOptions {
@@ -163,7 +163,7 @@ export const widelogger = (options: WideloggerOptions) => {
       }
     },
     flush: () => {
-      const event = flushContext(getContext());
+      const event = flush(getContext());
       transport(event);
     },
     context: runContext,
