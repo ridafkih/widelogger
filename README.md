@@ -54,58 +54,58 @@ const { widelog, destroy } = widelogger({
 Create a shared logger instance, use middleware to wrap requests in a context, and accumulate fields from anywhere in your codebase.
 
 ```ts
-// lib/logger.ts
+// src/logger.ts
 import { widelogger } from "widelogger";
 
-const { widelog, destroy } = widelogger({
+export const { widelog, destroy } = widelogger({
   service: "checkout-api",
   defaultEventName: "http_request",
 });
-
-export { widelog, destroy };
 ```
 
 ```ts
-// middleware/logging.ts
-import { widelog } from "../lib/logger";
+// src/middleware/logging.ts
+import { widelog } from "../logger";
 
-export const loggingMiddleware = (req, res, next) => {
-  widelog.context(() => {
-    widelog.set("method", req.method);
-    widelog.set("path", req.path);
-    widelog.time.start("duration_ms");
+export const logging = (request, response, next) => {
+  widelog.context(
+    () =>
+      new Promise((resolve) => {
+        widelog.set("method", request.method);
+        widelog.set("path", request.path);
+        widelog.time.start("duration_ms");
 
-    res.on("finish", () => {
-      widelog.set("status_code", res.statusCode);
-      widelog.time.stop("duration_ms");
-      widelog.flush();
-    });
+        response.on("finish", () => {
+          widelog.set("status_code", response.statusCode);
+          widelog.time.stop("duration_ms");
+          widelog.flush();
+          resolve();
+        });
 
-    next();
-  });
+        next();
+      }),
+  );
 };
 ```
 
 ```ts
-// routes/checkout.ts
-import { widelog } from "../lib/logger";
+// src/routes/checkout.ts
+import { widelog } from "../logger";
 
-export const checkout = async (req, res) => {
-  const user = await getUser(req.userId);
-  widelog.set("user.id", user.id);
-  widelog.set("user.plan", user.plan);
+export const checkout = (request, response) => {
+  const { userId } = request.body;
 
-  try {
-    const order = await processOrder(user);
-    widelog.set("order.total_cents", order.totalCents);
-    widelog.count("order.items", order.items.length);
-    widelog.set("outcome", "success");
-    res.json({ orderId: order.id });
-  } catch (error) {
-    widelog.set("outcome", "error");
-    widelog.errorFields(error);
-    res.status(500).json({ error: "checkout failed" });
-  }
+  widelog.set("user.id", userId);
+  widelog.set("user.plan", "premium");
+
+  widelog.time.start("db_ms");
+  const order = await processOrder(userId);
+  widelog.time.stop("db_ms");
+
+  widelog.set("order.total_cents", order.totalCents);
+  widelog.count("order.items", order.itemCount);
+
+  response.json({ orderId: order.id });
 };
 ```
 
@@ -116,49 +116,52 @@ The handler doesn't need to know about context setup or flushing — it just imp
 The same pattern works with Bun's built-in server.
 
 ```ts
-// lib/logger.ts
+// src/logger.ts
 import { widelogger } from "widelogger";
 
-const { widelog, destroy } = widelogger({
+export const { widelog, destroy } = widelogger({
   service: "checkout-api",
   defaultEventName: "http_request",
 });
-
-export { widelog, destroy };
 ```
 
 ```ts
-// routes/checkout.ts
-import { widelog } from "../lib/logger";
+// src/routes/checkout.ts
+import { widelog } from "../logger";
 
-export const checkout = async (req: Request) => {
-  const user = await getUser(req);
-  widelog.set("user.id", user.id);
-  widelog.set("user.plan", user.plan);
+export const checkout = async (request: Request) => {
+  const { userId } = await request.json();
 
-  const order = await processOrder(user);
+  widelog.set("user.id", userId);
+  widelog.set("user.plan", "premium");
+
+  widelog.time.start("db_ms");
+  const order = await processOrder(userId);
+  widelog.time.stop("db_ms");
+
   widelog.set("order.total_cents", order.totalCents);
-  widelog.count("order.items", order.items.length);
+  widelog.count("order.items", order.itemCount);
 
   return Response.json({ orderId: order.id });
 };
 ```
 
 ```ts
-// server.ts
-import { widelog } from "./lib/logger";
+// src/server.ts
+import { serve } from "bun";
+import { widelog } from "./logger";
 import { checkout } from "./routes/checkout";
 
-Bun.serve({
-  fetch: (req) =>
+serve({
+  fetch: (request) =>
     widelog.context(async () => {
-      const url = new URL(req.url);
-      widelog.set("method", req.method);
+      const url = new URL(request.url);
+      widelog.set("method", request.method);
       widelog.set("path", url.pathname);
       widelog.time.start("duration_ms");
 
       try {
-        const response = await checkout(req);
+        const response = await checkout(request);
         widelog.set("status_code", response.status);
         widelog.set("outcome", "success");
         return response;
