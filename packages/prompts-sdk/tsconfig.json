@@ -1,9 +1,0 @@
-{
-  "extends": "@lab/typescript-config/base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "strictNullChecks": true
-  },
-  "include": ["src/**/*"]
-}

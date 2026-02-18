@@ -1,7 +1,0 @@
-{
-  "extends": "@lab/typescript-config/base.json",
-  "include": ["src/**/*"],
-  "compilerOptions": {
-    "strictNullChecks": true
-  }
-}
