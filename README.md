@@ -51,20 +51,25 @@ const { widelog, destroy } = widelogger({
 
 ### Express
 
-Use middleware to wrap each request in a context. Handlers accumulate fields, and the middleware flushes a single event on response finish.
+Create a shared logger instance, use middleware to wrap requests in a context, and accumulate fields from anywhere in your codebase.
 
 ```ts
-import express from "express";
+// lib/logger.ts
 import { widelogger } from "widelogger";
 
-const { widelog } = widelogger({
+const { widelog, destroy } = widelogger({
   service: "checkout-api",
   defaultEventName: "http_request",
 });
 
-const app = express();
+export { widelog, destroy };
+```
 
-app.use((req, res, next) => {
+```ts
+// middleware/logging.ts
+import { widelog } from "../lib/logger";
+
+export const loggingMiddleware = (req, res, next) => {
   widelog.context(() => {
     widelog.set("method", req.method);
     widelog.set("path", req.path);
@@ -78,9 +83,14 @@ app.use((req, res, next) => {
 
     next();
   });
-});
+};
+```
 
-app.post("/checkout", async (req, res) => {
+```ts
+// routes/checkout.ts
+import { widelog } from "../lib/logger";
+
+export const checkout = async (req, res) => {
   const user = await getUser(req.userId);
   widelog.set("user.id", user.id);
   widelog.set("user.plan", user.plan);
@@ -96,18 +106,48 @@ app.post("/checkout", async (req, res) => {
     widelog.errorFields(error);
     res.status(500).json({ error: "checkout failed" });
   }
-});
+};
 ```
+
+The handler doesn't need to know about context setup or flushing — it just imports `widelog` and adds fields. `AsyncLocalStorage` ensures concurrent requests never leak into each other.
 
 ### Bun
 
+The same pattern works with Bun's built-in server.
+
 ```ts
+// lib/logger.ts
 import { widelogger } from "widelogger";
 
-const { widelog } = widelogger({
+const { widelog, destroy } = widelogger({
   service: "checkout-api",
   defaultEventName: "http_request",
 });
+
+export { widelog, destroy };
+```
+
+```ts
+// routes/checkout.ts
+import { widelog } from "../lib/logger";
+
+export const checkout = async (req: Request) => {
+  const user = await getUser(req);
+  widelog.set("user.id", user.id);
+  widelog.set("user.plan", user.plan);
+
+  const order = await processOrder(user);
+  widelog.set("order.total_cents", order.totalCents);
+  widelog.count("order.items", order.items.length);
+
+  return Response.json({ orderId: order.id });
+};
+```
+
+```ts
+// server.ts
+import { widelog } from "./lib/logger";
+import { checkout } from "./routes/checkout";
 
 Bun.serve({
   fetch: (req) =>
@@ -118,16 +158,10 @@ Bun.serve({
       widelog.time.start("duration_ms");
 
       try {
-        const user = await getUser(req);
-        widelog.set("user.id", user.id);
-        widelog.set("user.plan", user.plan);
-
-        const order = await processOrder(user);
-        widelog.set("order.total_cents", order.totalCents);
-        widelog.count("order.items", order.items.length);
+        const response = await checkout(req);
+        widelog.set("status_code", response.status);
         widelog.set("outcome", "success");
-        widelog.set("status_code", 200);
-        return Response.json({ orderId: order.id });
+        return response;
       } catch (error) {
         widelog.set("outcome", "error");
         widelog.set("status_code", 500);
