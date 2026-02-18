@@ -19,6 +19,14 @@
 To install widelogger, simply use your favourite Node.js package manager.
 
 ```bash
+bun add widelogger
+```
+
+```bash
+pnpm add widelogger
+```
+
+```bash
 yarn add widelogger
 ```
 
