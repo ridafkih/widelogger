@@ -1,7 +1,7 @@
 <div align="center">
   <h1>widelogger</h1>
   <p>Structured wide event logging for Node.js.</p>
-  <p>Accumulate context throughout a request lifecycle, then flush it as a single rich event — inspired by <a href="https://stripe.com/blog/canonical-log-lines">Stripe's canonical log lines</a>. Built on <a href="https://github.com/pinojs/pino">Pino</a> and <code>AsyncLocalStorage</code> for zero-leak context isolation across concurrent requests.</p>
+  <p>Accumulate context throughout a request lifecycle, then flush it as a single rich event — inspired by <a href="https://loggingsucks.com">loggingsucks.com</a>. Built on <a href="https://github.com/pinojs/pino">Pino</a> and <code>AsyncLocalStorage</code> for zero-leak context isolation across concurrent requests.</p>
   <span>
     <a href="#installation">Installation</a>
     <span>&nbsp;&nbsp;·&nbsp;&nbsp;</span>
@@ -49,36 +49,99 @@ const { widelog, destroy } = widelogger({
 });
 ```
 
-### Logging a Request
+### Express
 
-Wrap each unit of work in a `context()`, accumulate fields as you go, then call `flush()` to emit a single structured event.
+Use middleware to wrap each request in a context. Handlers accumulate fields, and the middleware flushes a single event on response finish.
 
 ```ts
-await widelog.context(async () => {
-  widelog.set("method", "POST");
-  widelog.set("path", "/checkout");
-  widelog.set("user.id", "usr_123");
-  widelog.set("user.plan", "premium");
+import express from "express";
+import { widelogger } from "widelogger";
 
-  widelog.time.start("duration_ms");
+const { widelog } = widelogger({
+  service: "checkout-api",
+  defaultEventName: "http_request",
+});
+
+const app = express();
+
+app.use((req, res, next) => {
+  widelog.context(() => {
+    widelog.set("method", req.method);
+    widelog.set("path", req.path);
+    widelog.time.start("duration_ms");
+
+    res.on("finish", () => {
+      widelog.set("status_code", res.statusCode);
+      widelog.time.stop("duration_ms");
+      widelog.flush();
+    });
+
+    next();
+  });
+});
+
+app.post("/checkout", async (req, res) => {
+  const user = await getUser(req.userId);
+  widelog.set("user.id", user.id);
+  widelog.set("user.plan", user.plan);
 
   try {
-    widelog.count("cart.items", 3);
-    widelog.set("cart.total_cents", 14999);
-    widelog.set("status_code", 200);
+    const order = await processOrder(user);
+    widelog.set("order.total_cents", order.totalCents);
+    widelog.count("order.items", order.items.length);
     widelog.set("outcome", "success");
+    res.json({ orderId: order.id });
   } catch (error) {
-    widelog.set("status_code", 500);
     widelog.set("outcome", "error");
     widelog.errorFields(error);
-  } finally {
-    widelog.time.stop("duration_ms");
-    widelog.flush();
+    res.status(500).json({ error: "checkout failed" });
   }
 });
 ```
 
-Instead of scattered `console.log` calls, this produces a single JSON log line containing service metadata, user info, cart details, timing, and outcome.
+### Bun
+
+```ts
+import { widelogger } from "widelogger";
+
+const { widelog } = widelogger({
+  service: "checkout-api",
+  defaultEventName: "http_request",
+});
+
+Bun.serve({
+  fetch: (req) =>
+    widelog.context(async () => {
+      const url = new URL(req.url);
+      widelog.set("method", req.method);
+      widelog.set("path", url.pathname);
+      widelog.time.start("duration_ms");
+
+      try {
+        const user = await getUser(req);
+        widelog.set("user.id", user.id);
+        widelog.set("user.plan", user.plan);
+
+        const order = await processOrder(user);
+        widelog.set("order.total_cents", order.totalCents);
+        widelog.count("order.items", order.items.length);
+        widelog.set("outcome", "success");
+        widelog.set("status_code", 200);
+        return Response.json({ orderId: order.id });
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.set("status_code", 500);
+        widelog.errorFields(error);
+        return Response.json({ error: "checkout failed" }, { status: 500 });
+      } finally {
+        widelog.time.stop("duration_ms");
+        widelog.flush();
+      }
+    }),
+});
+```
+
+Instead of scattered `console.log` calls, each request produces a single JSON log line containing service metadata, user info, order details, timing, and outcome.
 
 ### Dot Notation
 
