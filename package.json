@@ -6,6 +6,7 @@
   "scripts": {
     "check": "ultracite check",
     "fix": "ultracite fix",
+    "test": "bun test",
     "prepare": "lefthook install"
   },
   "devDependencies": {

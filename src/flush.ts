@@ -8,22 +8,19 @@ const setNested = (
   key: string,
   value: unknown
 ) => {
-  if (!key.includes(".")) {
+  const parts = key.split(".");
+  if (parts.length === 1) {
     target[key] = value;
     return;
   }
 
-  const parts = key.split(".");
-  const lastPart = parts.pop();
-  if (lastPart === undefined) {
-    return;
-  }
-
+  const lastIndex = parts.length - 1;
   let current = target;
 
-  for (const part of parts) {
+  for (let i = 0; i < lastIndex; i++) {
+    const part = parts[i] ?? "";
     const existing = current[part];
-    if (Object.hasOwn(current, part) && isRecord(existing)) {
+    if (isRecord(existing)) {
       current = existing;
     } else {
       const next: Record<string, unknown> = Object.create(null);
@@ -32,6 +29,7 @@ const setNested = (
     }
   }
 
+  const lastPart = parts[lastIndex] ?? "";
   current[lastPart] = value;
 };
 
@@ -65,9 +63,12 @@ const processOperation = (
       agg.counters[entry.key] = (agg.counters[entry.key] ?? 0) + entry.amount;
       break;
     case "append": {
-      const existing = agg.arrays[entry.key] ?? [];
-      existing.push(entry.value);
-      agg.arrays[entry.key] = existing;
+      const existing = agg.arrays[entry.key];
+      if (existing) {
+        existing.push(entry.value);
+      } else {
+        agg.arrays[entry.key] = [entry.value];
+      }
       break;
     }
     case "max": {
@@ -85,9 +86,12 @@ const processOperation = (
       break;
     }
     case "time.start": {
-      const existing = agg.timers[entry.key] ?? { start: 0, accumulated: 0 };
-      existing.start = entry.time;
-      agg.timers[entry.key] = existing;
+      const existing = agg.timers[entry.key];
+      if (existing) {
+        existing.start = entry.time;
+      } else {
+        agg.timers[entry.key] = { start: entry.time, accumulated: 0 };
+      }
       break;
     }
     case "time.stop": {
@@ -100,28 +104,25 @@ const processOperation = (
     }
 
     default:
-      break;
   }
 };
 
 const mergeAggregators = (agg: Aggregators): void => {
-  for (const key of Object.keys(agg.counters)) {
-    setNested(agg.event, key, agg.counters[key]);
-  }
-  for (const key of Object.keys(agg.arrays)) {
-    setNested(agg.event, key, agg.arrays[key]);
-  }
-  for (const key of Object.keys(agg.maxValues)) {
-    setNested(agg.event, key, agg.maxValues[key]);
-  }
-  for (const key of Object.keys(agg.minValues)) {
-    setNested(agg.event, key, agg.minValues[key]);
-  }
-  for (const key of Object.keys(agg.timers)) {
-    const timer = agg.timers[key];
-    if (timer) {
-      setNested(agg.event, key, Math.round(timer.accumulated * 100) / 100);
+  const sources: Record<string, unknown>[] = [
+    agg.counters,
+    agg.arrays,
+    agg.maxValues,
+    agg.minValues,
+  ];
+
+  for (const source of sources) {
+    for (const key of Object.keys(source)) {
+      setNested(agg.event, key, source[key]);
     }
+  }
+
+  for (const [key, timer] of Object.entries(agg.timers)) {
+    setNested(agg.event, key, Math.round(timer.accumulated * 100) / 100);
   }
 };
 
@@ -140,6 +141,6 @@ export const flush = (
 
   mergeAggregators(agg);
 
-  context.operations.length = 0;
+  context.operations = [];
   return agg.event;
 };
