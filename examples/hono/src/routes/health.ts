@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
 
 export const health = (context: Context) => {
   widelog.set("outcome", "success");

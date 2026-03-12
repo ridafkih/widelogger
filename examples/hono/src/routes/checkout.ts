@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
 
 interface CheckoutBody {
   userId: string;

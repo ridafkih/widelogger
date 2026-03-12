@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
 
 export const checkout = (request: Request, response: Response) => {
   const { userId } = request.body;

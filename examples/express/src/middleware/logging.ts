@@ -1,12 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
+import { context } from "../logger";
 
 export const logging = (
   request: Request,
   response: Response,
   next: NextFunction
 ) => {
-  widelog.context(
+  context(
     () =>
       new Promise<void>((resolve) => {
         widelog.set("method", request.method);

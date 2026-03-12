@@ -1,5 +1,6 @@
 import { serve } from "bun";
-import { destroy, widelog } from "./logger";
+import { widelog } from "widelogger";
+import { context, destroy } from "./logger";
 import { checkout } from "./routes/checkout";
 import { health } from "./routes/health";
 
@@ -14,7 +15,7 @@ const routes: Record<
 const server = serve({
   port: 3000,
   fetch: (request) =>
-    widelog.context(async () => {
+    context(async () => {
       const url = new URL(request.url);
       const route = routes[`${request.method} ${url.pathname}`];
 

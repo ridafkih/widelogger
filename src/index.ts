@@ -49,6 +49,79 @@ function getErrorFields(
   };
 }
 
+const storage = new AsyncLocalStorage<Context>();
+
+export const widelog = {
+  set: <K extends string>(key: DottedKey<K>, value: FieldValue) => {
+    storage.getStore()?.operations.push({ operation: "set", key, value });
+  },
+  count: <K extends string>(key: DottedKey<K>, amount = 1) => {
+    storage.getStore()?.operations.push({ operation: "count", key, amount });
+  },
+  append: <K extends string>(key: DottedKey<K>, value: FieldValue) => {
+    storage.getStore()?.operations.push({ operation: "append", key, value });
+  },
+  max: <K extends string>(key: DottedKey<K>, value: number) => {
+    storage.getStore()?.operations.push({ operation: "max", key, value });
+  },
+  min: <K extends string>(key: DottedKey<K>, value: number) => {
+    storage.getStore()?.operations.push({ operation: "min", key, value });
+  },
+  time: {
+    start: <K extends string>(key: DottedKey<K>) => {
+      storage.getStore()?.operations.push({
+        operation: "time.start",
+        key,
+        time: performance.now(),
+      });
+    },
+    stop: <K extends string>(key: DottedKey<K>) => {
+      storage.getStore()?.operations.push({
+        operation: "time.stop",
+        key,
+        time: performance.now(),
+      });
+    },
+  },
+  errorFields: (error: unknown, options: ErrorFieldsOptions = {}) => {
+    const context = storage.getStore();
+    if (!context) {
+      return;
+    }
+
+    const prefix = options.prefix ?? "error";
+    const fields = getErrorFields(error, options.includeStack ?? true);
+    const nameKey = `${prefix}.error_name`;
+    const messageKey = `${prefix}.error_message`;
+
+    context.operations.push(
+      { operation: "set", key: nameKey, value: fields.error_name },
+      { operation: "set", key: messageKey, value: fields.error_message }
+    );
+
+    if (fields.error_stack !== undefined) {
+      context.operations.push({
+        operation: "set",
+        key: `${prefix}.error_stack`,
+        value: fields.error_stack,
+      });
+    }
+  },
+  flush: () => {
+    const store = storage.getStore();
+    if (!store) {
+      return;
+    }
+
+    const event = flush(store);
+    if (Object.keys(event).length === 0) {
+      return;
+    }
+
+    store.transport(event);
+  },
+};
+
 export const widelogger = (options: WideloggerOptions) => {
   const environment =
     options.environment ?? process.env.NODE_ENV ?? "development";
@@ -81,13 +154,7 @@ export const widelogger = (options: WideloggerOptions) => {
     pinoTransport
   );
 
-  const storage = new AsyncLocalStorage<Context>();
-
   const transport = (event: Record<string, unknown>) => {
-    if (Object.keys(event).length === 0) {
-      return;
-    }
-
     const statusCode =
       typeof event.status_code === "number" ? event.status_code : undefined;
     const isError =
@@ -109,10 +176,10 @@ export const widelogger = (options: WideloggerOptions) => {
     }
   };
 
-  function runContext<T>(callback: () => Promise<T>): Promise<T>;
-  function runContext<T>(callback: () => T): T;
-  function runContext<T>(callback: () => T | Promise<T>): T | Promise<T> {
-    return storage.run({ operations: [] }, () => {
+  function context<T>(callback: () => Promise<T>): Promise<T>;
+  function context<T>(callback: () => T): T;
+  function context<T>(callback: () => T | Promise<T>): T | Promise<T> {
+    return storage.run({ operations: [], transport }, () => {
       let result: T | Promise<T>;
       try {
         result = callback();
@@ -130,69 +197,6 @@ export const widelogger = (options: WideloggerOptions) => {
     });
   }
 
-  const widelog = {
-    set: <K extends string>(key: DottedKey<K>, value: FieldValue) => {
-      storage.getStore()?.operations.push({ operation: "set", key, value });
-    },
-    count: <K extends string>(key: DottedKey<K>, amount = 1) => {
-      storage.getStore()?.operations.push({ operation: "count", key, amount });
-    },
-    append: <K extends string>(key: DottedKey<K>, value: FieldValue) => {
-      storage.getStore()?.operations.push({ operation: "append", key, value });
-    },
-    max: <K extends string>(key: DottedKey<K>, value: number) => {
-      storage.getStore()?.operations.push({ operation: "max", key, value });
-    },
-    min: <K extends string>(key: DottedKey<K>, value: number) => {
-      storage.getStore()?.operations.push({ operation: "min", key, value });
-    },
-    time: {
-      start: <K extends string>(key: DottedKey<K>) => {
-        storage.getStore()?.operations.push({
-          operation: "time.start",
-          key,
-          time: performance.now(),
-        });
-      },
-      stop: <K extends string>(key: DottedKey<K>) => {
-        storage.getStore()?.operations.push({
-          operation: "time.stop",
-          key,
-          time: performance.now(),
-        });
-      },
-    },
-    errorFields: (error: unknown, options: ErrorFieldsOptions = {}) => {
-      const context = storage.getStore();
-      if (!context) {
-        return;
-      }
-
-      const prefix = options.prefix ?? "error";
-      const fields = getErrorFields(error, options.includeStack ?? true);
-      const nameKey = `${prefix}.error_name`;
-      const messageKey = `${prefix}.error_message`;
-
-      context.operations.push(
-        { operation: "set", key: nameKey, value: fields.error_name },
-        { operation: "set", key: messageKey, value: fields.error_message }
-      );
-
-      if (fields.error_stack !== undefined) {
-        context.operations.push({
-          operation: "set",
-          key: `${prefix}.error_stack`,
-          value: fields.error_stack,
-        });
-      }
-    },
-    flush: () => {
-      const event = flush(storage.getStore());
-      transport(event);
-    },
-    context: runContext,
-  };
-
   const destroy = async () => {
     await new Promise<void>((resolve) => {
       logger.flush(() => resolve());
@@ -203,7 +207,7 @@ export const widelogger = (options: WideloggerOptions) => {
     }
   };
 
-  return { widelog, destroy };
+  return { context, destroy };
 };
 
-export type Widelog = ReturnType<typeof widelogger>["widelog"];
+export type Widelog = typeof widelog;

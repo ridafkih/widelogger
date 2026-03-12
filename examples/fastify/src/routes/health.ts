@@ -1,5 +1,5 @@
 import type { FastifyPluginCallback } from "fastify";
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
 
 export const healthRoutes: FastifyPluginCallback = (app, _options, done) => {
   app.get("/health", () => {

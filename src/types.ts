@@ -28,4 +28,5 @@ export type Operation =
 
 export interface Context {
   operations: Operation[];
+  transport: (event: Record<string, unknown>) => void;
 }

@@ -10,7 +10,7 @@ mock.module("pino", () => ({
   }),
 }));
 
-const { widelogger } = await import("./index");
+const { widelogger, widelog } = await import("./index");
 
 const createLogger = () =>
   widelogger({ service: "test", defaultEventName: "test.event" });
@@ -27,45 +27,50 @@ beforeEach(() => {
 });
 
 describe("widelogger factory", () => {
-  it("returns an object with a widelog property", () => {
-    const { widelog } = createLogger();
-    expect(widelog).toBeDefined();
+  it("returns context and destroy", () => {
+    const logger = createLogger();
+    expect(typeof logger.context).toBe("function");
+    expect(typeof logger.destroy).toBe("function");
+  });
+});
+
+describe("widelog module export", () => {
+  it("exports all widelog methods", () => {
     expect(typeof widelog.set).toBe("function");
     expect(typeof widelog.count).toBe("function");
     expect(typeof widelog.append).toBe("function");
     expect(typeof widelog.max).toBe("function");
     expect(typeof widelog.min).toBe("function");
     expect(typeof widelog.flush).toBe("function");
-    expect(typeof widelog.context).toBe("function");
     expect(typeof widelog.time.start).toBe("function");
     expect(typeof widelog.time.stop).toBe("function");
     expect(typeof widelog.errorFields).toBe("function");
   });
 });
 
-describe("widelog.context", () => {
+describe("context", () => {
   it("returns sync callback return value", () => {
-    const { widelog } = createLogger();
-    const result = widelog.context(() => 42);
+    const logger = createLogger();
+    const result = logger.context(() => 42);
     expect(result).toBe(42);
   });
 
   it("returns async callback resolved value", async () => {
-    const { widelog } = createLogger();
-    const result = await widelog.context(async () => 42);
+    const logger = createLogger();
+    const result = await logger.context(async () => 42);
     expect(result).toBe(42);
   });
 
   it("isolates operations between concurrent async contexts", async () => {
-    const { widelog } = createLogger();
+    const logger = createLogger();
 
-    const contextA = widelog.context(async () => {
+    const contextA = logger.context(async () => {
       widelog.set("request_id", "aaa");
       await new Promise((resolve) => setTimeout(resolve, 10));
       widelog.flush();
     });
 
-    const contextB = widelog.context(async () => {
+    const contextB = logger.context(async () => {
       widelog.set("request_id", "bbb");
       await Promise.resolve();
       widelog.flush();
@@ -87,47 +92,38 @@ describe("widelog.context", () => {
 
 describe("widelog operations outside context", () => {
   it("set is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.set("key", "value")).not.toThrow();
   });
 
   it("count is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.count("key")).not.toThrow();
   });
 
   it("append is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.append("key", "value")).not.toThrow();
   });
 
   it("max is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.max("key", 1)).not.toThrow();
   });
 
   it("min is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.min("key", 1)).not.toThrow();
   });
 
   it("time.start is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.time.start("key")).not.toThrow();
   });
 
   it("time.stop is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.time.stop("key")).not.toThrow();
   });
 
   it("errorFields is a silent no-op", () => {
-    const { widelog } = createLogger();
     expect(() => widelog.errorFields(new Error("test"))).not.toThrow();
   });
 
   it("flush does not log when called outside context", () => {
-    const { widelog } = createLogger();
     widelog.flush();
     expect(mockInfo).not.toHaveBeenCalled();
     expect(mockError).not.toHaveBeenCalled();
@@ -136,8 +132,8 @@ describe("widelog operations outside context", () => {
 
 describe("widelog.set", () => {
   it("records a set operation visible on flush", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("method", "GET");
       widelog.flush();
     });
@@ -148,8 +144,8 @@ describe("widelog.set", () => {
 
 describe("widelog.count", () => {
   it("defaults amount to 1", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.count("hits");
       widelog.count("hits");
       widelog.flush();
@@ -158,8 +154,8 @@ describe("widelog.count", () => {
   });
 
   it("records a count with custom amount", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.count("queries", 5);
       widelog.flush();
     });
@@ -169,8 +165,8 @@ describe("widelog.count", () => {
 
 describe("widelog.append", () => {
   it("records append operations visible on flush", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.append("tags", "api");
       widelog.append("tags", "v2");
       widelog.flush();
@@ -181,8 +177,8 @@ describe("widelog.append", () => {
 
 describe("widelog.max", () => {
   it("records max operation visible on flush", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.max("size", 100);
       widelog.max("size", 200);
       widelog.flush();
@@ -193,8 +189,8 @@ describe("widelog.max", () => {
 
 describe("widelog.min", () => {
   it("records min operation visible on flush", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.min("latency", 50);
       widelog.min("latency", 10);
       widelog.flush();
@@ -208,8 +204,8 @@ describe("widelog.time", () => {
     const nowSpy = spyOn(performance, "now");
     nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1150);
 
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.time.start("duration");
       widelog.time.stop("duration");
       widelog.flush();
@@ -222,8 +218,8 @@ describe("widelog.time", () => {
 
 describe("widelog.errorFields", () => {
   it("extracts fields from an Error instance", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.errorFields(new TypeError("bad input"));
       widelog.flush();
     });
@@ -234,8 +230,8 @@ describe("widelog.errorFields", () => {
   });
 
   it("handles string errors", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.errorFields("something broke");
       widelog.flush();
     });
@@ -245,8 +241,8 @@ describe("widelog.errorFields", () => {
   });
 
   it("handles unknown error types", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.errorFields(null);
       widelog.flush();
     });
@@ -256,8 +252,8 @@ describe("widelog.errorFields", () => {
   });
 
   it("uses custom prefix", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.errorFields(new Error("fail"), { prefix: "db" });
       widelog.flush();
     });
@@ -267,8 +263,8 @@ describe("widelog.errorFields", () => {
   });
 
   it("excludes stack when includeStack is false", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.errorFields(new Error("fail"), { includeStack: false });
       widelog.flush();
     });
@@ -279,8 +275,8 @@ describe("widelog.errorFields", () => {
 
 describe("widelog.flush log routing", () => {
   it("calls logger.info for non-error events", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("status_code", 200);
       widelog.flush();
     });
@@ -289,8 +285,8 @@ describe("widelog.flush log routing", () => {
   });
 
   it("calls logger.error when status_code >= 500", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("status_code", 500);
       widelog.flush();
     });
@@ -299,8 +295,8 @@ describe("widelog.flush log routing", () => {
   });
 
   it("calls logger.error when outcome is error and no status_code", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("outcome", "error");
       widelog.flush();
     });
@@ -309,8 +305,8 @@ describe("widelog.flush log routing", () => {
   });
 
   it("status_code takes precedence over outcome", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("status_code", 200);
       widelog.set("outcome", "error");
       widelog.flush();
@@ -320,8 +316,8 @@ describe("widelog.flush log routing", () => {
   });
 
   it("does not log when event is empty", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.flush();
     });
     expect(mockInfo).not.toHaveBeenCalled();
@@ -329,8 +325,8 @@ describe("widelog.flush log routing", () => {
   });
 
   it("includes event_name from defaultEventName", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("key", "value");
       widelog.flush();
     });
@@ -343,8 +339,8 @@ describe("full pipeline integration", () => {
     const nowSpy = spyOn(performance, "now");
     nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1042);
 
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("method", "GET");
       widelog.set("path", "/api/users");
       widelog.count("db.queries", 3);
@@ -376,8 +372,8 @@ describe("full pipeline integration", () => {
   });
 
   it("records an error request lifecycle", () => {
-    const { widelog } = createLogger();
-    widelog.context(() => {
+    const logger = createLogger();
+    logger.context(() => {
       widelog.set("method", "POST");
       widelog.set("path", "/api/create");
       widelog.errorFields(new Error("DB connection failed"));
@@ -399,16 +395,16 @@ describe("full pipeline integration", () => {
   });
 
   it("handles concurrent requests without context leakage", async () => {
-    const { widelog } = createLogger();
+    const logger = createLogger();
 
     await Promise.all([
-      widelog.context(async () => {
+      logger.context(async () => {
         widelog.set("id", "first");
         widelog.count("n", 1);
         await new Promise((resolve) => setTimeout(resolve, 10));
         widelog.flush();
       }),
-      widelog.context(async () => {
+      logger.context(async () => {
         widelog.set("id", "second");
         widelog.count("n", 100);
         await Promise.resolve();
@@ -429,5 +425,36 @@ describe("full pipeline integration", () => {
     expect(first?.n).toBe(1);
     expect(second).toBeDefined();
     expect(second?.n).toBe(100);
+  });
+
+  it("routes to the correct logger when multiple factories exist", () => {
+    const loggerA = widelogger({
+      service: "service-a",
+      defaultEventName: "event.a",
+    });
+    const loggerB = widelogger({
+      service: "service-b",
+      defaultEventName: "event.b",
+    });
+
+    loggerA.context(() => {
+      widelog.set("source", "a");
+      widelog.flush();
+    });
+
+    loggerB.context(() => {
+      widelog.set("source", "b");
+      widelog.flush();
+    });
+
+    const payloads = mockInfo.mock.calls.map(
+      (c: unknown[]) => c[0] as Record<string, unknown>
+    );
+
+    const payloadA = payloads.find((p) => p.source === "a");
+    const payloadB = payloads.find((p) => p.source === "b");
+
+    expect(payloadA?.event_name).toBe("event.a");
+    expect(payloadB?.event_name).toBe("event.b");
   });
 });

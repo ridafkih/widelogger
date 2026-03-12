@@ -1,5 +1,5 @@
 import type { FastifyPluginCallback } from "fastify";
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
 
 interface CheckoutBody {
   userId: string;

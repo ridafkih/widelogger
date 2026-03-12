@@ -41,7 +41,7 @@ npm install widelogger
 ```ts
 import { widelogger } from "widelogger";
 
-const { widelog, destroy } = widelogger({
+const { context, destroy } = widelogger({
   service: "checkout-api",
   defaultEventName: "http_request",
   version: "1.0.0",
@@ -49,15 +49,23 @@ const { widelog, destroy } = widelogger({
 });
 ```
 
+`widelogger()` returns a `context` function to wrap request lifecycles and a `destroy` function for graceful shutdown. To log fields, import `widelog` directly from the package — it works anywhere inside a `context()` call thanks to `AsyncLocalStorage`.
+
+```ts
+import { widelog } from "widelogger";
+
+widelog.set("user.id", userId);
+```
+
 ### Express
 
-Create a shared logger instance, use middleware to wrap requests in a context, and accumulate fields from anywhere in your codebase.
+Create a logger instance once, use middleware to wrap requests in a context, and accumulate fields from anywhere in your codebase by importing `widelog` directly.
 
 ```ts
 // src/logger.ts
 import { widelogger } from "widelogger";
 
-export const { widelog, destroy } = widelogger({
+export const { context, destroy } = widelogger({
   service: "checkout-api",
   defaultEventName: "http_request",
 });
@@ -65,10 +73,11 @@ export const { widelog, destroy } = widelogger({
 
 ```ts
 // src/middleware/logging.ts
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
+import { context } from "../logger";
 
 export const logging = (request, response, next) => {
-  widelog.context(
+  context(
     () =>
       new Promise((resolve) => {
         widelog.set("method", request.method);
@@ -90,9 +99,9 @@ export const logging = (request, response, next) => {
 
 ```ts
 // src/routes/checkout.ts
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
 
-export const checkout = (request, response) => {
+export const checkout = async (request, response) => {
   const { userId } = request.body;
 
   widelog.set("user.id", userId);
@@ -109,7 +118,7 @@ export const checkout = (request, response) => {
 };
 ```
 
-The handler doesn't need to know about context setup or flushing — it just imports `widelog` and adds fields. `AsyncLocalStorage` ensures concurrent requests never leak into each other.
+The handler doesn't need to know about context setup or flushing — it just imports `widelog` from the package and adds fields. `AsyncLocalStorage` ensures concurrent requests never leak into each other.
 
 ### Bun
 
@@ -119,7 +128,7 @@ The same pattern works with Bun's built-in server.
 // src/logger.ts
 import { widelogger } from "widelogger";
 
-export const { widelog, destroy } = widelogger({
+export const { context, destroy } = widelogger({
   service: "checkout-api",
   defaultEventName: "http_request",
 });
@@ -127,7 +136,7 @@ export const { widelog, destroy } = widelogger({
 
 ```ts
 // src/routes/checkout.ts
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
 
 export const checkout = async (request: Request) => {
   const { userId } = await request.json();
@@ -149,12 +158,13 @@ export const checkout = async (request: Request) => {
 ```ts
 // src/server.ts
 import { serve } from "bun";
-import { widelog } from "./logger";
+import { widelog } from "widelogger";
+import { context } from "./logger";
 import { checkout } from "./routes/checkout";
 
 serve({
   fetch: (request) =>
-    widelog.context(async () => {
+    context(async () => {
       const url = new URL(request.url);
       widelog.set("method", request.method);
       widelog.set("path", url.pathname);
@@ -200,7 +210,7 @@ Events with `status_code >= 500` or `outcome === "error"` are emitted at `error`
 
 ### `widelogger(options)`
 
-Creates a logger instance. Returns `{ widelog, destroy }`.
+Creates a logger instance. Returns `{ context, destroy }`.
 
 | Option | Type | Description |
 |--------|------|-------------|
@@ -212,11 +222,16 @@ Creates a logger instance. Returns `{ widelog, destroy }`.
 | `environment` | `string` | Environment name (defaults to `NODE_ENV`) |
 | `level` | `string` | Log level (defaults to `LOG_LEVEL` env or `"info"`) |
 
+### `context(fn)`
+
+Run a function inside an isolated async context. All `widelog` calls within this function (and any functions it calls) are scoped to this context. Supports both sync and async callbacks.
+
 ### `widelog`
+
+Imported directly from `"widelogger"`. All methods operate on the current async context established by `context()`.
 
 | Method | Description |
 |--------|-------------|
-| `context(fn)` | Run a function in an isolated async context |
 | `set(key, value)` | Set a field value (last write wins) |
 | `count(key, amount?)` | Increment a counter (default +1) |
 | `append(key, value)` | Append a value to an array |

@@ -1,10 +1,11 @@
 import type { FastifyPluginCallback } from "fastify";
 import fp from "fastify-plugin";
-import { widelog } from "../logger";
+import { widelog } from "widelogger";
+import { context } from "../logger";
 
 const loggingPlugin: FastifyPluginCallback = (app, _options, pluginDone) => {
   app.addHook("onRequest", (request, reply, done) => {
-    widelog.context(
+    context(
       () =>
         new Promise<void>((resolve) => {
           widelog.set("method", request.method);
