@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 const mockInfo = mock();
 const mockError = mock();
+const mockPino = mock(() => ({ info: mockInfo, error: mockError }));
 
 mock.module("pino", () => ({
-  default: Object.assign(() => ({ info: mockInfo, error: mockError }), {
+  default: Object.assign(mockPino, {
     transport: () => undefined,
     stdTimeFunctions: { isoTime: () => "" },
   }),
@@ -15,15 +16,16 @@ const { widelogger, widelog } = await import("./index");
 const createLogger = () =>
   widelogger({ service: "test", defaultEventName: "test.event" });
 
-const lastInfoPayload = () =>
-  mockInfo.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+const lastInfoPayload = () => mockInfo.mock.calls.at(-1)?.[0];
 
-const lastErrorPayload = () =>
-  mockError.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+const lastErrorPayload = () => mockError.mock.calls.at(-1)?.[0];
+
+const lastPinoConfig = () => mockPino.mock.calls.at(-1)?.at(0);
 
 beforeEach(() => {
   mockInfo.mockClear();
   mockError.mockClear();
+  mockPino.mockClear();
 });
 
 describe("widelogger factory", () => {
@@ -37,6 +39,7 @@ describe("widelogger factory", () => {
 describe("widelog module export", () => {
   it("exports all widelog methods", () => {
     expect(typeof widelog.set).toBe("function");
+    expect(typeof widelog.setFields).toBe("function");
     expect(typeof widelog.count).toBe("function");
     expect(typeof widelog.append).toBe("function");
     expect(typeof widelog.max).toBe("function");
@@ -44,6 +47,7 @@ describe("widelog module export", () => {
     expect(typeof widelog.flush).toBe("function");
     expect(typeof widelog.time.start).toBe("function");
     expect(typeof widelog.time.stop).toBe("function");
+    expect(typeof widelog.time.measure).toBe("function");
     expect(typeof widelog.errorFields).toBe("function");
   });
 });
@@ -142,6 +146,43 @@ describe("widelog.set", () => {
   });
 });
 
+describe("widelog.setFields", () => {
+  it("flattens nested fields using dot notation", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.setFields({
+        account: { age_days: 10, plan: "pro" },
+        status_code: 200,
+      });
+      widelog.flush();
+    });
+
+    const payload = lastInfoPayload();
+    expect(payload.status_code).toBe(200);
+    expect(payload.account).toEqual({ age_days: 10, plan: "pro" });
+  });
+
+  it("ignores non-primitive and unsupported values", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.setFields({
+        empty: null,
+        invalid: ["a", "b"],
+        nested: {
+          ok: "yes",
+          bad: new Date(),
+        },
+      });
+      widelog.flush();
+    });
+
+    const payload = lastInfoPayload();
+    expect(payload.nested).toEqual({ ok: "yes" });
+    expect(payload.empty).toBeUndefined();
+    expect(payload.invalid).toBeUndefined();
+  });
+});
+
 describe("widelog.count", () => {
   it("defaults amount to 1", () => {
     const logger = createLogger();
@@ -212,6 +253,57 @@ describe("widelog.time", () => {
     });
 
     expect(lastInfoPayload().duration).toBe(150);
+    nowSpy.mockRestore();
+  });
+
+  it("measures sync callback duration", () => {
+    const nowSpy = spyOn(performance, "now");
+    nowSpy.mockReturnValueOnce(3000).mockReturnValueOnce(3099);
+
+    const logger = createLogger();
+    logger.context(() => {
+      const result = widelog.time.measure("duration", () => "ok");
+      expect(result).toBe("ok");
+      widelog.flush();
+    });
+
+    expect(lastInfoPayload().duration).toBe(99);
+    nowSpy.mockRestore();
+  });
+
+  it("measures async callback duration", async () => {
+    const nowSpy = spyOn(performance, "now");
+    nowSpy.mockReturnValueOnce(900).mockReturnValueOnce(1142);
+
+    const logger = createLogger();
+    await logger.context(async () => {
+      const result = await widelog.time.measure("duration", async () => "done");
+      expect(result).toBe("done");
+      widelog.flush();
+    });
+
+    expect(lastInfoPayload().duration).toBe(242);
+    nowSpy.mockRestore();
+  });
+
+  it("still stops timing when callback throws", () => {
+    const nowSpy = spyOn(performance, "now");
+    nowSpy.mockReturnValueOnce(100).mockReturnValueOnce(120);
+
+    const logger = createLogger();
+    expect(() =>
+      logger.context(() => {
+        widelog.time.measure("duration", () => {
+          throw new Error("boom");
+        });
+      })
+    ).toThrow("boom");
+
+    logger.context(() => {
+      widelog.flush();
+    });
+
+    expect(mockInfo).not.toHaveBeenCalled();
     nowSpy.mockRestore();
   });
 });
@@ -456,5 +548,45 @@ describe("full pipeline integration", () => {
 
     expect(payloadA?.event_name).toBe("event.a");
     expect(payloadB?.event_name).toBe("event.b");
+  });
+});
+
+describe("environment defaults", () => {
+  it("uses NODE_ENV when environment option is omitted", () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+
+    const logger = widelogger({
+      service: "test-service",
+      defaultEventName: "test.event",
+    });
+
+    logger.context(() => {
+      widelog.set("status_code", 200);
+      widelog.flush();
+    });
+
+    const config: unknown = lastPinoConfig();
+    expect(config).toBeDefined();
+
+    if (typeof config !== "object" || config === null) {
+      throw new Error("config was not defined");
+    }
+
+    if (
+      !("base" in config) ||
+      typeof config.base !== "object" ||
+      config.base === null
+    ) {
+      throw new Error("config.base was not definedf");
+    }
+
+    if (!("environment" in config.base)) {
+      throw new Error("config.base was not definedf");
+    }
+
+    const base = config.base;
+    expect(base.environment).toBe("production");
+    process.env.NODE_ENV = previousNodeEnv;
   });
 });

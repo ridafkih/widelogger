@@ -104,12 +104,11 @@ import { widelog } from "widelogger";
 export const checkout = async (request, response) => {
   const { userId } = request.body;
 
-  widelog.set("user.id", userId);
-  widelog.set("user.plan", "premium");
+  widelog.setFields({ user: { id: userId, plan: "premium" } });
 
-  widelog.time.start("db_ms");
-  const order = await processOrder(userId);
-  widelog.time.stop("db_ms");
+  const order = await widelog.time.measure("db_ms", () =>
+    processOrder(userId),
+  );
 
   widelog.set("order.total_cents", order.totalCents);
   widelog.count("order.items", order.itemCount);
@@ -141,12 +140,11 @@ import { widelog } from "widelogger";
 export const checkout = async (request: Request) => {
   const { userId } = await request.json();
 
-  widelog.set("user.id", userId);
-  widelog.set("user.plan", "premium");
+  widelog.setFields({ user: { id: userId, plan: "premium" } });
 
-  widelog.time.start("db_ms");
-  const order = await processOrder(userId);
-  widelog.time.stop("db_ms");
+  const order = await widelog.time.measure("db_ms", () =>
+    processOrder(userId),
+  );
 
   widelog.set("order.total_cents", order.totalCents);
   widelog.count("order.items", order.itemCount);
@@ -202,6 +200,31 @@ widelog.set("user.plan", "premium");
 // Output: { user: { id: "usr_123", plan: "premium" } }
 ```
 
+### Bulk Fields
+
+`setFields` accepts a nested object and recursively flattens it into individual `set` calls. Non-primitive values (other than plain objects) are silently ignored.
+
+```ts
+widelog.setFields({
+  user: { id: "usr_123", plan: "premium" },
+  status_code: 200,
+});
+// Equivalent to:
+// widelog.set("user.id", "usr_123");
+// widelog.set("user.plan", "premium");
+// widelog.set("status_code", 200);
+```
+
+### Measured Timing
+
+`time.measure` wraps a sync or async callback, automatically recording start and stop times. It returns the callback's result and still records timing even if the callback throws.
+
+```ts
+const order = await widelog.time.measure("db_ms", () =>
+  processOrder(userId),
+);
+```
+
 ### Log Routing
 
 Events with `status_code >= 500` or `outcome === "error"` are emitted at `error` level. Everything else is `info`. In development, logs are pretty-printed; in production, they're structured JSON.
@@ -233,12 +256,14 @@ Imported directly from `"widelogger"`. All methods operate on the current async 
 | Method | Description |
 |--------|-------------|
 | `set(key, value)` | Set a field value (last write wins) |
+| `setFields(fields)` | Recursively flatten a nested object into dotted-key `set` calls |
 | `count(key, amount?)` | Increment a counter (default +1) |
 | `append(key, value)` | Append a value to an array |
 | `max(key, value)` | Track the maximum value for a key |
 | `min(key, value)` | Track the minimum value for a key |
 | `time.start(key)` | Start a timer |
 | `time.stop(key)` | Stop a timer and record elapsed ms |
+| `time.measure(key, fn)` | Time a sync or async callback, returns the callback's result |
 | `errorFields(error, opts?)` | Extract error name, message, and stack |
 | `flush()` | Aggregate all operations and emit the event |
 
