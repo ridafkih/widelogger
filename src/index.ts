@@ -16,6 +16,13 @@ export interface WideloggerOptions {
 export interface ErrorFieldsOptions {
   prefix?: string;
   includeStack?: boolean;
+  slug?: string;
+  retriable?: boolean;
+  requiresReauth?: boolean;
+}
+
+interface StickyHandle {
+  sticky: () => void;
 }
 
 interface ParsedErrorFields {
@@ -31,6 +38,9 @@ const isFieldValue = (value: unknown): value is FieldValue =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const isFieldValueArray = (value: unknown): value is FieldValue[] =>
+  Array.isArray(value) && value.every(isFieldValue);
 
 function getErrorFields(
   error: unknown,
@@ -57,10 +67,35 @@ function getErrorFields(
   };
 }
 
+const extractErrorProperty = (error: unknown, property: string): unknown => {
+  if (isRecord(error) && property in error) {
+    return error[property];
+  }
+  return undefined;
+};
+
+const noop = () => undefined;
+const noopSticky: StickyHandle = { sticky: noop };
+
 const storage = new AsyncLocalStorage<Context>();
 
-function pushOp(operation: Operation): void {
-  storage.getStore()?.operations.push(operation);
+function pushOp(operation: Operation): StickyHandle {
+  const store = storage.getStore();
+  if (!store) {
+    return noopSticky;
+  }
+
+  store.operations.push(operation);
+
+  return {
+    sticky: () => {
+      const index = store.operations.indexOf(operation);
+      if (index !== -1) {
+        store.operations.splice(index, 1);
+      }
+      store.stickyOperations.push(operation);
+    },
+  };
 }
 
 function applyFields(
@@ -74,6 +109,13 @@ function applyFields(
 
     if (isFieldValue(value)) {
       operations.push({ operation: "set", key: fullKey, value });
+      continue;
+    }
+
+    if (isFieldValueArray(value)) {
+      for (const element of value) {
+        operations.push({ operation: "append", key: fullKey, value: element });
+      }
       continue;
     }
 
@@ -118,14 +160,27 @@ function measure<K extends string, T>(
 }
 
 export const widelog = {
-  set: <K extends string>(key: DottedKey<K>, value: FieldValue) => {
-    pushOp({ operation: "set", key, value });
+  set: <K extends string>(
+    key: DottedKey<K>,
+    value: FieldValue
+  ): StickyHandle => {
+    return pushOp({ operation: "set", key, value });
   },
-  setFields: (fields: Record<string, unknown>) => {
-    const operations = storage.getStore()?.operations;
-    if (operations) {
-      applyFields(operations, fields);
+  setFields: (fields: Record<string, unknown>): StickyHandle => {
+    const store = storage.getStore();
+    if (!store) {
+      return noopSticky;
     }
+
+    const startIndex = store.operations.length;
+    applyFields(store.operations, fields);
+
+    return {
+      sticky: () => {
+        const added = store.operations.splice(startIndex);
+        store.stickyOperations.push(...added);
+      },
+    };
   },
   count: <K extends string>(key: DottedKey<K>, amount = 1) => {
     pushOp({ operation: "count", key, amount });
@@ -177,10 +232,43 @@ export const widelog = {
         value: fields.error_stack,
       });
     }
+
+    const slug = options.slug ?? extractErrorProperty(error, "slug");
+    if (typeof slug === "string") {
+      context.operations.push({
+        operation: "set",
+        key: `${prefix}.slug`,
+        value: slug,
+      });
+    }
+
+    const retriable =
+      options.retriable ?? extractErrorProperty(error, "retriable");
+    if (typeof retriable === "boolean") {
+      context.operations.push({
+        operation: "set",
+        key: `${prefix}.retriable`,
+        value: retriable,
+      });
+    }
+
+    const requiresReauth =
+      options.requiresReauth ?? extractErrorProperty(error, "requiresReauth");
+    if (typeof requiresReauth === "boolean") {
+      context.operations.push({
+        operation: "set",
+        key: `${prefix}.requires_reauth`,
+        value: requiresReauth,
+      });
+    }
   },
   flush: () => {
     const store = storage.getStore();
-    if (!store || store.operations.length === 0) {
+    if (!store) {
+      return;
+    }
+
+    if (store.operations.length === 0 && store.stickyOperations.length === 0) {
       return;
     }
 
@@ -242,30 +330,34 @@ export const widelogger = (options: WideloggerOptions) => {
 
   const clearContext = () => {
     const context = storage.getStore();
-    if (context && context.operations.length > 0) {
+    if (context) {
       context.operations = [];
+      context.stickyOperations = [];
     }
   };
 
   function context<T>(callback: () => Promise<T>): Promise<T>;
   function context<T>(callback: () => T): T;
   function context<T>(callback: () => T | Promise<T>): T | Promise<T> {
-    return storage.run({ operations: [], transport }, () => {
-      let result: T | Promise<T>;
-      try {
-        result = callback();
-      } catch (error) {
+    return storage.run(
+      { operations: [], stickyOperations: [], transport },
+      () => {
+        let result: T | Promise<T>;
+        try {
+          result = callback();
+        } catch (error) {
+          clearContext();
+          throw error;
+        }
+
+        if (result instanceof Promise) {
+          return result.finally(clearContext);
+        }
+
         clearContext();
-        throw error;
+        return result;
       }
-
-      if (result instanceof Promise) {
-        return result.finally(clearContext);
-      }
-
-      clearContext();
-      return result;
-    });
+    );
   }
 
   const destroy = async () => {

@@ -167,7 +167,6 @@ describe("widelog.setFields", () => {
     logger.context(() => {
       widelog.setFields({
         empty: null,
-        invalid: ["a", "b"],
         nested: {
           ok: "yes",
           bad: new Date(),
@@ -179,7 +178,36 @@ describe("widelog.setFields", () => {
     const payload = lastInfoPayload();
     expect(payload.nested).toEqual({ ok: "yes" });
     expect(payload.empty).toBeUndefined();
-    expect(payload.invalid).toBeUndefined();
+  });
+
+  it("converts arrays of primitives into append operations", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.setFields({
+        tags: ["api", "sync"],
+        counts: [1, 2, 3],
+      });
+      widelog.flush();
+    });
+
+    const payload = lastInfoPayload();
+    expect(payload.tags).toEqual(["api", "sync"]);
+    expect(payload.counts).toEqual([1, 2, 3]);
+  });
+
+  it("ignores arrays containing non-primitive values", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.setFields({
+        valid_field: "present",
+        mixed: [{ nested: true }, "valid"],
+      });
+      widelog.flush();
+    });
+
+    const payload = lastInfoPayload();
+    expect(payload.valid_field).toBe("present");
+    expect(payload.mixed).toBeUndefined();
   });
 });
 
@@ -362,6 +390,166 @@ describe("widelog.errorFields", () => {
     });
     const error = lastInfoPayload().error as Record<string, unknown>;
     expect(error.error_stack).toBeUndefined();
+  });
+
+  it("sets slug from options", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.errorFields(new Error("fail"), { slug: "provider-auth-failed" });
+      widelog.flush();
+    });
+    const error = lastInfoPayload().error as Record<string, unknown>;
+    expect(error.slug).toBe("provider-auth-failed");
+  });
+
+  it("sets retriable from options", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.errorFields(new Error("fail"), { retriable: false });
+      widelog.flush();
+    });
+    const error = lastInfoPayload().error as Record<string, unknown>;
+    expect(error.retriable).toBe(false);
+  });
+
+  it("sets requires_reauth from options", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.errorFields(new Error("fail"), { requiresReauth: true });
+      widelog.flush();
+    });
+    const error = lastInfoPayload().error as Record<string, unknown>;
+    expect(error.requires_reauth).toBe(true);
+  });
+
+  it("infers slug from error object property", () => {
+    const logger = createLogger();
+    const error = Object.assign(new Error("fail"), {
+      slug: "calendar-not-found",
+    });
+    logger.context(() => {
+      widelog.errorFields(error);
+      widelog.flush();
+    });
+    const payload = lastInfoPayload().error as Record<string, unknown>;
+    expect(payload.slug).toBe("calendar-not-found");
+  });
+
+  it("infers retriable from error object property", () => {
+    const logger = createLogger();
+    const error = Object.assign(new Error("fail"), { retriable: true });
+    logger.context(() => {
+      widelog.errorFields(error);
+      widelog.flush();
+    });
+    const payload = lastInfoPayload().error as Record<string, unknown>;
+    expect(payload.retriable).toBe(true);
+  });
+
+  it("explicit options override inferred error properties", () => {
+    const logger = createLogger();
+    const error = Object.assign(new Error("fail"), {
+      slug: "from-error",
+      retriable: true,
+    });
+    logger.context(() => {
+      widelog.errorFields(error, {
+        slug: "from-options",
+        retriable: false,
+      });
+      widelog.flush();
+    });
+    const payload = lastInfoPayload().error as Record<string, unknown>;
+    expect(payload.slug).toBe("from-options");
+    expect(payload.retriable).toBe(false);
+  });
+
+  it("does not set slug or retriable when not provided", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.errorFields(new Error("plain error"));
+      widelog.flush();
+    });
+    const error = lastInfoPayload().error as Record<string, unknown>;
+    expect(error.slug).toBeUndefined();
+    expect(error.retriable).toBeUndefined();
+    expect(error.requires_reauth).toBeUndefined();
+  });
+});
+
+describe("widelog.set().sticky()", () => {
+  it("sticky fields persist across multiple flushes", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.set("job_id", "abc").sticky();
+
+      widelog.set("item", "first");
+      widelog.flush();
+      const firstPayload = lastInfoPayload();
+
+      widelog.set("item", "second");
+      widelog.flush();
+      const secondPayload = lastInfoPayload();
+
+      expect(firstPayload.job_id).toBe("abc");
+      expect(firstPayload.item).toBe("first");
+      expect(secondPayload.job_id).toBe("abc");
+      expect(secondPayload.item).toBe("second");
+    });
+  });
+
+  it("non-sticky fields are cleared after flush", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.set("job_id", "abc").sticky();
+      widelog.set("transient", "gone");
+      widelog.flush();
+
+      widelog.flush();
+      const secondPayload = lastInfoPayload();
+
+      expect(secondPayload.job_id).toBe("abc");
+      expect(secondPayload.transient).toBeUndefined();
+    });
+  });
+
+  it("per-flush values override sticky values on the same key", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.set("status", "ok").sticky();
+
+      widelog.set("status", "overridden");
+      widelog.flush();
+      const payload = lastInfoPayload();
+
+      expect(payload.status).toBe("overridden");
+    });
+  });
+});
+
+describe("widelog.setFields().sticky()", () => {
+  it("makes all fields from setFields sticky", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog
+        .setFields({
+          operation: { name: "ingest", type: "job" },
+        })
+        .sticky();
+
+      widelog.set("item", "first");
+      widelog.flush();
+      const firstPayload = lastInfoPayload();
+
+      widelog.set("item", "second");
+      widelog.flush();
+      const secondPayload = lastInfoPayload();
+
+      expect(firstPayload.operation).toEqual({ name: "ingest", type: "job" });
+      expect(firstPayload.item).toBe("first");
+      expect(secondPayload.operation).toEqual({ name: "ingest", type: "job" });
+      expect(secondPayload.item).toBe("second");
+    });
   });
 });
 

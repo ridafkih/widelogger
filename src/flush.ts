@@ -133,7 +133,18 @@ export const flush = (
     return {};
   }
 
+  const hasStickyOperations = context.stickyOperations.length > 0;
+  const hasOperations = context.operations.length > 0;
+
+  if (!(hasStickyOperations || hasOperations)) {
+    return {};
+  }
+
   const agg = createAggregators();
+
+  for (const entry of context.stickyOperations) {
+    processOperation(agg, entry);
+  }
 
   for (const entry of context.operations) {
     processOperation(agg, entry);

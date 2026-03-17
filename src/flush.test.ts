@@ -2,7 +2,13 @@ import { describe, expect, it } from "bun:test";
 import { flush } from "./flush";
 import type { Context, Operation } from "./types";
 
-const context = (...operations: Operation[]): Context => ({ operations });
+const noopTransport = () => undefined;
+
+const context = (...operations: Operation[]): Context => ({
+  operations,
+  stickyOperations: [],
+  transport: noopTransport,
+});
 
 describe("flush", () => {
   it("returns empty object when context is undefined", () => {
@@ -302,6 +308,70 @@ describe("time operations", () => {
       )
     );
     expect(result).toEqual({ duration: 0 });
+  });
+});
+
+describe("sticky operations", () => {
+  it("includes sticky operations in the flushed event", () => {
+    const ctx: Context = {
+      operations: [{ operation: "set", key: "path", value: "/api" }],
+      stickyOperations: [{ operation: "set", key: "service", value: "test" }],
+      transport: noopTransport,
+    };
+    const result = flush(ctx);
+    expect(result).toEqual({ service: "test", path: "/api" });
+  });
+
+  it("does not clear sticky operations after flush", () => {
+    const ctx: Context = {
+      operations: [{ operation: "set", key: "path", value: "/first" }],
+      stickyOperations: [{ operation: "set", key: "job_id", value: "abc" }],
+      transport: noopTransport,
+    };
+
+    flush(ctx);
+    expect(ctx.stickyOperations).toEqual([
+      { operation: "set", key: "job_id", value: "abc" },
+    ]);
+    expect(ctx.operations).toEqual([]);
+  });
+
+  it("sticky operations appear on every flush", () => {
+    const ctx: Context = {
+      operations: [],
+      stickyOperations: [{ operation: "set", key: "job_id", value: "abc" }],
+      transport: noopTransport,
+    };
+
+    ctx.operations = [{ operation: "set", key: "item", value: "first" }];
+    const firstResult = flush(ctx);
+    expect(firstResult).toEqual({ job_id: "abc", item: "first" });
+
+    ctx.operations = [{ operation: "set", key: "item", value: "second" }];
+    const secondResult = flush(ctx);
+    expect(secondResult).toEqual({ job_id: "abc", item: "second" });
+  });
+
+  it("per-flush operations override sticky operations on the same key", () => {
+    const ctx: Context = {
+      operations: [{ operation: "set", key: "outcome", value: "error" }],
+      stickyOperations: [
+        { operation: "set", key: "outcome", value: "success" },
+      ],
+      transport: noopTransport,
+    };
+    const result = flush(ctx);
+    expect(result).toEqual({ outcome: "error" });
+  });
+
+  it("emits event with only sticky operations when operations is empty", () => {
+    const ctx: Context = {
+      operations: [],
+      stickyOperations: [{ operation: "set", key: "job_id", value: "abc" }],
+      transport: noopTransport,
+    };
+    const result = flush(ctx);
+    expect(result).toEqual({ job_id: "abc" });
   });
 });
 

@@ -28,5 +28,6 @@ export type Operation =
 
 export interface Context {
   operations: Operation[];
+  stickyOperations: Operation[];
   transport: (event: Record<string, unknown>) => void;
 }
