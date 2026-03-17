@@ -1,4 +1,4 @@
-import type { Context, FieldValue } from "./types";
+import type { Context, ErrorParser, FieldValue } from "./types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -33,6 +33,12 @@ const setNested = (
   current[lastPart] = value;
 };
 
+interface ErrorAggregation {
+  slugs: string[];
+  counts: Record<string, number>;
+  total: number;
+}
+
 interface Aggregators {
   event: Record<string, unknown>;
   counters: Record<string, number>;
@@ -40,6 +46,7 @@ interface Aggregators {
   maxValues: Record<string, number>;
   minValues: Record<string, number>;
   timers: Record<string, { start: number; accumulated: number }>;
+  errors: Record<string, ErrorAggregation>;
 }
 
 const createAggregators = (): Aggregators => ({
@@ -49,11 +56,33 @@ const createAggregators = (): Aggregators => ({
   maxValues: Object.create(null),
   minValues: Object.create(null),
   timers: Object.create(null),
+  errors: Object.create(null),
 });
+
+const aggregateError = (agg: Aggregators, key: string, slug: string): void => {
+  const existing = agg.errors[key];
+  if (existing) {
+    existing.total += 1;
+    const previousCount = existing.counts[slug];
+    if (typeof previousCount === "number") {
+      existing.counts[slug] = previousCount + 1;
+    } else {
+      existing.counts[slug] = 1;
+      existing.slugs.push(slug);
+    }
+  } else {
+    agg.errors[key] = {
+      slugs: [slug],
+      counts: { [slug]: 1 },
+      total: 1,
+    };
+  }
+};
 
 const processOperation = (
   agg: Aggregators,
-  entry: Context["operations"][number]
+  entry: Context["operations"][number],
+  errorParser: ErrorParser | null
 ): void => {
   switch (entry.operation) {
     case "set":
@@ -86,9 +115,9 @@ const processOperation = (
       break;
     }
     case "time.start": {
-      const existing = agg.timers[entry.key];
-      if (existing) {
-        existing.start = entry.time;
+      const existingTimer = agg.timers[entry.key];
+      if (existingTimer) {
+        existingTimer.start = entry.time;
       } else {
         agg.timers[entry.key] = { start: entry.time, accumulated: 0 };
       }
@@ -99,6 +128,13 @@ const processOperation = (
       if (timer && timer.start > 0) {
         timer.accumulated += entry.time - timer.start;
         timer.start = 0;
+      }
+      break;
+    }
+    case "error": {
+      if (errorParser) {
+        const slug = errorParser(entry.error);
+        aggregateError(agg, entry.key, slug);
       }
       break;
     }
@@ -113,6 +149,7 @@ const mergeAggregators = (agg: Aggregators): void => {
     agg.arrays,
     agg.maxValues,
     agg.minValues,
+    agg.errors,
   ];
 
   for (const source of sources) {
@@ -143,11 +180,11 @@ export const flush = (
   const agg = createAggregators();
 
   for (const entry of context.stickyOperations) {
-    processOperation(agg, entry);
+    processOperation(agg, entry, context.errorParser);
   }
 
   for (const entry of context.operations) {
-    processOperation(agg, entry);
+    processOperation(agg, entry, context.errorParser);
   }
 
   mergeAggregators(agg);

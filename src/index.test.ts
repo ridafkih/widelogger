@@ -49,6 +49,8 @@ describe("widelog module export", () => {
     expect(typeof widelog.time.stop).toBe("function");
     expect(typeof widelog.time.measure).toBe("function");
     expect(typeof widelog.errorFields).toBe("function");
+    expect(typeof widelog.errors).toBe("function");
+    expect(typeof widelog.error).toBe("function");
   });
 });
 
@@ -776,5 +778,102 @@ describe("environment defaults", () => {
     const base = config.base;
     expect(base.environment).toBe("production");
     process.env.NODE_ENV = previousNodeEnv;
+  });
+});
+
+describe("widelog.errors and widelog.error", () => {
+  it("aggregates errors using the registered parser", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.errors((error) => {
+        if (error instanceof Error) {
+          return error.message;
+        }
+        return "unknown";
+      });
+
+      widelog.error("sync.failures", new Error("provider-api-error"));
+      widelog.error("sync.failures", new Error("sync-push-conflict"));
+      widelog.error("sync.failures", new Error("provider-api-error"));
+      widelog.flush();
+    });
+
+    const payload = lastInfoPayload();
+    expect(payload.sync).toEqual({
+      failures: {
+        slugs: ["provider-api-error", "sync-push-conflict"],
+        counts: { "provider-api-error": 2, "sync-push-conflict": 1 },
+        total: 3,
+      },
+    });
+  });
+
+  it("ignores error calls when no parser is registered", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.error("sync.failures", new Error("ignored"));
+      widelog.set("status", "ok");
+      widelog.flush();
+    });
+
+    const payload = lastInfoPayload();
+    expect(payload.status).toBe("ok");
+    expect(payload.sync).toBeUndefined();
+  });
+
+  it("resets error counts between flushes within same context", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.errors((error) =>
+        error instanceof Error ? error.message : "unknown"
+      );
+
+      widelog.error("failures", new Error("first-slug"));
+      widelog.set("item", "a");
+      widelog.flush();
+
+      const firstPayload = lastInfoPayload();
+      expect(firstPayload.failures).toEqual({
+        slugs: ["first-slug"],
+        counts: { "first-slug": 1 },
+        total: 1,
+      });
+
+      widelog.error("failures", new Error("second-slug"));
+      widelog.set("item", "b");
+      widelog.flush();
+
+      const secondPayload = lastInfoPayload();
+      expect(secondPayload.failures).toEqual({
+        slugs: ["second-slug"],
+        counts: { "second-slug": 1 },
+        total: 1,
+      });
+    });
+  });
+
+  it("works alongside other operations", () => {
+    const logger = createLogger();
+    logger.context(() => {
+      widelog.errors((error) =>
+        error instanceof Error ? error.message : "unknown"
+      );
+
+      widelog.set("operation.name", "push-sync");
+      widelog.error("sync.failures", new Error("conflict"));
+      widelog.count("sync.events_added", 50);
+      widelog.flush();
+    });
+
+    const payload = lastInfoPayload();
+    expect(payload.operation).toEqual({ name: "push-sync" });
+    expect(payload.sync).toEqual({
+      failures: {
+        slugs: ["conflict"],
+        counts: { conflict: 1 },
+        total: 1,
+      },
+      events_added: 50,
+    });
   });
 });

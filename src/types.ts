@@ -17,6 +17,8 @@ type ValidateKey<T extends string> = T extends ""
 
 export type DottedKey<T extends string> = ValidateKey<T>;
 
+export type ErrorParser = (error: unknown) => string;
+
 export type Operation =
   | { operation: "set"; key: string; value: FieldValue }
   | { operation: "count"; key: string; amount: number }
@@ -24,10 +26,12 @@ export type Operation =
   | { operation: "max"; key: string; value: number }
   | { operation: "min"; key: string; value: number }
   | { operation: "time.start"; key: string; time: number }
-  | { operation: "time.stop"; key: string; time: number };
+  | { operation: "time.stop"; key: string; time: number }
+  | { operation: "error"; key: string; error: unknown };
 
 export interface Context {
   operations: Operation[];
   stickyOperations: Operation[];
+  errorParser: ErrorParser | null;
   transport: (event: Record<string, unknown>) => void;
 }

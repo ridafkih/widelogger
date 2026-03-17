@@ -1,7 +1,13 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import pino from "pino";
 import { flush } from "./flush";
-import type { Context, DottedKey, FieldValue, Operation } from "./types";
+import type {
+  Context,
+  DottedKey,
+  ErrorParser,
+  FieldValue,
+  Operation,
+} from "./types";
 
 export interface WideloggerOptions {
   service: string;
@@ -203,6 +209,16 @@ export const widelog = {
     },
     measure,
   },
+  errors: (parser: ErrorParser) => {
+    const store = storage.getStore();
+    if (!store) {
+      return;
+    }
+    store.errorParser = parser;
+  },
+  error: <K extends string>(key: DottedKey<K>, error: unknown) => {
+    pushOp({ operation: "error", key, error });
+  },
   errorFields: (error: unknown, options: ErrorFieldsOptions = {}) => {
     const context = storage.getStore();
     if (!context) {
@@ -340,7 +356,12 @@ export const widelogger = (options: WideloggerOptions) => {
   function context<T>(callback: () => T): T;
   function context<T>(callback: () => T | Promise<T>): T | Promise<T> {
     return storage.run(
-      { operations: [], stickyOperations: [], transport },
+      {
+        operations: [],
+        stickyOperations: [],
+        errorParser: null,
+        transport,
+      },
       () => {
         let result: T | Promise<T>;
         try {

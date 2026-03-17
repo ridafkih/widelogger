@@ -7,6 +7,7 @@ const noopTransport = () => undefined;
 const context = (...operations: Operation[]): Context => ({
   operations,
   stickyOperations: [],
+  errorParser: null,
   transport: noopTransport,
 });
 
@@ -316,6 +317,7 @@ describe("sticky operations", () => {
     const ctx: Context = {
       operations: [{ operation: "set", key: "path", value: "/api" }],
       stickyOperations: [{ operation: "set", key: "service", value: "test" }],
+      errorParser: null,
       transport: noopTransport,
     };
     const result = flush(ctx);
@@ -326,6 +328,7 @@ describe("sticky operations", () => {
     const ctx: Context = {
       operations: [{ operation: "set", key: "path", value: "/first" }],
       stickyOperations: [{ operation: "set", key: "job_id", value: "abc" }],
+      errorParser: null,
       transport: noopTransport,
     };
 
@@ -340,6 +343,7 @@ describe("sticky operations", () => {
     const ctx: Context = {
       operations: [],
       stickyOperations: [{ operation: "set", key: "job_id", value: "abc" }],
+      errorParser: null,
       transport: noopTransport,
     };
 
@@ -358,6 +362,7 @@ describe("sticky operations", () => {
       stickyOperations: [
         { operation: "set", key: "outcome", value: "success" },
       ],
+      errorParser: null,
       transport: noopTransport,
     };
     const result = flush(ctx);
@@ -368,10 +373,169 @@ describe("sticky operations", () => {
     const ctx: Context = {
       operations: [],
       stickyOperations: [{ operation: "set", key: "job_id", value: "abc" }],
+      errorParser: null,
       transport: noopTransport,
     };
     const result = flush(ctx);
     expect(result).toEqual({ job_id: "abc" });
+  });
+});
+
+describe("error aggregation", () => {
+  const slugParser = (error: unknown): string => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return "unknown";
+  };
+
+  it("aggregates a single error into slugs, counts, and total", () => {
+    const ctx: Context = {
+      operations: [
+        {
+          operation: "error",
+          key: "sync.failures",
+          error: new Error("provider-api-error"),
+        },
+      ],
+      stickyOperations: [],
+      errorParser: slugParser,
+      transport: noopTransport,
+    };
+    const result = flush(ctx);
+    expect(result).toEqual({
+      sync: {
+        failures: {
+          slugs: ["provider-api-error"],
+          counts: { "provider-api-error": 1 },
+          total: 1,
+        },
+      },
+    });
+  });
+
+  it("deduplicates slugs and accumulates counts", () => {
+    const ctx: Context = {
+      operations: [
+        {
+          operation: "error",
+          key: "sync.failures",
+          error: new Error("provider-api-error"),
+        },
+        {
+          operation: "error",
+          key: "sync.failures",
+          error: new Error("sync-push-conflict"),
+        },
+        {
+          operation: "error",
+          key: "sync.failures",
+          error: new Error("provider-api-error"),
+        },
+        {
+          operation: "error",
+          key: "sync.failures",
+          error: new Error("provider-api-error"),
+        },
+      ],
+      stickyOperations: [],
+      errorParser: slugParser,
+      transport: noopTransport,
+    };
+    const result = flush(ctx);
+    expect(result).toEqual({
+      sync: {
+        failures: {
+          slugs: ["provider-api-error", "sync-push-conflict"],
+          counts: { "provider-api-error": 3, "sync-push-conflict": 1 },
+          total: 4,
+        },
+      },
+    });
+  });
+
+  it("supports multiple error keys independently", () => {
+    const ctx: Context = {
+      operations: [
+        {
+          operation: "error",
+          key: "push.errors",
+          error: new Error("push-failed"),
+        },
+        {
+          operation: "error",
+          key: "delete.errors",
+          error: new Error("delete-failed"),
+        },
+        {
+          operation: "error",
+          key: "push.errors",
+          error: new Error("push-failed"),
+        },
+      ],
+      stickyOperations: [],
+      errorParser: slugParser,
+      transport: noopTransport,
+    };
+    const result = flush(ctx);
+    expect(result).toEqual({
+      push: {
+        errors: {
+          slugs: ["push-failed"],
+          counts: { "push-failed": 2 },
+          total: 2,
+        },
+      },
+      delete: {
+        errors: {
+          slugs: ["delete-failed"],
+          counts: { "delete-failed": 1 },
+          total: 1,
+        },
+      },
+    });
+  });
+
+  it("ignores error operations when no parser is registered", () => {
+    const ctx: Context = {
+      operations: [
+        {
+          operation: "error",
+          key: "sync.failures",
+          error: new Error("ignored"),
+        },
+        { operation: "set", key: "status", value: "ok" },
+      ],
+      stickyOperations: [],
+      errorParser: null,
+      transport: noopTransport,
+    };
+    const result = flush(ctx);
+    expect(result).toEqual({ status: "ok" });
+  });
+
+  it("resets error counts between flushes", () => {
+    const ctx: Context = {
+      operations: [
+        { operation: "error", key: "failures", error: new Error("first") },
+      ],
+      stickyOperations: [],
+      errorParser: slugParser,
+      transport: noopTransport,
+    };
+
+    const firstResult = flush(ctx);
+    expect(firstResult).toEqual({
+      failures: { slugs: ["first"], counts: { first: 1 }, total: 1 },
+    });
+
+    ctx.operations = [
+      { operation: "error", key: "failures", error: new Error("second") },
+    ];
+    const secondResult = flush(ctx);
+    expect(secondResult).toEqual({
+      failures: { slugs: ["second"], counts: { second: 1 }, total: 1 },
+    });
   });
 });
 
