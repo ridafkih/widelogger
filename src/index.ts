@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { TransportMultiOptions, TransportSingleOptions } from "pino";
 import pino from "pino";
 import { flush } from "./flush";
 import type {
@@ -17,6 +18,7 @@ export interface WideloggerOptions {
   instanceId?: string;
   environment?: string;
   level?: string;
+  transport?: TransportSingleOptions | TransportMultiOptions;
 }
 
 export interface ErrorFieldsOptions {
@@ -293,23 +295,34 @@ export const widelog = {
   },
 };
 
+function resolveTransport(
+  custom: WideloggerOptions["transport"],
+  isDevelopment: boolean
+) {
+  if (custom) {
+    return pino.transport(custom);
+  }
+  if (isDevelopment) {
+    return pino.transport({
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+        singleLine: true,
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
+      },
+    });
+  }
+  return undefined;
+}
+
 export const widelogger = (options: WideloggerOptions) => {
   const nodeEnvironment =
     typeof process.env === "object" ? process.env.NODE_ENV : undefined;
   const environment = options.environment ?? nodeEnvironment ?? "development";
   const isDevelopment = environment !== "production";
 
-  const pinoTransport = isDevelopment
-    ? pino.transport({
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          singleLine: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
-        },
-      })
-    : undefined;
+  const pinoTransport = resolveTransport(options.transport, isDevelopment);
 
   const logger = pino(
     {
@@ -395,3 +408,4 @@ export const widelogger = (options: WideloggerOptions) => {
 };
 
 export type Widelog = typeof widelog;
+export type { TransportMultiOptions, TransportSingleOptions } from "pino";
